@@ -1,0 +1,50 @@
+
+Visual enhancements:
+Background image upload (stage floor plan)
+Stage props/objects (rectangles, circles for furniture)
+
+Advanced features:
+Movement paths (draw arrows showing character blocking)
+Multiple scenes/cues management
+Keyboard shortcuts (Delete key to remove, arrow keys to nudge position)
+Ruler/measurement tools
+Character rotation with arrow keys (not just mouse)
+
+
+
+Here are some ideas to modernize the page:
+
+Visual Design:
+
+Add a modern color scheme (darker toolbar, softer backgrounds)
+Card-style UI with shadows and rounded corners for dropdowns
+Better typography (system font stack: -apple-system, BlinkMacSystemFont, "Segoe UI")
+Icon buttons instead of text (with tooltips)
+Smooth transitions (fade in/out for menus, scale for buttons)
+Glass morphism effects for floating panels
+Layout Improvements:
+
+Sidebar instead of horizontal toolbar (more workspace)
+Floating toolbar when character selected (near character)
+Mini toolbar that follows selected character
+Collapsible panels for config/file operations
+Better Interactions:
+
+Toast notifications instead of alert() dialogs
+Context menu (right-click on character for actions)
+Keyboard shortcuts panel (press ? to show)
+Drag to pan canvas (with space bar or middle mouse)
+Zoom controls (scroll to zoom, reset button)
+Canvas Enhancements:
+
+Grid background (subtle dots or lines)
+Rulers along top and left edges
+Minimap in corner showing full stage
+Snap-to-grid option with visual feedback
+Modern UI Components:
+
+Replace alerts with toast notifications
+Use range sliders instead of number inputs
+Add command palette (Cmd/Ctrl+K to search actions)
+Undo/redo history panel showing thumbnail previews
+Theme toggle (light/dark mode)
