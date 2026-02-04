@@ -46,3 +46,16 @@ coverage/
 .history/
 .turbo/
 __pycache__/
+
+# Go
+backend/backend
+backend/backend.exe
+backend/.env
+
+# Frontend
+frontend/.env
+frontend/node_modules/
+frontend/dist/
+
+# Old server files (Node.js)
+server/

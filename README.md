@@ -1,160 +1,175 @@
-# Stage Simulator — MVP
+# Stage Motion
 
-Purpose
-- Small web-based stage simulator (2D canvas) to place characters and define simple movement paths.
-- Focus: fast feedback loop; ship a usable v1 in 2–4 weeks.
+A visual web-based tool for theatre directors, stage managers, and drama educators to plan character blocking and stage layouts.
 
-Status
-- Day 1 (Canvas + Add Character): Implemented. See `index.html`.
+## Project Structure
 
-Quick Start
-1. Open `index.html` in your browser (double-click or serve from a local server).
-2. Click the `Add Char` button, then click on the stage to place a character.
-
-MVP Scope (Absolute Minimum Features)
-- Stage: 1600x900 canvas.
-- Characters: Add via toolbar, visualized as colored circle + label (A, B, ...).
-- Paths: (Day 2) Select a character and click to add waypoints; each segment = 1s.
-- Simulation Controls: Play, Pause, Step (0.1s), Reset, Time display.
-- Movement: Linear interpolation between waypoints. Characters stop at last waypoint.
-
-Data Structures
-- Characters: [{ id, x, y, path: [{x, y, time}] }]
-- Simulation state: { currentTime, isPlaying }
-
-Day-by-Day Plan
-- Day 1: Canvas + Add Character (completed).
-- Day 2: Click character to select; add waypoints; draw path lines.
-- Day 3: Play button; animate characters along paths (1s per segment).
-- Day 4: Step, Pause, Reset, multi-character support, time display.
-- Day 5: Polish UI and visuals; prepare for user feedback.
-
-Notes
-- No frameworks; vanilla JS + HTML5 canvas.
-- No backend; export/import later if needed.
-
-Files
-- `index.html` — Day 1 implementation (place characters).
-
-Next Steps
-- Implement Day 2: path definition and waypoint storage.
-
-# StageSim — Theatre Blocking & Planning Tool (Commercial Proposal)
-
-## Core Problem
-Theatre directors and drama teachers need a visual tool to plan character blocking (movement) before rehearsals. Paper sketches are limited; 3D software is overkill. StageSim fills the gap: simple, visual, purpose-built for stage work.
-
-## Monetization Model
-Tier | Access | Limit
----|---:|---
-Free | First project only OR unlimited with valid voucher code | 1 active project
-Pro | All projects | Unlimited projects + PDF export + Priority support
-
-Price: $8/month or $72/year
-
-Key Rules
-- Users own their data: All scenes exportable as JSON files anytime (no lock-in)
-- Voucher codes for educators, students, community theatres (manual approval)
-- No feature gating: Free users get full simulation features — only project count limited
-- Grace period: After 1st project, 3-day trial to test Pro before paywall
-
-## Target Users
-- Professional theatre directors
-- Drama teachers (K-12, university)
-- Stage managers
-- Community/student theatre groups (target for voucher program)
-
-## Platforms
-- Web app (primary)
-- iOS & Android via Capacitor wrapper
-- No cloud sync: Scenes saved/loaded via local files (JSON)
-- Lightweight auth only: Email/password to track project count & subscription status
-
-## MVP Features (v1.0)
-### Core Simulation
-- 2D canvas stage (800x600px default)
-- Add characters (colored circles + labels A/B/C)
-- Click to place waypoints → linear path movement
-- Play/Pause/Step/Reset controls with time display
-
-### Project System
-- "New Project" button creates fresh stage
-- App tracks: `projectsCreated` per user account
-- After 1st project:
-  - Free users see modal: "Upgrade to create more projects"
-  - Voucher holders bypass limit
-  - 3-day trial period before hard paywall
-
-### File Handling
-- Export scene as `scene.json` (anytime, no paywall)
-- Import JSON to restore project
-- No forced cloud storage — user controls files
-
-### Auth & Billing
-- Email/password signup (Firebase Auth or similar)
-- Stripe integration for subscriptions
-- Voucher code field on signup ("Have a code?")
-- Dashboard shows: "1/1 free projects used"
-
-## Tech Stack
-Layer | Choice | Why
----|---|---
-Frontend | React + TypeScript | Professional UI, hiring-friendly
-UI Library | Material-UI (MUI) | Polished components, theming
-Canvas | HTML5 Canvas API | Direct control for smooth animation
-Auth | Firebase Authentication | Fast setup, email/password + social
-Billing | Stripe + Firebase Cloud Functions | Handle subscriptions securely
-State | Zustand | Simple global state (simulation + auth)
-Mobile | Capacitor | Wrap web → iOS/Android
-Hosting | Vercel (web) + App Stores | Fast deployment
-
-Why Firebase? Minimal backend needed — just auth + subscription status checks. No scene data stored server-side.
-
-## Data Flow (Privacy-First)
-User creates scene → stored in browser memory
-
-          ↓
-
-Export → JSON file downloaded to user's device
-
-          ↓
-
-Import → user selects file → loaded into app
-
-          ↓
-
-Auth check → only for "New Project" action (verify project count)
-
-Server never touches scene content. Only stores:
 ```
-{ userId, email, projectsCreated: 1, subscriptionStatus: "free|pro|trial", voucherCode: "EDU-2026" }
+new_project/
+├── backend/          # Go API server
+│   ├── main.go      # Server entry point
+│   ├── handlers/    # HTTP request handlers
+│   ├── models/      # Data models
+│   ├── database/    # PostgreSQL connection
+│   ├── middleware/  # Auth middleware
+│   └── utils/       # JWT utilities
+│
+└── frontend/        # React application
+    ├── src/         # React components
+    ├── public/      # Static assets
+    └── index.html   # HTML entry point
 ```
 
-## User Flow (With Monetization)
-- First visit → "Sign up free"
-- Create account → 1 free project unlocked
-- Build blocking → export JSON anytime
-- Click "New Project" →
-  - If 1st project: proceeds
-  - If 2nd project: show 3-day trial offer → proceed OR show Pro pricing → upgrade or enter voucher
-  - Voucher holders → unlimited projects at $0
+## Prerequisites
 
-## Post-MVP Features (Pro Tier)
-- PDF export (stage diagram for rehearsal packets)
-- Character images (upload headshots)
-- Speech bubbles at timestamps
-- Dark mode
-- Undo/Redo history
+- **Go** 1.21+ ([Download](https://golang.org/dl/))
+- **Node.js** 18+ ([Download](https://nodejs.org/))
+- **PostgreSQL** 14+ ([Download](https://www.postgresql.org/download/))
 
-All free users get core simulation features — no crippled experience.
+## Setup Instructions
 
-## Tagline Options
-- "Your first blocking is free. The rest of the season? $8/month."
-- "Plan one scene free. Plan your whole show with StageSim Pro."
-- "Theatre blocking that respects your budget — and your art."
+### 1. Database Setup
 
-## Why This Model Works for Theatre
-- Low barrier: Try full tool risk-free with 1 project
-- Ethical: No data lock-in — export anytime
-- Voucher-friendly: Schools/theatres get free access without sales calls
-- Sustainable: Recurring revenue from professionals who use it weekly
+Install PostgreSQL and create the database:
+
+```bash
+# Using psql
+psql -U postgres
+CREATE DATABASE stage_motion;
+\q
+```
+
+### 2. Backend Setup (Go)
+
+```bash
+cd backend
+
+# Install Go dependencies
+go mod download
+
+# Configure environment (edit backend/.env)
+# Set your PostgreSQL password in DB_PASSWORD
+
+# Run the server
+go run main.go
+```
+
+The backend will:
+- Connect to PostgreSQL
+- Run database migrations automatically
+- Start on http://localhost:3001
+
+### 3. Frontend Setup (React)
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The frontend will start on http://localhost:5173
+
+## Environment Configuration
+
+### Backend (.env)
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=stage_motion
+DB_USER=postgres
+DB_PASSWORD=your_password_here
+PORT=3001
+JWT_SECRET=your-secret-key
+```
+
+### Frontend (.env)
+```env
+VITE_API_URL=http://localhost:3001
+```
+
+## Development Workflow
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
+go run main.go
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+Then open http://localhost:5173 in your browser.
+
+## Production Build
+
+### Backend
+```bash
+cd backend
+go build -o stage-motion-server
+./stage-motion-server
+```
+
+### Frontend
+```bash
+cd frontend
+npm run build
+# Output will be in frontend/dist/
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Create new user |
+| POST | `/api/auth/login` | Login user |
+| GET | `/api/auth/verify` | Verify JWT token |
+| GET | `/api/health` | Health check |
+
+## Features
+
+### Authentication
+- ✅ User registration with email validation
+- ✅ Secure password hashing (bcrypt)
+- ✅ JWT token authentication
+- ✅ Session persistence
+- ✅ Premium glassmorphism login UI
+
+### Stage Blocking Tool
+- Character management with visual representation
+- Drag-and-drop positioning
+- Direction and gaze controls
+- Smart alignment guides
+- Save/load layouts
+- Export to JSON/PNG
+- Undo/Redo system
+
+## Technologies
+
+**Backend:**
+- Go 1.21
+- Gin (web framework)
+- PostgreSQL (database)
+- pgx (PostgreSQL driver)
+- JWT for authentication
+- bcrypt for password hashing
+
+**Frontend:**
+- React 18
+- TypeScript
+- Vite
+- HTML5 Canvas API
+
+## License
+
+[Specify your license here]
+
+## Support
+
+For issues or questions, please open an issue on GitHub.

@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import Login from './components/Login'
 
 type Character = {
   id: string
@@ -20,7 +21,62 @@ type Guide = {
   end: number // end coordinate (perpendicular)
 }
 
+type User = {
+  id: number
+  username: string
+  email: string
+}
+
 export default function App() {
+  const [user, setUser] = useState<User | null>(null)
+  const [isAuthChecking, setIsAuthChecking] = useState(true)
+
+  // Check for existing authentication on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    const savedUser = localStorage.getItem('user')
+
+    if (token && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser))
+      } catch (err) {
+        console.error('Failed to parse saved user')
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+    }
+    setIsAuthChecking(false)
+  }, [])
+
+  // Show login page if not authenticated
+  if (isAuthChecking) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: '#0a0a0f',
+        color: '#fff'
+      }}>
+        Loading...
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Login onLoginSuccess={setUser} />
+  }
+
+  // Main stage blocking app below
+  return <StageBlockingApp user={user} onLogout={() => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setUser(null)
+  }} />
+}
+
+function StageBlockingApp({ user, onLogout }: { user: User, onLogout: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [characters, setCharacters] = useState<Character[]>([])
   const [addMode, setAddMode] = useState(false)
@@ -140,18 +196,18 @@ export default function App() {
       // handle character dragging
       if (dragRef.current.type === 'char-move') {
         dragRef.current.hasMoved = true
-        
+
         // Get current character being dragged
         const currentChar = characters.find(c => c.id === dragRef.current.charId)
         if (!currentChar) return
-        
+
         const snapThreshold = 8
         const radius = (currentChar.size ?? defaultPersonSize) * 20
-        
+
         let snappedX = mx
         let snappedY = my
         const guides: { x?: number; y?: number }[] = []
-        
+
         // Check alignment with canvas center
         if (Math.abs(mx - canvasSize.width / 2) < snapThreshold) {
           snappedX = canvasSize.width / 2
@@ -161,13 +217,13 @@ export default function App() {
           snappedY = canvasSize.height / 2
           guides.push({ y: canvasSize.height / 2 })
         }
-        
+
         // Check alignment with other characters
         characters.forEach(other => {
           if (other.id === dragRef.current.charId) return
-          
+
           const otherRadius = (other.size ?? defaultPersonSize) * 20
-          
+
           // Center to center
           if (Math.abs(mx - other.x) < snapThreshold) {
             snappedX = other.x
@@ -177,7 +233,7 @@ export default function App() {
             snappedY = other.y
             guides.push({ y: other.y })
           }
-          
+
           // Edge to edge (left/right)
           if (Math.abs((mx - radius) - (other.x - otherRadius)) < snapThreshold) {
             snappedX = other.x - otherRadius + radius
@@ -187,7 +243,7 @@ export default function App() {
             snappedX = other.x + otherRadius - radius
             guides.push({ x: other.x + otherRadius })
           }
-          
+
           // Edge to edge (top/bottom)
           if (Math.abs((my - radius) - (other.y - otherRadius)) < snapThreshold) {
             snappedY = other.y - otherRadius + radius
@@ -197,7 +253,7 @@ export default function App() {
             snappedY = other.y + otherRadius - radius
             guides.push({ y: other.y + otherRadius })
           }
-          
+
           // Center to edge
           if (Math.abs(mx - (other.x - otherRadius)) < snapThreshold) {
             snappedX = other.x - otherRadius
@@ -215,7 +271,7 @@ export default function App() {
             snappedY = other.y + otherRadius
             guides.push({ y: other.y + otherRadius })
           }
-          
+
           // Edge to center
           if (Math.abs((mx - radius) - other.x) < snapThreshold) {
             snappedX = other.x + radius
@@ -234,7 +290,7 @@ export default function App() {
             guides.push({ y: other.y })
           }
         })
-        
+
         setAlignmentGuides(guides)
         setCharacters((prev) =>
           prev.map((c) => {
@@ -278,7 +334,7 @@ export default function App() {
       if (dragRef.current.type === 'char-move') {
         setAlignmentGuides([])
       }
-      
+
       // if we were about to drag a character but didn't move, it was a click → enter direction mode
       if (dragRef.current.type === 'char-move' && !dragRef.current.hasMoved) {
         const charId = dragRef.current.charId
@@ -293,7 +349,7 @@ export default function App() {
         // Clear selection after dragging (not clicking)
         setSelectedCharId(null)
       }
-      
+
       dragRef.current = { type: null }
     }
 
@@ -382,7 +438,7 @@ export default function App() {
     for (const char of characters) {
       const size = char.size ?? 1
       const angle = char.angle ?? 0
-      
+
       // check head
       const d = Math.hypot(mx - char.x, my - char.y)
       if (d <= 12 * size) {
@@ -390,7 +446,7 @@ export default function App() {
         dragRef.current = { type: 'char-move', charId: char.id, hasMoved: false }
         return
       }
-      
+
       // check shoulders
       const shoulderDist = 8 * size
       const shoulderX = char.x - Math.cos(angle) * shoulderDist
@@ -545,14 +601,14 @@ export default function App() {
 
     // draw guides first
     drawGuides(ctx)
-    
+
     // draw alignment guides
     if (alignmentGuides.length > 0) {
       ctx.save()
       ctx.strokeStyle = '#3498db'
       ctx.lineWidth = 1
       ctx.setLineDash([5, 5])
-      
+
       alignmentGuides.forEach(guide => {
         if (guide.x !== undefined) {
           ctx.beginPath()
@@ -567,7 +623,7 @@ export default function App() {
           ctx.stroke()
         }
       })
-      
+
       ctx.restore()
     }
 
@@ -747,7 +803,7 @@ export default function App() {
           </div>
         </div>
         {selectedCharId && (
-          <button 
+          <button
             onClick={() => {
               const updated = characters.filter((c) => c.id !== selectedCharId)
               setCharacters(updated)
@@ -760,18 +816,18 @@ export default function App() {
           </button>
         )}
         {selectedCharId && (
-          <button 
+          <button
             onClick={() => {
               const char = characters.find((c) => c.id === selectedCharId)
               if (char) {
                 const id = String.fromCharCode(65 + (counter % 26))
                 setCounter((c) => c + 1)
-                const duplicate = { 
-                  ...char, 
-                  id, 
-                  name: id, 
-                  x: char.x + 30, 
-                  y: char.y + 30 
+                const duplicate = {
+                  ...char,
+                  id,
+                  name: id,
+                  x: char.x + 30,
+                  y: char.y + 30
                 }
                 const updated = [...characters, duplicate]
                 setCharacters(updated)
@@ -823,7 +879,7 @@ export default function App() {
         ) : null}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <div style={{ position: 'relative' }}>
-            <button 
+            <button
               onClick={() => setConfigMenuOpen(!configMenuOpen)}
               style={{ fontSize: 20, padding: '4px 12px' }}
               title="Configuration"
@@ -990,36 +1046,56 @@ export default function App() {
               </div>
             )}
           </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 14, color: '#666' }}>
+              Welcome, <strong>{user.username}</strong>
+            </span>
+            <button
+              onClick={onLogout}
+              style={{
+                padding: '6px 14px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 500
+              }}
+            >
+              Logout
+            </button>
+          </div>
           <div style={{ position: 'relative' }}>
-            <button 
+            <button
               onClick={() => setFileMenuOpen(!fileMenuOpen)}
               style={{ fontSize: 20, padding: '4px 12px' }}
               title="File operations"
             >
               💾
             </button>
-          {fileMenuOpen && (
-            <div style={{
-              position: 'absolute',
-              right: 0,
-              top: '100%',
-              marginTop: 4,
-              background: 'white',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: 150,
-              zIndex: 1000
-            }}>
-              <button onClick={() => { saveToLocalStorage(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Save</button>
-              <button onClick={() => { loadFromLocalStorage(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Load</button>
-              <button onClick={() => { exportAsJSON(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Export JSON</button>
-              <button onClick={() => { importFromJSON(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Import JSON</button>
-              <button onClick={() => { exportAsImage(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Export PNG</button>
-            </div>
-          )}
+            {fileMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: '100%',
+                marginTop: 4,
+                background: 'white',
+                border: '1px solid #ccc',
+                borderRadius: 4,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 150,
+                zIndex: 1000
+              }}>
+                <button onClick={() => { saveToLocalStorage(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Save</button>
+                <button onClick={() => { loadFromLocalStorage(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Load</button>
+                <button onClick={() => { exportAsJSON(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Export JSON</button>
+                <button onClick={() => { importFromJSON(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Import JSON</button>
+                <button onClick={() => { exportAsImage(); setFileMenuOpen(false) }} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Export PNG</button>
+              </div>
+            )}
           </div>
         </div>
       </header>
