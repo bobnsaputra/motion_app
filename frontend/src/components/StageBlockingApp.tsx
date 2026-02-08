@@ -20,8 +20,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [canvasSize, setCanvasSize] = useState({ width: 1600, height: 900 })
   const [guides, setGuides] = useState<Guide[]>([])
   const [defaultPersonSize, setDefaultPersonSize] = useState(2)
-  const [defaultPersonColor, setDefaultPersonColor] = useState('#f1c40f')
-  const [defaultShoulderColor, setDefaultShoulderColor] = useState('#c0392b')
+  const [defaultPersonColor, setDefaultPersonColor] = useState('#ffd93d')
+  const [defaultShoulderColor, setDefaultShoulderColor] = useState('#ff6b6b')
   const [fileMenuOpen, setFileMenuOpen] = useState(false)
   const [configMenuOpen, setConfigMenuOpen] = useState(false)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
@@ -537,7 +537,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ctx.translate(shoulderX, shoulderY)
         ctx.beginPath()
         ctx.ellipse(0, 0, 18 * size, 10 * size, 0, 0, Math.PI * 2)
-        ctx.fillStyle = char.shoulderColor || '#c0392b'
+        ctx.fillStyle = char.shoulderColor || '#ff6b6b'
         ctx.fill()
         ctx.restore()
       }
@@ -546,10 +546,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       ctx.translate(char.x, char.y)
       ctx.beginPath()
       ctx.ellipse(0, 0, 12 * size, 10 * size, 0, 0, Math.PI * 2)
-      ctx.fillStyle = char.color || '#f1c40f'
+      ctx.fillStyle = char.color || '#ffd93d'
       ctx.fill()
       ctx.lineWidth = 2
-      ctx.strokeStyle = '#b08a05'
+      ctx.strokeStyle = '#e6b800'
       ctx.stroke()
       ctx.restore()
 
@@ -561,7 +561,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const headRy = 10 * size
       const startX = Math.cos(eyeOffsetAngle) * (headRx + 2)
       const startY = Math.sin(eyeOffsetAngle) * (headRy + 2)
-      const lineLen = 12 * size
+      const lineLen = 6 * size
       ctx.beginPath()
       ctx.moveTo(startX, startY)
       ctx.lineTo(startX + Math.cos(eyeOffsetAngle) * lineLen, startY + Math.sin(eyeOffsetAngle) * lineLen)
@@ -587,7 +587,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ctx.translate(shoulderX, shoulderY)
         ctx.beginPath()
         ctx.ellipse(0, 0, 18 * size, 10 * size, 0, 0, Math.PI * 2)
-        ctx.fillStyle = char.shoulderColor || '#c0392b'
+        ctx.fillStyle = char.shoulderColor || '#ff6b6b'
         ctx.fill()
         ctx.restore()
       }
@@ -610,8 +610,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
       setCounter(state.counter || 0)
       setDefaultPersonSize(state.defaultPersonSize || 1)
-      setDefaultPersonColor(state.defaultPersonColor || '#f1c40f')
-      setDefaultShoulderColor(state.defaultShoulderColor || '#c0392b')
+      setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
+      setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
       setSelectedCharId(null)
       setAwaitingDirectionFor(null)
       showToast('Layout loaded')
@@ -647,8 +647,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
             setCounter(state.counter || 0)
             setDefaultPersonSize(state.defaultPersonSize || 1)
-            setDefaultPersonColor(state.defaultPersonColor || '#f1c40f')
-            setDefaultShoulderColor(state.defaultShoulderColor || '#c0392b')
+            setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
+            setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
             showToast('Layout imported')
