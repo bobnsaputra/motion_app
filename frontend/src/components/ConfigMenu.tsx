@@ -2,14 +2,16 @@ import React, { useEffect, useRef } from 'react'
 import { Character } from '../types'
 
 const COLOR_PAIRS = [
-  { head: '#f1c40f', shoulder: '#c0392b' },
-  { head: '#3498db', shoulder: '#e67e22' },
-  { head: '#2ecc71', shoulder: '#e91e63' },
-  { head: '#9b59b6', shoulder: '#f9e79f' },
-  { head: '#1abc9c', shoulder: '#d35400' },
-  { head: '#e74c3c', shoulder: '#16a085' },
-  { head: '#2c3e50', shoulder: '#ecf0f1' },
-  { head: '#95a5a6', shoulder: '#2c3e50' }
+  { head: '#ffd93d', shoulder: '#ff6b6b' },
+  { head: '#6ec6ff', shoulder: '#ffb74d' },
+  { head: '#81c784', shoulder: '#f48fb1' },
+  { head: '#ce93d8', shoulder: '#fff59d' },
+  { head: '#80cbc4', shoulder: '#ffab91' },
+  { head: '#ef9a9a', shoulder: '#80cbc4' },
+  { head: '#b0bec5', shoulder: '#e0e0e0' },
+  { head: '#a5d6a7', shoulder: '#90caf9' },
+  { head: '#ff8a80', shoulder: '#84ffff' },
+  { head: '#b39ddb', shoulder: '#f8bbd0' }
 ]
 
 interface ConfigMenuProps {
@@ -137,7 +139,7 @@ export default function ConfigMenu({
             }`}
           >
             <ellipse cx="18" cy="24" rx="9" ry="5" fill={colorPair.shoulder} />
-            <ellipse cx="18" cy="18" rx="6" ry="5" fill={colorPair.head} stroke="#b08a05" strokeWidth="1" />
+            <ellipse cx="18" cy="18" rx="6" ry="5" fill={colorPair.head} stroke="#ccc" strokeWidth="1" />
             <line x1="18" y1="13" x2="18" y2="7" stroke="#000" strokeWidth="1" />
           </svg>
         ))}

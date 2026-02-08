@@ -1,9 +1,9 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Character, User } from '../types'
 import { Button } from '@/components/ui/button'
 import {
   UserPlus, Trash2, Copy, Eraser, Undo2, Redo2,
-  Settings, Save, LogOut
+  Settings, Save, LogOut, Menu
 } from 'lucide-react'
 import ConfigMenu from './ConfigMenu'
 import FileMenu from './FileMenu'
@@ -85,6 +85,19 @@ export default function Toolbar({
 }: ToolbarProps) {
   const selectedChar = selectedCharId ? characters.find((c) => c.id === selectedCharId) : null
   const awaitingChar = awaitingDirectionFor ? characters.find((c) => c.id === awaitingDirectionFor) : null
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
 
   return (
     <header className="flex flex-col gap-2 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
@@ -121,29 +134,6 @@ export default function Toolbar({
 
           <div className="mx-1 h-6 w-px bg-border" />
 
-          <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (Ctrl+Z)">
-            <Undo2 className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (Ctrl+Y)">
-            <Redo2 className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Center: Status text */}
-        <p className="mx-2 text-sm text-muted-foreground">
-          {awaitingDirectionFor
-            ? `Click on the stage to set gaze direction for ${awaitingChar?.name ?? awaitingDirectionFor}.`
-            : selectedCharId
-              ? `${selectedChar?.name ?? selectedCharId} selected — click head to set direction.`
-              : 'Click to select, hold to move.'}
-        </p>
-
-        {/* Right: User controls */}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            Welcome, <strong className="text-foreground">{user.username}</strong>
-          </span>
-
           {selectedCharId && (
             <label className="flex items-center gap-1.5 text-sm">
               Name:
@@ -156,6 +146,26 @@ export default function Toolbar({
               />
             </label>
           )}
+
+        </div>
+
+        {/* Center: Status text */}
+        <p className="mx-2 text-sm text-muted-foreground">
+          {awaitingDirectionFor
+            ? `Set gaze: ${awaitingChar?.name ?? awaitingDirectionFor}`
+            : selectedCharId
+              ? `${selectedChar?.name ?? selectedCharId} selected`
+              : 'Click to select · drag to move'}
+        </p>
+
+        {/* Right: User controls */}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (Ctrl+Z)">
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (Ctrl+Y)">
+            <Redo2 className="h-4 w-4" />
+          </Button>
 
           <div className="mx-1 h-6 w-px bg-border" />
 
@@ -202,10 +212,33 @@ export default function Toolbar({
             />
           </div>
 
-          <Button variant="outline" size="sm" onClick={onLogout}>
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
+          <div className="relative" ref={menuRef}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(!menuOpen)}
+              title="Menu"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg">
+                <p className="text-sm text-muted-foreground">
+                  Welcome, <strong className="text-foreground">{user.username}</strong>
+                </p>
+                <div className="my-3 h-px bg-border" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => { setMenuOpen(false); onLogout() }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
