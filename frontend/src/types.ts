@@ -23,3 +23,9 @@ export type User = {
   username: string
   email: string
 }
+
+export type Keyframe = {
+  id: number
+  label: string
+  characters: Character[] // snapshot of all characters at this keyframe
+}

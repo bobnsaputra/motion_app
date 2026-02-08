@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
-import { Character, Guide, User } from '../types'
+import { Character, Guide, User, Keyframe } from '../types'
 import Toolbar from './Toolbar'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
@@ -35,6 +35,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setToast({ message, type, key: ++toastKey.current })
   }, [])
 
+  // ── Keyframe state ──
+  const [keyframeMode, setKeyframeMode] = useState(false)
+  const [keyframes, setKeyframes] = useState<Keyframe[]>([])
+  const [activeKeyframeIndex, setActiveKeyframeIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback
+  const animFrameRef = useRef<number | null>(null)
+  const nextKfId = useRef(1)
+
   const dragRef = useRef<{
     type: 'move' | 'handle' | 'char-move' | 'char-rotate' | null
     guideId?: string
@@ -68,7 +77,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     draw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor])
+  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress])
 
   // ── Mouse move / up for dragging ──
   useEffect(() => {
@@ -238,10 +247,32 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        if (keyframeMode) {
+          // Inline cleanup to avoid stale closure
+          setIsPlaying(false)
+          setAnimationProgress(null)
+          if (animFrameRef.current !== null) {
+            cancelAnimationFrame(animFrameRef.current)
+            animFrameRef.current = null
+          }
+          setKeyframeMode(false)
+          setKeyframes([])
+          setActiveKeyframeIndex(0)
+        }
         setAddMode(false)
         setAwaitingDirectionFor(null)
         setFileMenuOpen(false)
         setConfigMenuOpen(false)
+      }
+      // Don't trigger shortcuts when typing in an input
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+      if (e.key === 'a' || e.key === 'A') {
+        if (!keyframeMode) setAddMode(prev => !prev)
+      }
+      if (e.key === 'k' || e.key === 'K') {
+        toggleKeyframeMode()
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
@@ -255,7 +286,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [historyIndex, history])
+  }, [historyIndex, history, keyframeMode])
 
   // ── Utility functions ──
   function snapToRightAngles(a: number) {
@@ -292,6 +323,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       skipNextClickRef.current = false
       return
     }
+    // In keyframe mode, only allow selecting/moving — no adding or gaze setting
+    if (keyframeMode && (addMode || awaitingDirectionFor)) return
     if (awaitingDirectionFor) {
       const canvas = canvasRef.current!
       const rect = canvas.getBoundingClientRect()
@@ -497,6 +530,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     ctx.restore()
 
     drawGuides(ctx)
+    drawMovementPaths(ctx)
 
     if (alignmentGuides.length > 0) {
       ctx.save()
@@ -594,9 +628,253 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     })
   }
 
+  // ── Keyframe helpers ──
+  function toggleKeyframeMode() {
+    if (!keyframeMode) {
+      const kf: Keyframe = {
+        id: nextKfId.current++,
+        label: 'KF 1',
+        characters: JSON.parse(JSON.stringify(characters))
+      }
+      setKeyframes([kf])
+      setActiveKeyframeIndex(0)
+      setKeyframeMode(true)
+    } else {
+      stopPlayback()
+      setKeyframeMode(false)
+      setKeyframes([])
+      setActiveKeyframeIndex(0)
+    }
+  }
+
+  function saveCurrentToActiveKeyframe() {
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+    ))
+  }
+
+  function addKeyframe() {
+    saveCurrentToActiveKeyframe()
+    const label = `KF ${nextKfId.current}`
+    const kf: Keyframe = {
+      id: nextKfId.current++,
+      label,
+      characters: JSON.parse(JSON.stringify(characters))
+    }
+    const newIndex = activeKeyframeIndex + 1
+    const updated = [...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)]
+    setKeyframes(updated)
+    setActiveKeyframeIndex(newIndex)
+  }
+
+  function deleteKeyframe(index: number) {
+    if (keyframes.length <= 1) return
+    const updated = keyframes.filter((_, i) => i !== index)
+    setKeyframes(updated)
+    const newIndex = Math.min(index, updated.length - 1)
+    setActiveKeyframeIndex(newIndex)
+    setCharacters(JSON.parse(JSON.stringify(updated[newIndex].characters)))
+  }
+
+  function renameKeyframe(index: number, name: string) {
+    setKeyframes(prev => prev.map((kf, i) => i === index ? { ...kf, label: name } : kf))
+  }
+
+  function selectKeyframe(index: number) {
+    if (isPlaying) return
+    saveCurrentToActiveKeyframe()
+    setActiveKeyframeIndex(index)
+    setCharacters(JSON.parse(JSON.stringify(keyframes[index].characters)))
+    setSelectedCharId(null)
+    setAwaitingDirectionFor(null)
+  }
+
+  function goToPrevKeyframe() {
+    if (activeKeyframeIndex > 0) selectKeyframe(activeKeyframeIndex - 1)
+  }
+
+  function goToNextKeyframe() {
+    if (activeKeyframeIndex < keyframes.length - 1) selectKeyframe(activeKeyframeIndex + 1)
+  }
+
+  function startPlayback() {
+    if (keyframes.length < 2) return
+    saveCurrentToActiveKeyframe()
+    setIsPlaying(true)
+    setSelectedCharId(null)
+    setAwaitingDirectionFor(null)
+
+    // Use a ref to hold latest keyframes for the animation closure
+    const kfs = JSON.parse(JSON.stringify(keyframes.map((kf, i) =>
+      i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+    )))
+
+    let currentKfPair = 0
+    const totalPairs = kfs.length - 1
+    const msPerTransition = 1200
+    let startTime: number | null = null
+
+    function animate(timestamp: number) {
+      if (startTime === null) startTime = timestamp
+      const elapsed = timestamp - startTime
+      const pairProgress = elapsed / msPerTransition
+
+      if (pairProgress >= 1) {
+        currentKfPair++
+        startTime = timestamp
+        if (currentKfPair >= totalPairs) {
+          setIsPlaying(false)
+          setAnimationProgress(null)
+          setActiveKeyframeIndex(kfs.length - 1)
+          setCharacters(JSON.parse(JSON.stringify(kfs[kfs.length - 1].characters)))
+          animFrameRef.current = null
+          return
+        }
+      }
+
+      const t = Math.min(pairProgress, 1)
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+
+      const fromChars = kfs[currentKfPair].characters
+      const toChars = kfs[currentKfPair + 1].characters
+
+      const interpolated = fromChars.map((fc: Character) => {
+        const tc = toChars.find((c: Character) => c.id === fc.id)
+        if (!tc) return fc
+        return {
+          ...fc,
+          x: fc.x + (tc.x - fc.x) * eased,
+          y: fc.y + (tc.y - fc.y) * eased,
+          angle: fc.angle !== undefined && tc.angle !== undefined
+            ? fc.angle + (tc.angle - fc.angle) * eased
+            : tc.angle,
+          eyeOffset: fc.eyeOffset !== undefined && tc.eyeOffset !== undefined
+            ? fc.eyeOffset + (tc.eyeOffset - fc.eyeOffset) * eased
+            : tc.eyeOffset
+        }
+      })
+
+      setCharacters(interpolated)
+      setActiveKeyframeIndex(currentKfPair)
+      setAnimationProgress(t)
+
+      animFrameRef.current = requestAnimationFrame(animate)
+    }
+
+    setActiveKeyframeIndex(0)
+    setCharacters(JSON.parse(JSON.stringify(kfs[0].characters)))
+    animFrameRef.current = requestAnimationFrame(animate)
+  }
+
+  function stopPlayback() {
+    setIsPlaying(false)
+    setAnimationProgress(null)
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
+    }
+    if (keyframes.length > 0 && activeKeyframeIndex < keyframes.length) {
+      setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
+    }
+  }
+
+  // Auto-save characters to active keyframe when editing (non-playing)
+  useEffect(() => {
+    if (keyframeMode && !isPlaying && keyframes.length > 0) {
+      setKeyframes(prev => prev.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+      ))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characters, keyframeMode, isPlaying])
+
+  // ── Draw movement paths ──
+  function drawMovementPaths(ctx: CanvasRenderingContext2D) {
+    if (!keyframeMode || keyframes.length < 2) return
+
+    // Gather all character IDs
+    const charIds = new Set<string>()
+    keyframes.forEach(kf => kf.characters.forEach(c => charIds.add(c.id)))
+
+    charIds.forEach(charId => {
+      // Get positions across keyframes for this character
+      const positions: { x: number; y: number; color: string }[] = []
+      keyframes.forEach((kf) => {
+        const c = kf.characters.find(ch => ch.id === charId)
+        if (c) positions.push({ x: c.x, y: c.y, color: c.color || '#ffd93d' })
+      })
+      if (positions.length < 2) return
+
+      // Draw path line
+      ctx.save()
+      ctx.strokeStyle = positions[0].color
+      ctx.globalAlpha = 0.35
+      ctx.lineWidth = 2
+      ctx.setLineDash([4, 4])
+      ctx.beginPath()
+      ctx.moveTo(positions[0].x, positions[0].y)
+      for (let i = 1; i < positions.length; i++) {
+        ctx.lineTo(positions[i].x, positions[i].y)
+      }
+      ctx.stroke()
+
+      // Draw dots at each keyframe position
+      ctx.setLineDash([])
+      ctx.globalAlpha = 0.5
+      positions.forEach((pos, i) => {
+        if (i === activeKeyframeIndex) return  // skip active (already drawn as character)
+        ctx.beginPath()
+        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2)
+        ctx.fillStyle = positions[0].color
+        ctx.fill()
+      })
+
+      // Draw arrows on path segments
+      ctx.globalAlpha = 0.3
+      for (let i = 0; i < positions.length - 1; i++) {
+        const from = positions[i]
+        const to = positions[i + 1]
+        const dx = to.x - from.x
+        const dy = to.y - from.y
+        const dist = Math.hypot(dx, dy)
+        if (dist < 20) continue
+        const mx = (from.x + to.x) / 2
+        const my = (from.y + to.y) / 2
+        const angle = Math.atan2(dy, dx)
+        const arrowSize = 6
+
+        ctx.beginPath()
+        ctx.moveTo(
+          mx + Math.cos(angle) * arrowSize,
+          my + Math.sin(angle) * arrowSize
+        )
+        ctx.lineTo(
+          mx + Math.cos(angle + 2.5) * arrowSize,
+          my + Math.sin(angle + 2.5) * arrowSize
+        )
+        ctx.lineTo(
+          mx + Math.cos(angle - 2.5) * arrowSize,
+          my + Math.sin(angle - 2.5) * arrowSize
+        )
+        ctx.closePath()
+        ctx.fillStyle = positions[0].color
+        ctx.fill()
+      }
+
+      ctx.restore()
+    })
+  }
+
   // ── File operations ──
   function saveToLocalStorage() {
-    const state = { characters, guides, canvasSize, counter, defaultPersonSize, defaultPersonColor, defaultShoulderColor }
+    const state = {
+      characters, guides, canvasSize, counter,
+      defaultPersonSize, defaultPersonColor, defaultShoulderColor,
+      keyframes: keyframeMode ? keyframes.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+      ) : [],
+      keyframeMode
+    }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
   }
@@ -612,6 +890,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setDefaultPersonSize(state.defaultPersonSize || 1)
       setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
       setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
+      if (state.keyframes && state.keyframes.length > 0) {
+        setKeyframes(state.keyframes)
+        setActiveKeyframeIndex(0)
+        setKeyframeMode(true)
+        nextKfId.current = Math.max(...state.keyframes.map((kf: Keyframe) => kf.id)) + 1
+      } else {
+        setKeyframes([])
+        setKeyframeMode(false)
+      }
       setSelectedCharId(null)
       setAwaitingDirectionFor(null)
       showToast('Layout loaded')
@@ -621,7 +908,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   }
 
   function exportAsJSON() {
-    const state = { characters, guides, canvasSize, counter, defaultPersonSize, defaultPersonColor, defaultShoulderColor }
+    const state = {
+      characters, guides, canvasSize, counter,
+      defaultPersonSize, defaultPersonColor, defaultShoulderColor,
+      keyframes: keyframeMode ? keyframes.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+      ) : [],
+      keyframeMode
+    }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -649,6 +943,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setDefaultPersonSize(state.defaultPersonSize || 1)
             setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
             setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
+            if (state.keyframes && state.keyframes.length > 0) {
+              setKeyframes(state.keyframes)
+              setActiveKeyframeIndex(0)
+              setKeyframeMode(true)
+              nextKfId.current = Math.max(...state.keyframes.map((kf: Keyframe) => kf.id)) + 1
+            } else {
+              setKeyframes([])
+              setKeyframeMode(false)
+            }
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
             showToast('Layout imported')
@@ -768,6 +1071,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         onExportJSON={exportAsJSON}
         onImportJSON={importFromJSON}
         onExportPNG={exportAsImage}
+        keyframeMode={keyframeMode}
+        onToggleKeyframeMode={toggleKeyframeMode}
+        keyframes={keyframes}
+        activeKeyframeIndex={activeKeyframeIndex}
+        isPlaying={isPlaying}
+        onSelectKeyframe={selectKeyframe}
+        onAddKeyframe={addKeyframe}
+        onDeleteKeyframe={deleteKeyframe}
+        onRenameKeyframe={renameKeyframe}
+        onPlay={startPlayback}
+        onStop={stopPlayback}
+        onPrev={goToPrevKeyframe}
+        onNext={goToNextKeyframe}
       />
       <StageCanvas
         canvasRef={canvasRef}
