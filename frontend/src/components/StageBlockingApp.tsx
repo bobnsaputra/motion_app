@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Character, Guide, User } from '../types'
 import Toolbar from './Toolbar'
 import StageCanvas from './StageCanvas'
+import ToastContainer, { ToastType } from './Toast'
 
 interface StageBlockingAppProps {
   user: User
@@ -27,6 +28,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   const [history, setHistory] = useState<Character[][]>([[]])
   const [historyIndex, setHistoryIndex] = useState(0)
+  const [toast, setToast] = useState<{ message: string; type: ToastType; key: number } | null>(null)
+  const toastKey = useRef(0)
+
+  const showToast = useCallback((message: string, type: ToastType = 'success') => {
+    setToast({ message, type, key: ++toastKey.current })
+  }, [])
 
   const dragRef = useRef<{
     type: 'move' | 'handle' | 'char-move' | 'char-rotate' | null
@@ -591,7 +598,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function saveToLocalStorage() {
     const state = { characters, guides, canvasSize, counter, defaultPersonSize, defaultPersonColor, defaultShoulderColor }
     localStorage.setItem('stageLayout', JSON.stringify(state))
-    alert('Layout saved!')
+    showToast('Layout saved')
   }
 
   function loadFromLocalStorage() {
@@ -607,9 +614,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setDefaultShoulderColor(state.defaultShoulderColor || '#c0392b')
       setSelectedCharId(null)
       setAwaitingDirectionFor(null)
-      alert('Layout loaded!')
+      showToast('Layout loaded')
     } else {
-      alert('No saved layout found')
+      showToast('No saved layout found', 'error')
     }
   }
 
@@ -644,9 +651,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setDefaultShoulderColor(state.defaultShoulderColor || '#c0392b')
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
-            alert('Layout imported!')
+            showToast('Layout imported')
           } catch (err) {
-            alert('Failed to import layout')
+            showToast('Failed to import layout', 'error')
           }
         }
         reader.readAsText(file)
@@ -769,6 +776,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         onMouseDown={onCanvasMouseDown}
         onMouseMove={onCanvasMouseMove}
       />
+      <ToastContainer toast={toast} />
     </div>
   )
 }
