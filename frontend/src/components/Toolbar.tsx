@@ -1,5 +1,10 @@
 import React from 'react'
 import { Character, User } from '../types'
+import { Button } from '@/components/ui/button'
+import {
+  UserPlus, Trash2, Copy, Eraser, Undo2, Redo2,
+  Settings, Save, LogOut
+} from 'lucide-react'
 import ConfigMenu from './ConfigMenu'
 import FileMenu from './FileMenu'
 
@@ -82,61 +87,87 @@ export default function Toolbar({
   const awaitingChar = awaitingDirectionFor ? characters.find((c) => c.id === awaitingDirectionFor) : null
 
   return (
-    <header className="toolbar" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Top row: buttons left, right-side controls */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        <button className={addMode ? 'active' : ''} onClick={() => setAddMode((s) => !s)}>
-          {addMode ? 'Adding… (Esc)' : 'Add Char'}
-        </button>
+    <header className="flex flex-col gap-2 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+      <div className="flex items-center gap-2">
+        {/* Left: Tool buttons */}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant={addMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setAddMode((s) => !s)}
+          >
+            <UserPlus className="h-4 w-4" />
+            {addMode ? 'Adding… (Esc)' : 'Add'}
+          </Button>
 
-        {selectedCharId && (
-          <button onClick={onDeleteSelected}>Delete</button>
-        )}
+          {selectedCharId && (
+            <Button variant="destructive" size="sm" onClick={onDeleteSelected}>
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          )}
 
-        {selectedCharId && (
-          <button onClick={onDuplicateSelected}>Duplicate</button>
-        )}
+          {selectedCharId && (
+            <Button variant="outline" size="sm" onClick={onDuplicateSelected}>
+              <Copy className="h-4 w-4" />
+              Duplicate
+            </Button>
+          )}
 
-        <button onClick={onClearAll}>Clear All</button>
+          <Button variant="outline" size="sm" onClick={onClearAll}>
+            <Eraser className="h-4 w-4" />
+            Clear
+          </Button>
 
-        <button disabled={!canUndo} onClick={onUndo} title="Undo (Ctrl+Z)">↶</button>
-        <button disabled={!canRedo} onClick={onRedo} title="Redo (Ctrl+Y)">↷</button>
+          <div className="mx-1 h-6 w-px bg-border" />
 
-        <div style={{ fontSize: 14, color: '#666' }}>
+          <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (Ctrl+Z)">
+            <Undo2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (Ctrl+Y)">
+            <Redo2 className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Center: Status text */}
+        <p className="mx-2 text-sm text-muted-foreground">
           {awaitingDirectionFor
             ? `Click on the stage to set gaze direction for ${awaitingChar?.name ?? awaitingDirectionFor}.`
             : selectedCharId
               ? `${selectedChar?.name ?? selectedCharId} selected — click head to set direction.`
               : 'Click to select, hold to move.'}
-        </div>
+        </p>
 
-        {/* Right side: Welcome, Name, Settings, Save, Logout */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span style={{ fontSize: 14, color: '#666' }}>
-            Welcome, <strong>{user.username}</strong>
+        {/* Right: User controls */}
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            Welcome, <strong className="text-foreground">{user.username}</strong>
           </span>
 
           {selectedCharId && (
-            <label style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <label className="flex items-center gap-1.5 text-sm">
               Name:
               <input
                 type="text"
                 maxLength={3}
                 value={selectedChar?.name ?? ''}
                 onChange={(e) => onNameChange(e.target.value)}
-                style={{ width: 60 }}
+                className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </label>
           )}
 
-          <div style={{ position: 'relative' }}>
-            <button
+          <div className="mx-1 h-6 w-px bg-border" />
+
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setConfigMenuOpen(!configMenuOpen)}
-              style={{ fontSize: 20, padding: '4px 12px' }}
               title="Configuration"
             >
-              ⚙️
-            </button>
+              <Settings className="h-4 w-4" />
+            </Button>
             <ConfigMenu
               isOpen={configMenuOpen}
               canvasSize={canvasSize}
@@ -151,14 +182,15 @@ export default function Toolbar({
             />
           </div>
 
-          <div style={{ position: 'relative' }}>
-            <button
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setFileMenuOpen(!fileMenuOpen)}
-              style={{ fontSize: 20, padding: '4px 12px' }}
               title="File operations"
             >
-              💾
-            </button>
+              <Save className="h-4 w-4" />
+            </Button>
             <FileMenu
               isOpen={fileMenuOpen}
               onSave={onSave}
@@ -170,21 +202,10 @@ export default function Toolbar({
             />
           </div>
 
-          <button
-            onClick={onLogout}
-            style={{
-              padding: '6px 14px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 500
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={onLogout}>
+            <LogOut className="h-4 w-4" />
             Logout
-          </button>
+          </Button>
         </div>
       </div>
     </header>

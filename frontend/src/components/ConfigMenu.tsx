@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Character } from '../types'
 
 const COLOR_PAIRS = [
@@ -37,6 +37,19 @@ export default function ConfigMenu({
   onSizeChange,
   onColorChange
 }: ConfigMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        // Let the toggle button handle its own click
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const selectedChar = selectedCharId ? characters.find((c) => c.id === selectedCharId) : null
@@ -45,49 +58,51 @@ export default function ConfigMenu({
   const currentSize = selectedChar?.size ?? defaultPersonSize
 
   return (
-    <div style={{
-      position: 'absolute',
-      right: 0,
-      top: '100%',
-      marginTop: 4,
-      background: 'white',
-      border: '1px solid #ccc',
-      borderRadius: 4,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-      padding: 12,
-      minWidth: 200,
-      zIndex: 1000
-    }}>
-      <label style={{ fontSize: 14, display: 'block', marginBottom: 8 }}>
-        Width:
-        <input
-          type="number"
-          min={100}
-          max={3000}
-          value={canvasSize.width}
-          onChange={(e) => {
-            const v = Math.min(3000, Math.max(100, Number(e.target.value) || 0))
-            onCanvasSizeChange({ ...canvasSize, width: v })
-          }}
-          style={{ width: '100%', marginTop: 4 }}
-        />
-      </label>
-      <label style={{ fontSize: 14, display: 'block', marginBottom: 8 }}>
-        Height:
-        <input
-          type="number"
-          min={100}
-          max={3000}
-          value={canvasSize.height}
-          onChange={(e) => {
-            const v = Math.min(3000, Math.max(100, Number(e.target.value) || 0))
-            onCanvasSizeChange({ ...canvasSize, height: v })
-          }}
-          style={{ width: '100%', marginTop: 4 }}
-        />
-      </label>
-      <label style={{ fontSize: 14, display: 'block' }}>
-        Person size:
+    <div
+      ref={menuRef}
+      className="absolute right-0 top-full z-50 mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg"
+    >
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Stage Size
+      </h3>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs text-muted-foreground">
+          Width
+          <input
+            type="number"
+            min={100}
+            max={3000}
+            value={canvasSize.width}
+            onChange={(e) => {
+              const v = Math.min(3000, Math.max(100, Number(e.target.value) || 0))
+              onCanvasSizeChange({ ...canvasSize, width: v })
+            }}
+            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </label>
+        <label className="text-xs text-muted-foreground">
+          Height
+          <input
+            type="number"
+            min={100}
+            max={3000}
+            value={canvasSize.height}
+            onChange={(e) => {
+              const v = Math.min(3000, Math.max(100, Number(e.target.value) || 0))
+              onCanvasSizeChange({ ...canvasSize, height: v })
+            }}
+            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </label>
+      </div>
+
+      <div className="my-3 h-px bg-border" />
+
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Person
+      </h3>
+      <label className="text-xs text-muted-foreground">
+        Size
         <input
           type="number"
           min={1}
@@ -98,56 +113,55 @@ export default function ConfigMenu({
             const v = Math.max(1, Math.min(3, Number(e.target.value) || 1))
             onSizeChange(v)
           }}
-          style={{ width: '100%', marginTop: 4 }}
+          className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </label>
-      <div style={{ fontSize: 14, marginTop: 8 }}>
-        Person color:
-        <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-          {COLOR_PAIRS.map((colorPair) => (
-            <svg
-              key={colorPair.head}
-              width="36"
-              height="36"
-              viewBox="0 0 36 36"
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                onColorChange(colorPair.head, colorPair.shoulder)
-              }}
-              style={{
-                cursor: 'pointer',
-                border: currentColor === colorPair.head ? '3px solid #000' : '1px solid #ccc',
-                borderRadius: 4,
-                backgroundColor: '#fff'
-              }}
-            >
-              <ellipse cx="18" cy="24" rx="9" ry="5" fill={colorPair.shoulder} />
-              <ellipse cx="18" cy="18" rx="6" ry="5" fill={colorPair.head} stroke="#b08a05" strokeWidth="1" />
-              <line x1="18" y1="13" x2="18" y2="7" stroke="#000" strokeWidth="1" />
-            </svg>
-          ))}
-        </div>
-        <div style={{ marginTop: 8, display: 'flex', gap: 8, fontSize: 12 }}>
-          <label style={{ flex: 1 }}>
-            Head:
-            <input
-              type="color"
-              value={currentColor}
-              onChange={(e) => onColorChange(e.target.value, currentShoulderColor)}
-              style={{ width: '100%', marginTop: 4, height: 28, cursor: 'pointer' }}
-            />
-          </label>
-          <label style={{ flex: 1 }}>
-            Shoulder:
-            <input
-              type="color"
-              value={currentShoulderColor}
-              onChange={(e) => onColorChange(currentColor, e.target.value)}
-              style={{ width: '100%', marginTop: 4, height: 28, cursor: 'pointer' }}
-            />
-          </label>
-        </div>
+
+      <p className="mt-3 text-xs text-muted-foreground">Color preset</p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {COLOR_PAIRS.map((colorPair) => (
+          <svg
+            key={colorPair.head}
+            width="36"
+            height="36"
+            viewBox="0 0 36 36"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              onColorChange(colorPair.head, colorPair.shoulder)
+            }}
+            className={`cursor-pointer rounded border-2 bg-white transition-all hover:scale-110 ${
+              currentColor === colorPair.head
+                ? 'border-foreground shadow-sm'
+                : 'border-border'
+            }`}
+          >
+            <ellipse cx="18" cy="24" rx="9" ry="5" fill={colorPair.shoulder} />
+            <ellipse cx="18" cy="18" rx="6" ry="5" fill={colorPair.head} stroke="#b08a05" strokeWidth="1" />
+            <line x1="18" y1="13" x2="18" y2="7" stroke="#000" strokeWidth="1" />
+          </svg>
+        ))}
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <label className="text-xs text-muted-foreground">
+          Head
+          <input
+            type="color"
+            value={currentColor}
+            onChange={(e) => onColorChange(e.target.value, currentShoulderColor)}
+            className="mt-1 h-7 w-full cursor-pointer rounded border border-input"
+          />
+        </label>
+        <label className="text-xs text-muted-foreground">
+          Shoulder
+          <input
+            type="color"
+            value={currentShoulderColor}
+            onChange={(e) => onColorChange(currentColor, e.target.value)}
+            className="mt-1 h-7 w-full cursor-pointer rounded border border-input"
+          />
+        </label>
       </div>
     </div>
   )
