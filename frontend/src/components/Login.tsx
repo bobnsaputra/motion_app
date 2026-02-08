@@ -165,7 +165,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         />
                     </div>
 
-                    {!isLogin && (
+                    <div className="form-group">
                         <label htmlFor="password">Password</label>
                         <div className="password-input-wrapper">
                             <input
