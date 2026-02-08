@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
+## 2026-02-09
+### Keyframe & Shortcut Polish
+- 15:xx — Keyframe labels simplified from "K1/K2/K3" to just "1/2/3" (`renumberKeyframes` and `toggleKeyframeMode` in `StageBlockingApp.tsx`).
+- 15:xx — Keyframe pills now wrap to new lines instead of horizontal scrolling (`flex-wrap` replaces `overflow-x-auto` in `Toolbar.tsx`).
+- 15:xx — Added **R** keyboard shortcut to toggle Reverse Stage; underlined "R" in ConfigMenu label (`StageBlockingApp.tsx`, `ConfigMenu.tsx`).
+- 15:xx — Added **Space** shortcut to play/stop keyframe playback; Play/Stop buttons now show underlined text labels (`Toolbar.tsx`, `StageBlockingApp.tsx`).
+- 15:xx — **R** shortcut disabled while in keyframe mode to prevent accidental stage reversal during editing (`StageBlockingApp.tsx`).
+
 ## 2026-02-08
 ### Toolbar Revamp
 - 23:45 — Rewrote `Toolbar.tsx`: replaced all inline styles with Tailwind classes, plain buttons with shadcn/ui `<Button>` variants.

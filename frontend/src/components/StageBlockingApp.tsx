@@ -24,6 +24,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [defaultShoulderColor, setDefaultShoulderColor] = useState('#ff6b6b')
   const [fileMenuOpen, setFileMenuOpen] = useState(false)
   const [configMenuOpen, setConfigMenuOpen] = useState(false)
+  const [stageReversed, setStageReversed] = useState(false)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
 
   const [history, setHistory] = useState<Character[][]>([[]])
@@ -77,7 +78,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     draw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress])
+  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed])
 
   // ── Mouse move / up for dragging ──
   useEffect(() => {
@@ -222,13 +223,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       if (dragRef.current.type === 'char-move' && !dragRef.current.hasMoved) {
         const charId = dragRef.current.charId
-        if (charId) {
+        if (charId && !keyframeMode) {
           setAwaitingDirectionFor(charId)
           skipNextClickRef.current = true
         }
       }
       if (dragRef.current.type === 'char-move' && dragRef.current.hasMoved) {
-        saveToHistory(characters)
+        if (!keyframeMode) saveToHistory(characters)
         setSelectedCharId(null)
       }
 
@@ -241,7 +242,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [characters])
+  }, [characters, keyframeMode])
 
   // ── Keyboard shortcuts ──
   useEffect(() => {
@@ -255,9 +256,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             cancelAnimationFrame(animFrameRef.current)
             animFrameRef.current = null
           }
+          // Save current positions to active keyframe before exiting
+          setKeyframes(prev => prev.map((kf, i) =>
+            i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+          ))
           setKeyframeMode(false)
-          setKeyframes([])
-          setActiveKeyframeIndex(0)
         }
         setAddMode(false)
         setAwaitingDirectionFor(null)
@@ -274,6 +277,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if (e.key === 'k' || e.key === 'K') {
         toggleKeyframeMode()
       }
+      if ((e.key === 'r' || e.key === 'R') && !keyframeMode) {
+        handleToggleReverse()
+      }
+      if (e.key === ' ' && keyframeMode) {
+        e.preventDefault()
+        if (isPlaying) { stopPlayback() } else { startPlayback() }
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
         undo()
@@ -286,7 +296,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [historyIndex, history, keyframeMode])
+  }, [historyIndex, history, keyframeMode, isPlaying])
 
   // ── Utility functions ──
   function snapToRightAngles(a: number) {
@@ -526,7 +536,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     ctx.letterSpacing = '10px'
     ctx.textAlign = 'center'
     ctx.fillStyle = '#000'
-    ctx.fillText('S T A G E', canvas.width / 2, 40)
+    const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
+    const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
+    ctx.fillText(topLabel, canvas.width / 2, 40)
+    ctx.fillText(bottomLabel, canvas.width / 2, canvas.height - 18)
     ctx.restore()
 
     drawGuides(ctx)
@@ -629,21 +642,33 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   }
 
   // ── Keyframe helpers ──
+  function renumberKeyframes(kfs: Keyframe[]): Keyframe[] {
+    return kfs.map((kf, i) => ({ ...kf, label: `${i + 1}` }))
+  }
+
   function toggleKeyframeMode() {
     if (!keyframeMode) {
-      const kf: Keyframe = {
-        id: nextKfId.current++,
-        label: 'KF 1',
-        characters: JSON.parse(JSON.stringify(characters))
+      setAddMode(false)
+      setAwaitingDirectionFor(null)
+      setSelectedCharId(null)
+      // Re-enter with existing keyframes if available
+      if (keyframes.length > 0) {
+        setActiveKeyframeIndex(activeKeyframeIndex)
+        setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
+        setKeyframeMode(true)
+      } else {
+        const snap = JSON.parse(JSON.stringify(characters))
+        const kf1: Keyframe = { id: nextKfId.current++, label: '1', characters: snap }
+        const kf2: Keyframe = { id: nextKfId.current++, label: '2', characters: JSON.parse(JSON.stringify(snap)) }
+        setKeyframes([kf1, kf2])
+        setActiveKeyframeIndex(1)
+        setKeyframeMode(true)
       }
-      setKeyframes([kf])
-      setActiveKeyframeIndex(0)
-      setKeyframeMode(true)
     } else {
       stopPlayback()
+      // Save current positions to active keyframe before exiting
+      saveCurrentToActiveKeyframe()
       setKeyframeMode(false)
-      setKeyframes([])
-      setActiveKeyframeIndex(0)
     }
   }
 
@@ -655,21 +680,20 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   function addKeyframe() {
     saveCurrentToActiveKeyframe()
-    const label = `KF ${nextKfId.current}`
     const kf: Keyframe = {
       id: nextKfId.current++,
-      label,
+      label: '',
       characters: JSON.parse(JSON.stringify(characters))
     }
     const newIndex = activeKeyframeIndex + 1
-    const updated = [...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)]
+    const updated = renumberKeyframes([...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)])
     setKeyframes(updated)
     setActiveKeyframeIndex(newIndex)
   }
 
   function deleteKeyframe(index: number) {
     if (keyframes.length <= 1) return
-    const updated = keyframes.filter((_, i) => i !== index)
+    const updated = renumberKeyframes(keyframes.filter((_, i) => i !== index))
     setKeyframes(updated)
     const newIndex = Math.min(index, updated.length - 1)
     setActiveKeyframeIndex(newIndex)
@@ -704,8 +728,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setSelectedCharId(null)
     setAwaitingDirectionFor(null)
 
-    // Use a ref to hold latest keyframes for the animation closure
-    const kfs = JSON.parse(JSON.stringify(keyframes.map((kf, i) =>
+    // Snapshot all keyframes for the animation closure
+    const kfs: Keyframe[] = JSON.parse(JSON.stringify(keyframes.map((kf, i) =>
       i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
     )))
 
@@ -714,25 +738,33 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const msPerTransition = 1200
     let startTime: number | null = null
 
+    // Set starting position immediately (no flash)
+    setActiveKeyframeIndex(0)
+    setCharacters(JSON.parse(JSON.stringify(kfs[0].characters)))
+
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
       const elapsed = timestamp - startTime
-      const pairProgress = elapsed / msPerTransition
+      let pairProgress = elapsed / msPerTransition
 
-      if (pairProgress >= 1) {
+      // Advance through completed transitions
+      while (pairProgress >= 1 && currentKfPair < totalPairs) {
         currentKfPair++
-        startTime = timestamp
+        startTime = startTime! + msPerTransition
+        pairProgress = (timestamp - startTime) / msPerTransition
+
         if (currentKfPair >= totalPairs) {
-          setIsPlaying(false)
-          setAnimationProgress(null)
-          setActiveKeyframeIndex(kfs.length - 1)
+          // Animation complete — snap to final frame
           setCharacters(JSON.parse(JSON.stringify(kfs[kfs.length - 1].characters)))
+          setActiveKeyframeIndex(kfs.length - 1)
+          setAnimationProgress(null)
+          setIsPlaying(false)
           animFrameRef.current = null
           return
         }
       }
 
-      const t = Math.min(pairProgress, 1)
+      const t = Math.max(0, Math.min(pairProgress, 1))
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
 
       const fromChars = kfs[currentKfPair].characters
@@ -761,8 +793,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       animFrameRef.current = requestAnimationFrame(animate)
     }
 
-    setActiveKeyframeIndex(0)
-    setCharacters(JSON.parse(JSON.stringify(kfs[0].characters)))
     animFrameRef.current = requestAnimationFrame(animate)
   }
 
@@ -1037,6 +1067,35 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
   }
 
+  function handleToggleReverse() {
+    const h = canvasSize.height
+
+    // Mirror helper: flips Y and reverses the facing angle
+    function mirrorChars(chars: Character[]): Character[] {
+      return chars.map(c => ({
+        ...c,
+        y: h - c.y,
+        angle: c.angle !== undefined ? -c.angle : undefined
+      }))
+    }
+
+    // Flip current characters
+    const flipped = mirrorChars(characters)
+    setCharacters(flipped)
+    if (!keyframeMode) saveToHistory(flipped)
+
+    // Flip all keyframe snapshots (regardless of whether keyframe mode is active)
+    if (keyframes.length > 0) {
+      setKeyframes(prev => prev.map((kf, i) =>
+        i === activeKeyframeIndex
+          ? { ...kf, characters: JSON.parse(JSON.stringify(flipped)) }
+          : { ...kf, characters: mirrorChars(kf.characters) }
+      ))
+    }
+
+    setStageReversed(r => !r)
+  }
+
   return (
     <div className="app">
       <Toolbar
@@ -1064,6 +1123,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         defaultShoulderColor={defaultShoulderColor}
         onSizeChange={handleSizeChange}
         onColorChange={handleColorChange}
+        stageReversed={stageReversed}
+        onToggleReverse={handleToggleReverse}
         fileMenuOpen={fileMenuOpen}
         setFileMenuOpen={setFileMenuOpen}
         onSave={saveToLocalStorage}

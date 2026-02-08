@@ -41,6 +41,8 @@ interface ToolbarProps {
   defaultShoulderColor: string
   onSizeChange: (size: number) => void
   onColorChange: (head: string, shoulder: string) => void
+  stageReversed: boolean
+  onToggleReverse: () => void
   // File menu
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
@@ -91,6 +93,8 @@ export default function Toolbar({
   defaultShoulderColor,
   onSizeChange,
   onColorChange,
+  stageReversed,
+  onToggleReverse,
   fileMenuOpen,
   setFileMenuOpen,
   onSave,
@@ -154,12 +158,14 @@ export default function Toolbar({
               <ChevronLeft className="h-4 w-4" />
             </Button>
             {isPlaying ? (
-              <Button variant="default" size="icon" className="h-8 w-8" onClick={onStop} title="Stop">
+              <Button variant="default" size="sm" className="h-8 gap-1" onClick={onStop} title="Stop (Space)">
                 <Square className="h-4 w-4" />
+                <span className="text-xs">Sto<u>p</u></span>
               </Button>
             ) : (
-              <Button variant="default" size="icon" className="h-8 w-8" onClick={onPlay} disabled={keyframes.length < 2} title="Play">
+              <Button variant="default" size="sm" className="h-8 gap-1" onClick={onPlay} disabled={keyframes.length < 2} title="Play (Space)">
                 <Play className="h-4 w-4" />
+                <span className="text-xs"><u>P</u>lay</span>
               </Button>
             )}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNext} disabled={isPlaying || activeKeyframeIndex >= keyframes.length - 1} title="Next">
@@ -169,7 +175,7 @@ export default function Toolbar({
             <div className="mx-1 h-6 w-px bg-border" />
 
             {/* Keyframe pills */}
-            <div className="flex items-center gap-1 overflow-x-auto">
+            <div className="flex flex-wrap items-center gap-1">
               {keyframes.map((kf, i) => (
                 <div key={kf.id} className="flex items-center">
                   {i > 0 && <div className="h-px w-4 bg-border" />}
@@ -337,6 +343,8 @@ export default function Toolbar({
                   defaultShoulderColor={defaultShoulderColor}
                   onSizeChange={onSizeChange}
                   onColorChange={onColorChange}
+                  stageReversed={stageReversed}
+                  onToggleReverse={onToggleReverse}
                 />
               </div>
 

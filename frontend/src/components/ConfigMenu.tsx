@@ -25,6 +25,8 @@ interface ConfigMenuProps {
   defaultShoulderColor: string
   onSizeChange: (size: number) => void
   onColorChange: (head: string, shoulder: string) => void
+  stageReversed: boolean
+  onToggleReverse: () => void
 }
 
 export default function ConfigMenu({
@@ -37,7 +39,9 @@ export default function ConfigMenu({
   defaultPersonColor,
   defaultShoulderColor,
   onSizeChange,
-  onColorChange
+  onColorChange,
+  stageReversed,
+  onToggleReverse
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -96,6 +100,24 @@ export default function ConfigMenu({
             className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </label>
+      </div>
+
+      <div className="my-3 h-px bg-border" />
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"><u>R</u>everse Stage</span>
+        <button
+          onClick={onToggleReverse}
+          className={`relative h-5 w-9 rounded-full transition-colors ${
+            stageReversed ? 'bg-primary' : 'bg-border'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              stageReversed ? 'translate-x-4' : 'translate-x-0'
+            }`}
+          />
+        </button>
       </div>
 
       <div className="my-3 h-px bg-border" />
