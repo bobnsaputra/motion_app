@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Stage floor -->
+  <path d="M2 24 L16 28 L30 24 L30 26 L16 30 L2 26Z" fill="#6366f1" opacity="0.7"/>
+  <!-- Character (person circle) -->
+  <circle cx="16" cy="13" r="5" fill="#ffd93d" stroke="#333" stroke-width="1.2"/>
+  <!-- Shoulders -->
+  <line x1="10" y1="16" x2="22" y2="16" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"/>
+  <!-- Motion lines (animation/keyframe suggestion) -->
+  <path d="M6 12 Q8 10 10 12" fill="none" stroke="#6366f1" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M22 12 Q24 10 26 12" fill="none" stroke="#6366f1" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M7 9 Q9 7 11 9" fill="none" stroke="#6366f1" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+  <path d="M21 9 Q23 7 25 9" fill="none" stroke="#6366f1" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+</svg>
