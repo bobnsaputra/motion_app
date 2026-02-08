@@ -1,0 +1,15 @@
+{
+  "name": "february",
+  "version": "1.0.0",
+  "description": "A visual web-based tool for theatre directors, stage managers, and drama educators to plan character blocking and stage layouts.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "supabase": "^2.76.4"
+  }
+}

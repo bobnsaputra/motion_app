@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
 import './Login.css';
 
 interface LoginProps {
@@ -34,7 +35,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             setError('Password must be at least 6 characters');
             return false;
         }
-        if (!isLogin && !formData.email.includes('@')) {
+        if (!formData.email.includes('@')) {
             setError('Please enter a valid email');
             return false;
         }
@@ -50,31 +51,48 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         setLoading(true);
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-            const response = await fetch(`${apiUrl}${endpoint}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username: formData.username,
+            if (isLogin) {
+                // Sign in with Supabase
+                const { data, error: authError } = await supabase.auth.signInWithPassword({
                     email: formData.email,
                     password: formData.password,
-                }),
-            });
+                });
 
-            const data = await response.json();
+                if (authError) throw authError;
 
-            if (response.ok) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                onLoginSuccess(data.user);
+                if (data.user) {
+                    const user = {
+                        id: data.user.id,
+                        username: data.user.user_metadata?.username || formData.email.split('@')[0],
+                        email: data.user.email || '',
+                    };
+                    onLoginSuccess(user);
+                }
             } else {
-                setError(data.message || 'Authentication failed');
+                // Sign up with Supabase
+                const { data, error: authError } = await supabase.auth.signUp({
+                    email: formData.email,
+                    password: formData.password,
+                    options: {
+                        data: {
+                            username: formData.username,
+                        },
+                    },
+                });
+
+                if (authError) throw authError;
+
+                if (data.user) {
+                    const user = {
+                        id: data.user.id,
+                        username: formData.username,
+                        email: data.user.email || '',
+                    };
+                    onLoginSuccess(user);
+                }
             }
-        } catch (err) {
-            setError('Connection failed. Please ensure the server is running.');
+        } catch (err: any) {
+            setError(err.message || 'Authentication failed');
         } finally {
             setLoading(false);
         }
@@ -117,37 +135,37 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         </div>
                     )}
 
-                    <div className="form-group">
-                        <label htmlFor="username">Username</label>
-                        <input
-                            type="text"
-                            id="username"
-                            name="username"
-                            value={formData.username}
-                            onChange={handleInputChange}
-                            required
-                            placeholder="Enter your username"
-                            autoComplete="username"
-                        />
-                    </div>
-
                     {!isLogin && (
                         <div className="form-group">
-                            <label htmlFor="email">Email</label>
+                            <label htmlFor="username">Username</label>
                             <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                value={formData.email}
+                                type="text"
+                                id="username"
+                                name="username"
+                                value={formData.username}
                                 onChange={handleInputChange}
                                 required
-                                placeholder="your.email@example.com"
-                                autoComplete="email"
+                                placeholder="Enter your username"
+                                autoComplete="username"
                             />
                         </div>
                     )}
 
                     <div className="form-group">
+                        <label htmlFor="email">Email</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            required
+                            placeholder="your.email@example.com"
+                            autoComplete="email"
+                        />
+                    </div>
+
+                    {!isLogin && (
                         <label htmlFor="password">Password</label>
                         <div className="password-input-wrapper">
                             <input

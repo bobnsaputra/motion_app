@@ -19,7 +19,7 @@ export type Guide = {
 }
 
 export type User = {
-  id: number
+  id: string
   username: string
   email: string
 }
