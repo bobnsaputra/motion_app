@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Character, User, Keyframe } from '../types'
 import { Button } from '@/components/ui/button'
 import {
-  UserPlus, Trash2, Copy, Eraser, Undo2, Redo2,
+  UserPlus, Trash2, Copy, Undo2, Redo2,
   Settings, Save, LogOut, Menu, Film,
   Plus, Play, Square, ChevronLeft, ChevronRight, Pencil
 } from 'lucide-react'
@@ -261,21 +261,16 @@ export default function Toolbar({
               {selectedCharId && (
                 <Button variant="destructive" size="sm" onClick={onDeleteSelected}>
                   <Trash2 className="h-4 w-4" />
-                  Delete
+                  <span><u>D</u>elete</span>
                 </Button>
               )}
 
               {selectedCharId && (
                 <Button variant="outline" size="sm" onClick={onDuplicateSelected}>
                   <Copy className="h-4 w-4" />
-                  Duplicate
+                  <span>Du<u>p</u>licate</span>
                 </Button>
               )}
-
-              <Button variant="outline" size="sm" onClick={onClearAll}>
-                <Eraser className="h-4 w-4" />
-                Clear
-              </Button>
 
               <div className="mx-1 h-6 w-px bg-border" />
 
@@ -302,11 +297,13 @@ export default function Toolbar({
             </p>
 
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (Ctrl+Z)">
+              <Button variant="ghost" size="sm" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
                 <Undo2 className="h-4 w-4" />
+                <span><u>U</u>ndo</span>
               </Button>
-              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (Ctrl+Y)">
+              <Button variant="ghost" size="sm" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
                 <Redo2 className="h-4 w-4" />
+                <span>Red<u>o</u></span>
               </Button>
 
               <div className="mx-1 h-6 w-px bg-border" />
@@ -345,6 +342,7 @@ export default function Toolbar({
                   onColorChange={onColorChange}
                   stageReversed={stageReversed}
                   onToggleReverse={onToggleReverse}
+                  onClearAll={onClearAll}
                 />
               </div>
 

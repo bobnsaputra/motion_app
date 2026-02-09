@@ -264,6 +264,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         }
         setAddMode(false)
         setAwaitingDirectionFor(null)
+        setSelectedCharId(null)
         setFileMenuOpen(false)
         setConfigMenuOpen(false)
       }
@@ -273,6 +274,18 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       if (e.key === 'a' || e.key === 'A') {
         if (!keyframeMode) setAddMode(prev => !prev)
+      }
+      if ((e.key === 'd' || e.key === 'D') && !keyframeMode) {
+        if (selectedCharId) handleDeleteSelected()
+      }
+      if ((e.key === 'p' || e.key === 'P') && !keyframeMode) {
+        if (selectedCharId) handleDuplicateSelected()
+      }
+      if ((e.key === 'u' || e.key === 'U') && !keyframeMode) {
+        undo()
+      }
+      if ((e.key === 'o' || e.key === 'O') && !keyframeMode) {
+        redo()
       }
       if (e.key === 'k' || e.key === 'K') {
         toggleKeyframeMode()
@@ -296,7 +309,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [historyIndex, history, keyframeMode, isPlaying])
+  }, [historyIndex, history, keyframeMode, isPlaying, selectedCharId, characters])
 
   // ── Utility functions ──
   function snapToRightAngles(a: number) {
@@ -386,6 +399,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     if (addMode) return
 
+    // Prevent dragging characters in keyframe 1 (the starting position)
+    const blockDrag = keyframeMode && activeKeyframeIndex === 0
+
     for (const char of characters) {
       const size = char.size ?? 1
       const angle = char.angle ?? 0
@@ -393,6 +409,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const d = Math.hypot(mx - char.x, my - char.y)
       if (d <= 12 * size) {
         setSelectedCharId(char.id)
+        if (blockDrag) { showToast('Keyframe 1 is the starting position — move characters in other keyframes', 'info'); return }
         dragRef.current = { type: 'char-move', charId: char.id, hasMoved: false }
         return
       }
@@ -403,6 +420,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const shoulderD = Math.hypot(mx - shoulderX, my - shoulderY)
       if (shoulderD <= 18 * size) {
         setSelectedCharId(char.id)
+        if (blockDrag) { showToast('Keyframe 1 is the starting position — move characters in other keyframes', 'info'); return }
         dragRef.current = { type: 'char-move', charId: char.id, hasMoved: false }
         return
       }
@@ -653,8 +671,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setSelectedCharId(null)
       // Re-enter with existing keyframes if available
       if (keyframes.length > 0) {
+        // Sync: add new characters to all keyframe snapshots, remove deleted ones
+        const currentIds = new Set(characters.map(c => c.id))
+        const synced = keyframes.map(kf => {
+          const kfIds = new Set(kf.characters.map(c => c.id))
+          // Keep existing characters that still exist, remove deleted ones
+          const kept = kf.characters.filter(c => currentIds.has(c.id))
+          // Add new characters (not in this keyframe) at their current position
+          const added = characters.filter(c => !kfIds.has(c.id)).map(c => JSON.parse(JSON.stringify(c)))
+          return { ...kf, characters: [...kept, ...added] }
+        })
+        setKeyframes(synced)
         setActiveKeyframeIndex(activeKeyframeIndex)
-        setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
+        setCharacters(JSON.parse(JSON.stringify(synced[activeKeyframeIndex].characters)))
         setKeyframeMode(true)
       } else {
         const snap = JSON.parse(JSON.stringify(characters))
