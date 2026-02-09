@@ -6,6 +6,8 @@ interface StageCanvasProps {
   onClick: (e: React.MouseEvent) => void
   onMouseDown: (e: React.MouseEvent) => void
   onMouseMove: (e: React.MouseEvent) => void
+  onDrop?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
 }
 
 export default function StageCanvas({
@@ -14,6 +16,7 @@ export default function StageCanvas({
   onClick,
   onMouseDown,
   onMouseMove
+  , onDrop, onDragOver
 }: StageCanvasProps) {
   return (
     <main style={{ marginTop: 24 }}>
@@ -25,6 +28,8 @@ export default function StageCanvas({
         onClick={onClick}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
       />
     </main>
   )

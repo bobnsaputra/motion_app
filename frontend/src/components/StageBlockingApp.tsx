@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Character, Guide, User, Keyframe } from '../types'
 import Toolbar from './Toolbar'
-import OffstagePanel from './OffstagePanel'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
 
@@ -46,7 +45,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback
   const animFrameRef = useRef<number | null>(null)
   const nextKfId = useRef(1)
-  const [offstageOpen, setOffstageOpen] = useState(false)
   const kfsRef = useRef<Keyframe[] | null>(null)
   const animPairRef = useRef(0)
 
@@ -234,16 +232,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         }
       }
       if (dragRef.current.type === 'char-move' && dragRef.current.hasMoved) {
-        if (keyframeMode) {
-          const kfsSnapshot = keyframes.map((kf, i) =>
-            i === activeKeyframeIndex
-              ? { ...JSON.parse(JSON.stringify(kf)), characters: JSON.parse(JSON.stringify(characters)) }
-              : JSON.parse(JSON.stringify(kf))
-          ) as Keyframe[]
-          saveToHistory(characters, kfsSnapshot, activeKeyframeIndex)
-        } else {
-          saveToHistory(characters)
-        }
+          if (keyframeMode) {
+            // Commit current characters into keyframes state immediately
+            const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf)
+            setKeyframes(committed)
+            // Now save history with full keyframe objects
+            saveToHistory(characters, committed, activeKeyframeIndex)
+          } else {
+            saveToHistory(characters)
+          }
         setSelectedCharId(null)
       }
 
@@ -304,6 +301,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if (e.key === 'k' || e.key === 'K') {
         toggleKeyframeMode()
       }
+      if ((e.key === 's' || e.key === 'S')) {
+        e.preventDefault()
+        saveToLocalStorage()
+      }
+      if ((e.key === 'l' || e.key === 'L')) {
+        e.preventDefault()
+        loadFromLocalStorage()
+      }
       if ((e.key === 'v' || e.key === 'V') && keyframeMode && selectedCharId) {
         e.preventDefault()
         const sel = characters.find(c => c.id === selectedCharId)
@@ -321,9 +326,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         e.preventDefault()
         if (isPlaying) { stopPlayback() } else { startPlayback() }
       }
-      if ((e.key === 'b' || e.key === 'B') && keyframeMode) {
-        toggleOffstage()
-      }
+      // 'b' shortcut for offstage removed (offstage panel replaced by label)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
         undo()
@@ -547,6 +550,39 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     if (dragRef.current.type) return
     if (addMode) return
+  }
+
+  // Drag & drop from Offstage: allow dropping a hidden character onto the canvas
+  function handleCanvasDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  function handleCanvasDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/plain')
+    if (!id) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const x = Math.round(e.clientX - rect.left)
+    const y = Math.round(e.clientY - rect.top)
+
+    if (keyframeMode && keyframes.length > 0) {
+      const updatedKfs = keyframes.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === id ? { ...c, x, y, visible: true } : c) } : kf
+      )
+      setKeyframes(updatedKfs)
+      const updatedChars = JSON.parse(JSON.stringify(updatedKfs[activeKeyframeIndex].characters))
+      setCharacters(updatedChars)
+      saveToHistory(updatedChars, updatedKfs, activeKeyframeIndex)
+      setSelectedCharId(id)
+    } else {
+      const updated = characters.map(c => c.id === id ? { ...c, x, y, visible: true } : c)
+      setCharacters(updated)
+      saveToHistory(updated)
+      setSelectedCharId(id)
+    }
   }
 
   // ── Drawing ──
@@ -774,8 +810,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
     } else {
       stopPlayback()
-      // Save current positions to active keyframe before exiting
-      saveCurrentToActiveKeyframe()
+      // Commit current characters into keyframes and record history before exiting
+      const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf)
+      setKeyframes(committed)
+      saveToHistory(characters, committed, activeKeyframeIndex)
       setKeyframeMode(false)
     }
   }
@@ -819,9 +857,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   function selectKeyframe(index: number) {
     if (isPlaying) return
-    saveCurrentToActiveKeyframe()
+    // Commit current characters into the active keyframe, then switch
+    const newKfs = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf)
+    setKeyframes(newKfs)
     setActiveKeyframeIndex(index)
-    setCharacters(JSON.parse(JSON.stringify(keyframes[index].characters)))
+    setCharacters(JSON.parse(JSON.stringify(newKfs[index].characters)))
     setSelectedCharId(null)
     setAwaitingDirectionFor(null)
   }
@@ -1016,13 +1056,37 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   // ── File operations ──
   function saveToLocalStorage() {
+    if (keyframeMode) {
+      // Commit current characters into keyframes before saving
+      const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : JSON.parse(JSON.stringify(kf))) as Keyframe[]
+      setKeyframes(committed)
+      const state = {
+        characters: JSON.parse(JSON.stringify(characters)),
+        guides,
+        canvasSize,
+        counter,
+        defaultPersonSize,
+        defaultPersonColor,
+        defaultShoulderColor,
+        keyframes: committed,
+        keyframeMode: true,
+        activeKeyframeIndex: activeKeyframeIndex
+      }
+      localStorage.setItem('stageLayout', JSON.stringify(state))
+      showToast('Layout saved')
+      return
+    }
+
     const state = {
-      characters, guides, canvasSize, counter,
-      defaultPersonSize, defaultPersonColor, defaultShoulderColor,
-      keyframes: keyframeMode ? keyframes.map((kf, i) =>
-        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
-      ) : [],
-      keyframeMode
+      characters,
+      guides,
+      canvasSize,
+      counter,
+      defaultPersonSize,
+      defaultPersonColor,
+      defaultShoulderColor,
+      keyframes: [],
+      keyframeMode: false
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
@@ -1032,7 +1096,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const saved = localStorage.getItem('stageLayout')
     if (saved) {
       const state = JSON.parse(saved)
-      setCharacters(state.characters || [])
       setGuides(state.guides || [])
       setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
       setCounter(state.counter || 0)
@@ -1040,13 +1103,16 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
       setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
       if (state.keyframes && state.keyframes.length > 0) {
+        const idx = state.activeKeyframeIndex ?? 0
         setKeyframes(state.keyframes)
-        setActiveKeyframeIndex(0)
+        setCharacters(state.keyframes[idx].characters || [])
+        setActiveKeyframeIndex(idx)
         setKeyframeMode(true)
         nextKfId.current = Math.max(...state.keyframes.map((kf: Keyframe) => kf.id)) + 1
       } else {
         setKeyframes([])
         setKeyframeMode(false)
+        setCharacters(state.characters || [])
       }
       setSelectedCharId(null)
       setAwaitingDirectionFor(null)
@@ -1249,37 +1315,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     })
   }
 
-  // Offstage panel actions
-  function toggleOffstage() {
-    setOffstageOpen(s => !s)
-  }
-
-  // Listen for toolbar's custom event so the toolbar can toggle the offstage panel
-  useEffect(() => {
-    function handleToggleEvt() {
-      toggleOffstage()
-    }
-    window.addEventListener('toggleOffstage', handleToggleEvt as EventListener)
-    return () => window.removeEventListener('toggleOffstage', handleToggleEvt as EventListener)
-  }, [])
-
-  function offstageUnhide(charId: string) {
-    // Unhide only in active keyframe
-    setKeyframes(prev => prev.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: true } : c) } : kf))
-    setCharacters(prev => prev.map(c => c.id === charId ? { ...c, visible: true } : c))
-  }
-
-  function offstageUnhideAll() {
-    setKeyframes(prev => prev.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => ({ ...c, visible: true })) } : kf))
-    setCharacters(prev => prev.map(c => ({ ...c, visible: true })))
-  }
-
-  function offstageDelete(charId: string) {
-    // Remove character from all keyframes and from main characters list
-    setKeyframes(prev => prev.map(kf => ({ ...kf, characters: kf.characters.filter(c => c.id !== charId) })))
-    setCharacters(prev => prev.filter(c => c.id !== charId))
-    if (selectedCharId === charId) setSelectedCharId(null)
-  }
+  // Offstage panel removed — a simple right-side label is rendered instead.
 
   return (
     <div className="app">
@@ -1332,21 +1368,40 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         onNext={goToNextKeyframe}
         onUpdateCharVisible={handleUpdateCharVisible}
       />
-      <OffstagePanel
-        isOpen={offstageOpen}
-        onClose={() => setOffstageOpen(false)}
-        keyframe={keyframes[activeKeyframeIndex] ?? null}
-        onUnhide={offstageUnhide}
-        onUnhideAll={offstageUnhideAll}
-        onDelete={offstageDelete}
-      />
-      <StageCanvas
-        canvasRef={canvasRef}
-        canvasSize={canvasSize}
-        onClick={handleCanvasClick}
-        onMouseDown={onCanvasMouseDown}
-        onMouseMove={onCanvasMouseMove}
-      />
+      <div className="inline-block relative">
+        <StageCanvas
+          canvasRef={canvasRef}
+          canvasSize={canvasSize}
+          onClick={handleCanvasClick}
+          onMouseDown={onCanvasMouseDown}
+          onMouseMove={onCanvasMouseMove}
+          onDrop={handleCanvasDrop}
+          onDragOver={handleCanvasDragOver}
+        />
+        <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
+          <div className="text-sm text-muted-foreground">Offstage</div>
+          <div className="mt-2 flex flex-col gap-2 max-w-xs">
+            {(keyframes[activeKeyframeIndex]?.characters ?? []).filter(c => c.visible === false).map((c) => (
+              <div
+                key={c.id}
+                draggable
+                onDragStart={(ev) => {
+                  ev.dataTransfer.setData('text/plain', c.id)
+                  ev.dataTransfer.effectAllowed = 'move'
+                }}
+                className="flex items-center gap-2 rounded px-2 py-1 bg-transparent cursor-grab"
+                style={{ userSelect: 'none' }}
+              >
+                <svg width="28" height="28" viewBox="0 0 36 36" className="flex-shrink-0">
+                  <ellipse cx="18" cy="24" rx="9" ry="5" fill={c.shoulderColor || '#ff6b6b'} />
+                  <ellipse cx="18" cy="18" rx="6" ry="5" fill={c.color || '#ffd93d'} stroke="#ccc" strokeWidth="1" />
+                </svg>
+                <div className="text-sm text-foreground">{c.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        </div>
       <ToastContainer toast={toast} />
     </div>
   )

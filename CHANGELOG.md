@@ -12,6 +12,9 @@ Entries format:
 - 15:xx — Added **R** keyboard shortcut to toggle Reverse Stage; underlined "R" in ConfigMenu label (`StageBlockingApp.tsx`, `ConfigMenu.tsx`).
 - 15:xx — Added **Space** shortcut to play/stop keyframe playback; Play/Stop buttons now show underlined text labels (`Toolbar.tsx`, `StageBlockingApp.tsx`).
 - 15:xx — **R** shortcut disabled while in keyframe mode to prevent accidental stage reversal during editing (`StageBlockingApp.tsx`).
+ - 15:30 — Added single-key shortcuts: `S` to Save layout and `L` to Load layout (calls `saveToLocalStorage()` / `loadFromLocalStorage()`).
+ - 15:30 — Added Save/Load entries to the shortcuts tooltip in the keyframe toolbar (`Toolbar.tsx`).
+ - 15:30 — Fixed history snapshots for keyframe edits so Undo/Redo now correctly restores keyframe creation, deletion, rename, and character moves across keyframes (`StageBlockingApp.tsx`).
 
 ## 2026-02-08
 ### Toolbar Revamp

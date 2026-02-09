@@ -12,28 +12,20 @@ import ConfigMenu from './ConfigMenu'
 import FileMenu from './FileMenu'
 
 interface ToolbarProps {
-  // Add mode
   addMode: boolean
   setAddMode: (fn: (s: boolean) => boolean) => void
-  // Selection
   selectedCharId: string | null
   characters: Character[]
   awaitingDirectionFor: string | null
-  // Character actions
   onDeleteSelected: () => void
   onDuplicateSelected: () => void
-  
-  // History
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
   onRedo: () => void
-  // Name editing
   onNameChange: (name: string) => void
-  // User
   user: User
   onLogout: () => void
-  // Config menu
   configMenuOpen: boolean
   setConfigMenuOpen: (open: boolean) => void
   canvasSize: { width: number; height: number }
@@ -45,7 +37,6 @@ interface ToolbarProps {
   onColorChange: (head: string, shoulder: string) => void
   stageReversed: boolean
   onToggleReverse: () => void
-  // File menu
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
   onSave: () => void
@@ -53,10 +44,8 @@ interface ToolbarProps {
   onExportJSON: () => void
   onImportJSON: () => void
   onExportPNG: () => void
-  // Keyframe
   keyframeMode: boolean
   onToggleKeyframeMode: () => void
-  // Timeline (only used when keyframeMode is on)
   keyframes: Keyframe[]
   activeKeyframeIndex: number
   isPlaying: boolean
@@ -71,100 +60,53 @@ interface ToolbarProps {
   onUpdateCharVisible: (charId: string, visible: boolean) => void
 }
 
-export default function Toolbar({
-  addMode,
-  setAddMode,
-  selectedCharId,
-  characters,
-  awaitingDirectionFor,
-  onDeleteSelected,
-  onDuplicateSelected,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  onNameChange,
-  user,
-  onLogout,
-  configMenuOpen,
-  setConfigMenuOpen,
-  canvasSize,
-  onCanvasSizeChange,
-  defaultPersonSize,
-  defaultPersonColor,
-  defaultShoulderColor,
-  onSizeChange,
-  onColorChange,
-  stageReversed,
-  onToggleReverse,
-  fileMenuOpen,
-  setFileMenuOpen,
-  onSave,
-  onLoad,
-  onExportJSON,
-  onImportJSON,
-  onExportPNG,
-  keyframeMode,
-  onToggleKeyframeMode,
-  keyframes,
-  activeKeyframeIndex,
-  isPlaying,
-  onSelectKeyframe,
-  onAddKeyframe,
-  onDeleteKeyframe,
-  onRenameKeyframe,
-  onPlay,
-  onStop,
-  onPrev,
-  onNext,
-  onUpdateCharVisible
-}: ToolbarProps) {
-  const selectedChar = selectedCharId ? characters.find((c) => c.id === selectedCharId) : null
-  const awaitingChar = awaitingDirectionFor ? characters.find((c) => c.id === awaitingDirectionFor) : null
+export default function Toolbar(props: ToolbarProps) {
+  const {
+    addMode, setAddMode, selectedCharId, characters, awaitingDirectionFor,
+    onDeleteSelected, onDuplicateSelected, canUndo, canRedo, onUndo, onRedo,
+    onNameChange, user, onLogout, configMenuOpen, setConfigMenuOpen,
+    canvasSize, onCanvasSizeChange, defaultPersonSize, defaultPersonColor, defaultShoulderColor,
+    onSizeChange, onColorChange, stageReversed, onToggleReverse,
+    fileMenuOpen, setFileMenuOpen, onSave, onLoad, onExportJSON, onImportJSON, onExportPNG,
+    keyframeMode, onToggleKeyframeMode, keyframes, activeKeyframeIndex, isPlaying,
+    onSelectKeyframe, onAddKeyframe, onDeleteKeyframe, onRenameKeyframe, onPlay, onStop, onPrev, onNext,
+    onUpdateCharVisible
+  } = props
+
+  const selectedChar = selectedCharId ? characters.find(c => c.id === selectedCharId) : null
+  const awaitingChar = awaitingDirectionFor ? characters.find(c => c.id === awaitingDirectionFor) : null
+
   const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [editingKfIndex, setEditingKfIndex] = useState<number | null>(null)
+  const [editKfValue, setEditKfValue] = useState('')
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!menuOpen) return
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
+    function handler(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
-
-  const [editingKfIndex, setEditingKfIndex] = useState<number | null>(null)
-  const [editKfValue, setEditKfValue] = useState('')
-  const [offstageOpenLocal, setOffstageOpenLocal] = useState(false)
-  const [showShortcuts, setShowShortcuts] = useState(false)
 
   return (
     <header className="relative flex flex-col gap-2 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
-      {/* Tooltip is shown under the info icon (rendered next to playback controls) */}
       <div className="flex items-center gap-2">
         {keyframeMode ? (
           <>
-            {/* Keyframe mode toolbar */}
-            <Button
-              variant="default"
-              size="sm"
-              onClick={onToggleKeyframeMode}
-              title="Exit Keyframe Mode (Esc)"
-            >
+            <Button variant="default" size="sm" onClick={onToggleKeyframeMode} title="Exit Keyframe Mode (Esc)">
               <Film className="h-4 w-4" />
               Keyframes (Esc)
             </Button>
 
             <div className="mx-1 h-6 w-px bg-border" />
 
-            {/* Playback controls */}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onPrev} disabled={isPlaying || activeKeyframeIndex <= 0} title="Previous">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            {/* Offstage panel removed — Offstage is shown next to the stage box */}
-            {/* Visibility toggle (keyframe mode) */}
+
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
               if (!selectedCharId) return
               const newVis = !(selectedChar?.visible !== false)
@@ -172,44 +114,23 @@ export default function Toolbar({
             }} disabled={!selectedCharId} title="Toggle visibility (V)">
               {selectedChar?.visible === false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
+
             {isPlaying ? (
-              <div>
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={onStop}
-                  title="Stop (Space)"
-                >
-                  <Square className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button variant="default" size="icon" className="h-8 w-8" onClick={onStop} title="Stop (Space)">
+                <Square className="h-4 w-4" />
+              </Button>
             ) : (
-              <div>
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={onPlay}
-                  disabled={keyframes.length < 2}
-                  title="Play (Space)"
-                >
-                  <Play className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button variant="default" size="icon" className="h-8 w-8" onClick={onPlay} disabled={keyframes.length < 2} title="Play (Space)">
+                <Play className="h-4 w-4" />
+              </Button>
             )}
+
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNext} disabled={isPlaying || activeKeyframeIndex >= keyframes.length - 1} title="Next">
               <ChevronRight className="h-4 w-4" />
             </Button>
+
             <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                title="Shortcuts"
-                onMouseEnter={() => setShowShortcuts(true)}
-                onMouseLeave={() => setShowShortcuts(false)}
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Shortcuts" onMouseEnter={() => setShowShortcuts(true)} onMouseLeave={() => setShowShortcuts(false)}>
                 <Info className="h-4 w-4" />
               </Button>
               {showShortcuts && (
@@ -221,6 +142,8 @@ export default function Toolbar({
                   <div className="leading-tight">D: Delete selected</div>
                   <div className="leading-tight">P: Duplicate selected</div>
                   <div className="leading-tight">U: Undo, O: Redo</div>
+                  <div className="leading-tight">S: Save</div>
+                  <div className="leading-tight">L: Load</div>
                   <div className="leading-tight">V: Toggle visibility (keyframe mode)</div>
                   <div className="leading-tight">R: Reverse stage</div>
                   <div className="leading-tight">Esc: Exit / Cancel</div>
@@ -230,63 +153,22 @@ export default function Toolbar({
 
             <div className="mx-1 h-6 w-px bg-border" />
 
-            {/* Keyframe pills */}
             <div className="flex flex-wrap items-center gap-1">
               {keyframes.map((kf, i) => (
                 <div key={kf.id} className="flex items-center">
                   {i > 0 && <div className="h-px w-4 bg-border" />}
-                  <div
-                    className={`group relative flex items-center rounded-md border px-2.5 py-1 text-xs cursor-pointer transition-colors ${
-                      i === activeKeyframeIndex
-                        ? 'border-primary bg-primary/10 text-primary font-medium'
-                        : 'border-border bg-background text-muted-foreground hover:bg-accent'
-                    }`}
-                    onClick={() => !isPlaying && onSelectKeyframe(i)}
-                  >
+                  <div className={`group relative flex items-center rounded-md border px-2.5 py-1 text-xs cursor-pointer transition-colors ${i === activeKeyframeIndex ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-background text-muted-foreground hover:bg-accent'}`} onClick={() => !isPlaying && onSelectKeyframe(i)}>
                     {editingKfIndex === i ? (
-                      <input
-                        autoFocus
-                        className="w-16 bg-transparent text-xs outline-none"
-                        value={editKfValue}
-                        onChange={(e) => setEditKfValue(e.target.value)}
-                        onBlur={() => {
-                          if (editKfValue.trim()) onRenameKeyframe(i, editKfValue.trim())
-                          setEditingKfIndex(null)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            if (editKfValue.trim()) onRenameKeyframe(i, editKfValue.trim())
-                            setEditingKfIndex(null)
-                          }
-                          if (e.key === 'Escape') setEditingKfIndex(null)
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      <input autoFocus className="w-16 bg-transparent text-xs outline-none" value={editKfValue} onChange={(e) => setEditKfValue(e.target.value)} onBlur={() => { if (editKfValue.trim()) onRenameKeyframe(i, editKfValue.trim()); setEditingKfIndex(null) }} onKeyDown={(e) => { if (e.key === 'Enter') { if (editKfValue.trim()) onRenameKeyframe(i, editKfValue.trim()); setEditingKfIndex(null) } if (e.key === 'Escape') setEditingKfIndex(null) }} onClick={(e) => e.stopPropagation()} />
                     ) : (
                       <>
                         <span>{kf.label}</span>
                         {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
-                          <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">
-                            {kf.characters.filter(c => c.visible === false).length}
-                          </span>
+                          <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">{kf.characters.filter(c => c.visible === false).length}</span>
                         )}
                         <div className="ml-1 hidden gap-0.5 group-hover:flex">
-                          <button
-                            className="rounded p-0.5 hover:bg-accent"
-                            onClick={(e) => { e.stopPropagation(); setEditingKfIndex(i); setEditKfValue(kf.label) }}
-                            title="Rename"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                          {keyframes.length > 1 && (
-                            <button
-                              className="rounded p-0.5 hover:bg-destructive/10 text-destructive"
-                              onClick={(e) => { e.stopPropagation(); onDeleteKeyframe(i) }}
-                              title="Delete keyframe"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          )}
+                          <button className="rounded p-0.5 hover:bg-accent" onClick={(e) => { e.stopPropagation(); setEditingKfIndex(i); setEditKfValue(kf.label) }} title="Rename"><Pencil className="h-3 w-3" /></button>
+                          {keyframes.length > 1 && (<button className="rounded p-0.5 hover:bg-destructive/10 text-destructive" onClick={(e) => { e.stopPropagation(); onDeleteKeyframe(i) }} title="Delete keyframe"><Trash2 className="h-3 w-3" /></button>)}
                         </div>
                       </>
                     )}
@@ -295,177 +177,63 @@ export default function Toolbar({
               ))}
             </div>
 
-            {/* Add keyframe */}
-            <Button variant="outline" size="sm" className="h-7 ml-1" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe">
+            <Button variant="outline" size="icon" className="h-7 w-7 ml-1" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)">
               <Plus className="h-3.5 w-3.5" />
-              Add
             </Button>
 
-            {/* Counter + undo/redo (right side) */}
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {activeKeyframeIndex + 1} / {keyframes.length}
-              </span>
-              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
-                <Undo2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
-                <Redo2 className="h-4 w-4" />
-              </Button>
+              <span className="text-xs text-muted-foreground">{activeKeyframeIndex + 1} / {keyframes.length}</span>
+              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)"><Redo2 className="h-4 w-4" /></Button>
             </div>
           </>
         ) : (
           <>
-            {/* Normal toolbar */}
             <div className="flex items-center gap-1.5">
-              <Button
-                variant={addMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setAddMode((s) => !s)}
-              >
+              <Button variant={addMode ? 'default' : 'outline'} size="sm" onClick={() => setAddMode(s => !s)}>
                 <UserPlus className="h-4 w-4" />
-                {addMode ? 'Adding\u2026 (Esc)' : <span><u>A</u>dd</span>}
+                {addMode ? 'Adding… (Esc)' : <span><u>A</u>dd</span>}
               </Button>
 
               {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
-                <Button variant="destructive" size="sm" onClick={onDeleteSelected}>
-                  <Trash2 className="h-4 w-4" />
-                  <span><u>D</u>elete</span>
-                </Button>
+                <Button variant="destructive" size="sm" onClick={onDeleteSelected}><Trash2 className="h-4 w-4" /><span><u>D</u>elete</span></Button>
               )}
 
               {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
-                <Button variant="outline" size="sm" onClick={onDuplicateSelected}>
-                  <Copy className="h-4 w-4" />
-                  <span>Du<u>p</u>licate</span>
-                </Button>
+                <Button variant="outline" size="sm" onClick={onDuplicateSelected}><Copy className="h-4 w-4" /><span>Du<u>p</u>licate</span></Button>
               )}
 
-              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
-                <Undo2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
-                <Redo2 className="h-4 w-4" />
-              </Button>
-
-              <div className="mx-1 h-6 w-px bg-border" />
-
-              {selectedCharId && (
-                <label className="flex items-center gap-1.5 text-sm">
-                  Name:
-                  <input
-                    type="text"
-                    maxLength={3}
-                    value={selectedChar?.name ?? ''}
-                    onChange={(e) => onNameChange(e.target.value)}
-                    className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </label>
-              )}
             </div>
 
-            <p className="mx-2 text-sm text-muted-foreground">
-              {awaitingDirectionFor
-                ? `Set gaze: ${awaitingChar?.name ?? awaitingDirectionFor}`
-                : selectedCharId
-                  ? `${selectedChar?.name ?? selectedCharId} selected`
-                  : 'Click to select \u00b7 drag to move'}
-            </p>
+            <p className="mx-2 text-sm text-muted-foreground">{awaitingDirectionFor ? `Set gaze: ${awaitingChar?.name ?? awaitingDirectionFor}` : selectedCharId ? `${selectedChar?.name ?? selectedCharId} selected` : 'Click to select · drag to move'}</p>
 
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
-                <Undo2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
-                <Redo2 className="h-4 w-4" />
-              </Button>
+              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)"><Redo2 className="h-4 w-4" /></Button>
 
               <div className="mx-1 h-6 w-px bg-border" />
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onToggleKeyframeMode}
-                title="Keyframe Animation Mode"
-              >
-                <Film className="h-4 w-4" />
-                <span><u>K</u>eyframes</span>
-              </Button>
+              <Button variant="outline" size="sm" onClick={onToggleKeyframeMode} title="Keyframe Animation Mode"><Film className="h-4 w-4" /><span><u>K</u>eyframes</span></Button>
 
               <div className="mx-1 h-6 w-px bg-border" />
 
               <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setConfigMenuOpen(!configMenuOpen)}
-                  title="Configuration"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-                <ConfigMenu
-                  isOpen={configMenuOpen}
-                  canvasSize={canvasSize}
-                  onCanvasSizeChange={onCanvasSizeChange}
-                  selectedCharId={selectedCharId}
-                  characters={characters}
-                  defaultPersonSize={defaultPersonSize}
-                  defaultPersonColor={defaultPersonColor}
-                  defaultShoulderColor={defaultShoulderColor}
-                  onSizeChange={onSizeChange}
-                  onColorChange={onColorChange}
-                  stageReversed={stageReversed}
-                  onToggleReverse={onToggleReverse}
-                  
-                />
+                <Button variant="ghost" size="icon" onClick={() => setConfigMenuOpen(!configMenuOpen)} title="Configuration"><Settings className="h-4 w-4" /></Button>
+                <ConfigMenu isOpen={configMenuOpen} canvasSize={canvasSize} onCanvasSizeChange={onCanvasSizeChange} selectedCharId={selectedCharId} characters={characters} defaultPersonSize={defaultPersonSize} defaultPersonColor={defaultPersonColor} defaultShoulderColor={defaultShoulderColor} onSizeChange={onSizeChange} onColorChange={onColorChange} stageReversed={stageReversed} onToggleReverse={onToggleReverse} />
               </div>
 
               <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setFileMenuOpen(!fileMenuOpen)}
-                  title="File operations"
-                >
-                  <Save className="h-4 w-4" />
-                </Button>
-                <FileMenu
-                  isOpen={fileMenuOpen}
-                  onSave={onSave}
-                  onLoad={onLoad}
-                  onExportJSON={onExportJSON}
-                  onImportJSON={onImportJSON}
-                  onExportPNG={onExportPNG}
-                  onClose={() => setFileMenuOpen(false)}
-                />
+                <Button variant="ghost" size="icon" onClick={() => setFileMenuOpen(!fileMenuOpen)} title="File operations"><Save className="h-4 w-4" /></Button>
+                <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onClose={() => setFileMenuOpen(false)} />
               </div>
-
-              
 
               <div className="relative" ref={menuRef}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setMenuOpen(!menuOpen)}
-                  title="Menu"
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setMenuOpen(!menuOpen)} title="Menu"><Menu className="h-4 w-4" /></Button>
                 {menuOpen && (
                   <div className="absolute right-0 top-full z-50 mt-2 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg">
-                    <p className="text-sm text-muted-foreground">
-                      Welcome, <strong className="text-foreground">{user.username}</strong>
-                    </p>
+                    <p className="text-sm text-muted-foreground">Welcome, <strong className="text-foreground">{user.username}</strong></p>
                     <div className="my-3 h-px bg-border" />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => { setMenuOpen(false); onLogout() }}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </Button>
+                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => { setMenuOpen(false); onLogout() }}><LogOut className="h-4 w-4" /> Logout</Button>
                   </div>
                 )}
               </div>
