@@ -42,7 +42,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [keyframes, setKeyframes] = useState<Keyframe[]>([])
   const [activeKeyframeIndex, setActiveKeyframeIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback
+  const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback (movement easing)
+  const [fadeProgress, setFadeProgress] = useState<number | null>(null) // 0-1 faster fade for hide/show
   const animFrameRef = useRef<number | null>(null)
   const nextKfId = useRef(1)
   const kfsRef = useRef<Keyframe[] | null>(null)
@@ -682,9 +683,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         const to = kfsRef.current[pair + 1]?.characters.find(c => c.id === char.id)
         const fromVis = from ? (from.visible !== false) : true
         const toVis = to ? (to.visible !== false) : true
+        const fade = (fadeProgress ?? animationProgress) ?? 0
         if (!fromVis && !toVis) alpha = 0
-        else if (fromVis && !toVis) alpha = 1 - animationProgress
-        else if (!fromVis && toVis) alpha = animationProgress
+        else if (fromVis && !toVis) alpha = 1 - fade
+        else if (!fromVis && toVis) alpha = fade
         else alpha = 1
       } else {
         // Not playing: if character marked invisible in current snapshot, skip drawing
@@ -888,7 +890,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     let currentKfPair = 0
     const totalPairs = kfs.length - 1
-    const msPerTransition = 1200
+    // Separate durations: slower movement interpolation, faster fade for hide/show
+    const msMove = 1200
+    const msFade = 300
     let startTime: number | null = null
 
       // Start playback from the currently-selected keyframe (no flash)
@@ -901,19 +905,20 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
       const elapsed = timestamp - startTime
-      let pairProgress = elapsed / msPerTransition
+      let pairProgress = elapsed / msMove
 
       // Advance through completed transitions
       while (pairProgress >= 1 && currentKfPair < totalPairs) {
         currentKfPair++
-        startTime = startTime! + msPerTransition
-        pairProgress = (timestamp - startTime) / msPerTransition
+        startTime = startTime! + msMove
+        pairProgress = (timestamp - startTime) / msMove
 
         if (currentKfPair >= totalPairs) {
           // Animation complete — snap to final frame
           setCharacters(JSON.parse(JSON.stringify(kfs[kfs.length - 1].characters)))
           setActiveKeyframeIndex(kfs.length - 1)
           setAnimationProgress(null)
+          setFadeProgress(null)
           setIsPlaying(false)
           animFrameRef.current = null
           return
@@ -922,6 +927,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       const t = Math.max(0, Math.min(pairProgress, 1))
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+      // compute an independent, faster fade progress for hide/show transitions
+      const fadeT = Math.max(0, Math.min(elapsed / msFade, 1))
 
       const fromChars = kfs[currentKfPair].characters
       const toChars = kfs[currentKfPair + 1].characters
@@ -929,6 +936,23 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const interpolated = fromChars.map((fc: Character) => {
         const tc = toChars.find((c: Character) => c.id === fc.id)
         if (!tc) return fc
+
+        const fromEntry = kfs[currentKfPair].characters.find((c: Character) => c.id === fc.id)
+        const toEntry = kfs[currentKfPair + 1].characters.find((c: Character) => c.id === fc.id)
+        const fromVis = fromEntry ? (fromEntry.visible !== false) : true
+        const toVis = toEntry ? (toEntry.visible !== false) : true
+
+        // If the character was hidden in the "from" frame but visible in the "to" frame,
+        // don't interpolate position — jump to the target and only fade in.
+        if (!fromVis && toVis) {
+          return { ...tc }
+        }
+        // If it becomes hidden in the "to" frame, keep the from position and fade out.
+        if (fromVis && !toVis) {
+          return { ...fc }
+        }
+
+        // Normal interpolation when visible on both frames
         return {
           ...fc,
           x: fc.x + (tc.x - fc.x) * eased,
@@ -946,6 +970,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setActiveKeyframeIndex(currentKfPair)
       animPairRef.current = currentKfPair
       setAnimationProgress(eased)
+      setFadeProgress(fadeT)
 
       animFrameRef.current = requestAnimationFrame(animate)
     }
@@ -956,6 +981,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function stopPlayback() {
     setIsPlaying(false)
     setAnimationProgress(null)
+    setFadeProgress(null)
     if (animFrameRef.current !== null) {
       cancelAnimationFrame(animFrameRef.current)
       animFrameRef.current = null
@@ -986,68 +1012,72 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     keyframes.forEach(kf => kf.characters.forEach(c => charIds.add(c.id)))
 
     charIds.forEach(charId => {
-      // Get positions across keyframes for this character
-      const positions: { x: number; y: number; color: string }[] = []
-      keyframes.forEach((kf) => {
+      // Get positions & visibility across keyframes for this character, with keyframe indices
+      const positions: { kfIndex: number; x: number; y: number; color: string; visible: boolean }[] = []
+      keyframes.forEach((kf, kfi) => {
         const c = kf.characters.find(ch => ch.id === charId)
-        if (c) positions.push({ x: c.x, y: c.y, color: c.color || '#ffd93d' })
+        if (c) positions.push({ kfIndex: kfi, x: c.x, y: c.y, color: c.color || '#ffd93d', visible: c.visible !== false })
       })
       if (positions.length < 2) return
 
-      // Draw path line
       ctx.save()
-      ctx.strokeStyle = positions[0].color
-      ctx.globalAlpha = 0.35
-      ctx.lineWidth = 2
-      ctx.setLineDash([4, 4])
-      ctx.beginPath()
-      ctx.moveTo(positions[0].x, positions[0].y)
-      for (let i = 1; i < positions.length; i++) {
-        ctx.lineTo(positions[i].x, positions[i].y)
-      }
-      ctx.stroke()
+      // Show only the connector from current keyframe to the next keyframe (and a single dot at the next)
+      // This applies both when playing (with moving arrow) and when paused.
+      const curKf = activeKeyframeIndex
+      const idx = positions.findIndex(p => p.kfIndex === curKf)
+      if (idx !== -1 && idx < positions.length - 1) {
+        const fromPos = positions[idx]
+        const toPos = positions[idx + 1]
 
-      // Draw dots at each keyframe position
-      ctx.setLineDash([])
-      ctx.globalAlpha = 0.5
-      positions.forEach((pos, i) => {
-        if (i === activeKeyframeIndex) return  // skip active (already drawn as character)
-        ctx.beginPath()
-        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2)
-        ctx.fillStyle = positions[0].color
-        ctx.fill()
-      })
+        // If the character is hidden in the current keyframe, don't draw past/next markers
+        // while playing. When not playing (paused/editing) show the connector so users
+        // can preview moves; also always show while actively dragging.
+        if (isPlaying && fromPos.visible === false) {
+          ctx.restore()
+          return
+        }
 
-      // Draw arrows on path segments
-      ctx.globalAlpha = 0.3
-      for (let i = 0; i < positions.length - 1; i++) {
-        const from = positions[i]
-        const to = positions[i + 1]
-        const dx = to.x - from.x
-        const dy = to.y - from.y
-        const dist = Math.hypot(dx, dy)
-        if (dist < 20) continue
-        const mx = (from.x + to.x) / 2
-        const my = (from.y + to.y) / 2
-        const angle = Math.atan2(dy, dx)
-        const arrowSize = 6
+        // Skip if transition is hidden->visible (jump)
+        if (!(fromPos.visible === false && toPos.visible === true)) {
+          ctx.strokeStyle = '#f1c40f'
+          ctx.globalAlpha = 0.6
+          ctx.lineWidth = 2
+          ctx.setLineDash([6, 4])
+          ctx.beginPath()
+          ctx.moveTo(fromPos.x, fromPos.y)
+          ctx.lineTo(toPos.x, toPos.y)
+          ctx.stroke()
 
-        ctx.beginPath()
-        ctx.moveTo(
-          mx + Math.cos(angle) * arrowSize,
-          my + Math.sin(angle) * arrowSize
-        )
-        ctx.lineTo(
-          mx + Math.cos(angle + 2.5) * arrowSize,
-          my + Math.sin(angle + 2.5) * arrowSize
-        )
-        ctx.lineTo(
-          mx + Math.cos(angle - 2.5) * arrowSize,
-          my + Math.sin(angle - 2.5) * arrowSize
-        )
-        ctx.closePath()
-        ctx.fillStyle = positions[0].color
-        ctx.fill()
+          // Draw single dot at the next key position
+          ctx.setLineDash([])
+          ctx.globalAlpha = 0.6
+          ctx.beginPath()
+          ctx.arc(toPos.x, toPos.y, 4, 0, Math.PI * 2)
+          ctx.fillStyle = toPos.color
+          ctx.fill()
+
+          // If playing, draw moving arrow along the segment using animationProgress
+          if (isPlaying && animationProgress !== null) {
+            const dx = toPos.x - fromPos.x
+            const dy = toPos.y - fromPos.y
+            const dist = Math.hypot(dx, dy)
+            if (dist >= 20) {
+              const t = animationProgress
+              const ax = fromPos.x + dx * t
+              const ay = fromPos.y + dy * t
+              const angle = Math.atan2(dy, dx)
+              const arrowSize = 6
+              ctx.setLineDash([])
+              ctx.beginPath()
+              ctx.moveTo(ax + Math.cos(angle) * arrowSize, ay + Math.sin(angle) * arrowSize)
+              ctx.lineTo(ax + Math.cos(angle + 2.5) * arrowSize, ay + Math.sin(angle + 2.5) * arrowSize)
+              ctx.lineTo(ax + Math.cos(angle - 2.5) * arrowSize, ay + Math.sin(angle - 2.5) * arrowSize)
+              ctx.closePath()
+              ctx.fillStyle = '#f1c40f'
+              ctx.fill()
+            }
+          }
+        }
       }
 
       ctx.restore()
@@ -1392,10 +1422,21 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 className="flex items-center gap-2 rounded px-2 py-1 bg-transparent cursor-grab"
                 style={{ userSelect: 'none' }}
               >
-                <svg width="28" height="28" viewBox="0 0 36 36" className="flex-shrink-0">
-                  <ellipse cx="18" cy="24" rx="9" ry="5" fill={c.shoulderColor || '#ff6b6b'} />
-                  <ellipse cx="18" cy="18" rx="6" ry="5" fill={c.color || '#ffd93d'} stroke="#ccc" strokeWidth="1" />
-                </svg>
+                <svg width="36" height="36" viewBox="0 0 36 36" className="flex-shrink-0">
+                      {(() => {
+                        const s = c.size ?? defaultPersonSize
+                        const shoulderRx = 9 * s
+                        const shoulderRy = 5 * s
+                        const headRx = 6 * s
+                        const headRy = 5 * s
+                        return (
+                          <g>
+                            <ellipse cx="18" cy="24" rx={shoulderRx} ry={shoulderRy} fill={c.shoulderColor || '#ff6b6b'} />
+                            <ellipse cx="18" cy="18" rx={headRx} ry={headRy} fill={c.color || '#ffd93d'} stroke="#ccc" strokeWidth="1" />
+                          </g>
+                        )
+                      })()}
+                    </svg>
                 <div className="text-sm text-foreground">{c.name}</div>
               </div>
             ))}

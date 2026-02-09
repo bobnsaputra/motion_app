@@ -15,6 +15,10 @@ Entries format:
  - 15:30 — Added single-key shortcuts: `S` to Save layout and `L` to Load layout (calls `saveToLocalStorage()` / `loadFromLocalStorage()`).
  - 15:30 — Added Save/Load entries to the shortcuts tooltip in the keyframe toolbar (`Toolbar.tsx`).
  - 15:30 — Fixed history snapshots for keyframe edits so Undo/Redo now correctly restores keyframe creation, deletion, rename, and character moves across keyframes (`StageBlockingApp.tsx`).
+ - 15:45 — Faster hide/unhide transitions in keyframe playback (fade shortened to 300ms) while keeping movement interpolation readable (`StageBlockingApp.tsx`).
+ - 15:50 — Draw movement connector while editing keyframes when dragging a character: the connector now follows the live dragged position and points to the next keyframe (hidden only during playback) (`StageBlockingApp.tsx`).
+ - 16:00 — Render hidden characters as a draggable preview during keyframe editing so you can place them while creating keyframes (`StageBlockingApp.tsx`).
+ - 16:05 — Fixed runtime ReferenceError in movement-path drawing (`from`/`to` → `fromPos`/`toPos`) and ensured connectors draw from live position while dragging (`StageBlockingApp.tsx`).
 
 ## 2026-02-08
 ### Toolbar Revamp
