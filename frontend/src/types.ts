@@ -8,6 +8,7 @@ export type Character = {
   size?: number
   color?: string
   shoulderColor?: string
+  visible?: boolean // per-keyframe visibility (default true)
 }
 
 export type Guide = {
@@ -27,5 +28,5 @@ export type User = {
 export type Keyframe = {
   id: number
   label: string
-  characters: Character[] // snapshot of all characters at this keyframe
+  characters: Character[] // snapshot of all characters at this keyframe, with per-keyframe visibility
 }

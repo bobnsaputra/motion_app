@@ -27,7 +27,6 @@ interface ConfigMenuProps {
   onColorChange: (head: string, shoulder: string) => void
   stageReversed: boolean
   onToggleReverse: () => void
-  onClearAll: () => void
 }
 
 export default function ConfigMenu({
@@ -42,8 +41,7 @@ export default function ConfigMenu({
   onSizeChange,
   onColorChange,
   stageReversed,
-  onToggleReverse,
-  onClearAll
+  onToggleReverse
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -191,13 +189,6 @@ export default function ConfigMenu({
       </div>
 
       <div className="my-3 h-px bg-border" />
-
-      <button
-        onClick={onClearAll}
-        className="w-full rounded-md border border-destructive bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors"
-      >
-        Clear All Characters
-      </button>
     </div>
   )
 }

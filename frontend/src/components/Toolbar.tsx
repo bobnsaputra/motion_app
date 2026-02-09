@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import {
   UserPlus, Trash2, Copy, Undo2, Redo2,
   Settings, Save, LogOut, Menu, Film,
+  Eye, EyeOff,
   Plus, Play, Square, ChevronLeft, ChevronRight, Pencil
 } from 'lucide-react'
 import ConfigMenu from './ConfigMenu'
@@ -20,7 +21,7 @@ interface ToolbarProps {
   // Character actions
   onDeleteSelected: () => void
   onDuplicateSelected: () => void
-  onClearAll: () => void
+  
   // History
   canUndo: boolean
   canRedo: boolean
@@ -66,6 +67,7 @@ interface ToolbarProps {
   onStop: () => void
   onPrev: () => void
   onNext: () => void
+  onUpdateCharVisible: (charId: string, visible: boolean) => void
 }
 
 export default function Toolbar({
@@ -76,7 +78,6 @@ export default function Toolbar({
   awaitingDirectionFor,
   onDeleteSelected,
   onDuplicateSelected,
-  onClearAll,
   canUndo,
   canRedo,
   onUndo,
@@ -114,7 +115,8 @@ export default function Toolbar({
   onPlay,
   onStop,
   onPrev,
-  onNext
+  onNext,
+  onUpdateCharVisible
 }: ToolbarProps) {
   const selectedChar = selectedCharId ? characters.find((c) => c.id === selectedCharId) : null
   const awaitingChar = awaitingDirectionFor ? characters.find((c) => c.id === awaitingDirectionFor) : null
@@ -156,6 +158,14 @@ export default function Toolbar({
             {/* Playback controls */}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onPrev} disabled={isPlaying || activeKeyframeIndex <= 0} title="Previous">
               <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {/* Visibility toggle (keyframe mode) */}
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+              if (!selectedCharId) return
+              const newVis = !(selectedChar?.visible !== false)
+              onUpdateCharVisible(selectedCharId, newVis)
+            }} disabled={!selectedCharId} title="Toggle visibility (V)">
+              {selectedChar?.visible === false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
             {isPlaying ? (
               <Button variant="default" size="sm" className="h-8 gap-1" onClick={onStop} title="Stop (Space)">
@@ -209,6 +219,11 @@ export default function Toolbar({
                     ) : (
                       <>
                         <span>{kf.label}</span>
+                        {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
+                          <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">
+                            {kf.characters.filter(c => c.visible === false).length}
+                          </span>
+                        )}
                         <div className="ml-1 hidden gap-0.5 group-hover:flex">
                           <button
                             className="rounded p-0.5 hover:bg-accent"
@@ -342,7 +357,7 @@ export default function Toolbar({
                   onColorChange={onColorChange}
                   stageReversed={stageReversed}
                   onToggleReverse={onToggleReverse}
-                  onClearAll={onClearAll}
+                  
                 />
               </div>
 
@@ -365,6 +380,8 @@ export default function Toolbar({
                   onClose={() => setFileMenuOpen(false)}
                 />
               </div>
+
+              
 
               <div className="relative" ref={menuRef}>
                 <Button

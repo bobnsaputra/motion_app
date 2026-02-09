@@ -44,6 +44,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback
   const animFrameRef = useRef<number | null>(null)
   const nextKfId = useRef(1)
+  const kfsRef = useRef<Keyframe[] | null>(null)
+  const animPairRef = useRef(0)
 
   const dragRef = useRef<{
     type: 'move' | 'handle' | 'char-move' | 'char-rotate' | null
@@ -289,6 +291,16 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
       if (e.key === 'k' || e.key === 'K') {
         toggleKeyframeMode()
+      }
+      if ((e.key === 'v' || e.key === 'V') && keyframeMode && selectedCharId) {
+        e.preventDefault()
+        const sel = characters.find(c => c.id === selectedCharId)
+        if (sel) {
+          const newVis = !(sel.visible !== false)
+          // Toggle visibility in active keyframe only
+          setKeyframes(prev => prev.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === selectedCharId ? { ...c, visible: newVis } : c) } : kf))
+          setCharacters(prev => prev.map(c => c.id === selectedCharId ? { ...c, visible: newVis } : c))
+        }
       }
       if ((e.key === 'r' || e.key === 'R') && !keyframeMode) {
         handleToggleReverse()
@@ -589,6 +601,29 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     characters.forEach((char) => {
       const angle = char.angle ?? 0
+      // Determine draw alpha based on per-keyframe visibility and playback
+      let alpha = 1
+      if (isPlaying && animationProgress !== null && kfsRef.current) {
+        const pair = animPairRef.current
+        const from = kfsRef.current[pair]?.characters.find(c => c.id === char.id)
+        const to = kfsRef.current[pair + 1]?.characters.find(c => c.id === char.id)
+        const fromVis = from ? (from.visible !== false) : true
+        const toVis = to ? (to.visible !== false) : true
+        if (!fromVis && !toVis) alpha = 0
+        else if (fromVis && !toVis) alpha = 1 - animationProgress
+        else if (!fromVis && toVis) alpha = animationProgress
+        else alpha = 1
+      } else {
+        // Not playing: if character marked invisible in current snapshot, skip drawing
+        if (char.visible === false) return
+        alpha = 1
+      }
+
+      ctx.save()
+      ctx.globalAlpha = alpha
+
+      // proceed to draw the character with the applied globalAlpha
+
       const size = char.size ?? 1
       const shoulderDist = 8 * size
       const shoulderX = char.x - Math.cos(angle) * shoulderDist
@@ -656,6 +691,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ctx.fill()
         ctx.restore()
       }
+
+      ctx.restore()
     })
   }
 
@@ -671,24 +708,26 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setSelectedCharId(null)
       // Re-enter with existing keyframes if available
       if (keyframes.length > 0) {
-        // Sync: add new characters to all keyframe snapshots, remove deleted ones
+        // Sync: add new characters to all keyframe snapshots, remove deleted ones, preserve visibility
         const currentIds = new Set(characters.map(c => c.id))
         const synced = keyframes.map(kf => {
           const kfIds = new Set(kf.characters.map(c => c.id))
           // Keep existing characters that still exist, remove deleted ones
           const kept = kf.characters.filter(c => currentIds.has(c.id))
-          // Add new characters (not in this keyframe) at their current position
-          const added = characters.filter(c => !kfIds.has(c.id)).map(c => JSON.parse(JSON.stringify(c)))
-          return { ...kf, characters: [...kept, ...added] }
+          // Add new characters (not in this keyframe) at their current position, visible by default
+          const added = characters.filter(c => !kfIds.has(c.id)).map(c => ({ ...c, visible: true }))
+          // For all, ensure visible is set (default true)
+          return { ...kf, characters: [...kept, ...added].map(c => ({ ...c, visible: c.visible !== false })) }
         })
         setKeyframes(synced)
         setActiveKeyframeIndex(activeKeyframeIndex)
         setCharacters(JSON.parse(JSON.stringify(synced[activeKeyframeIndex].characters)))
         setKeyframeMode(true)
       } else {
-        const snap = JSON.parse(JSON.stringify(characters))
+        // When creating first keyframes, set all visible true
+        const snap = characters.map(c => ({ ...c, visible: true }))
         const kf1: Keyframe = { id: nextKfId.current++, label: '1', characters: snap }
-        const kf2: Keyframe = { id: nextKfId.current++, label: '2', characters: JSON.parse(JSON.stringify(snap)) }
+        const kf2: Keyframe = { id: nextKfId.current++, label: '2', characters: snap.map(c => ({ ...c })) }
         setKeyframes([kf1, kf2])
         setActiveKeyframeIndex(1)
         setKeyframeMode(true)
@@ -709,10 +748,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   function addKeyframe() {
     saveCurrentToActiveKeyframe()
+    // When adding a keyframe, preserve visibility
     const kf: Keyframe = {
       id: nextKfId.current++,
       label: '',
-      characters: JSON.parse(JSON.stringify(characters))
+      characters: characters.map(c => ({ ...c, visible: c.visible !== false }))
     }
     const newIndex = activeKeyframeIndex + 1
     const updated = renumberKeyframes([...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)])
@@ -768,6 +808,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     let startTime: number | null = null
 
     // Set starting position immediately (no flash)
+    kfsRef.current = kfs
+    animPairRef.current = 0
     setActiveKeyframeIndex(0)
     setCharacters(JSON.parse(JSON.stringify(kfs[0].characters)))
 
@@ -817,7 +859,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       setCharacters(interpolated)
       setActiveKeyframeIndex(currentKfPair)
-      setAnimationProgress(t)
+      animPairRef.current = currentKfPair
+      setAnimationProgress(eased)
 
       animFrameRef.current = requestAnimationFrame(animate)
     }
@@ -832,6 +875,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       cancelAnimationFrame(animFrameRef.current)
       animFrameRef.current = null
     }
+    kfsRef.current = null
+    animPairRef.current = 0
     if (keyframes.length > 0 && activeKeyframeIndex < keyframes.length) {
       setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
     }
@@ -1069,6 +1114,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setCounter(0)
   }
 
+
   function handleNameChange(newName: string) {
     const updated = characters.map((c) => (c.id === selectedCharId ? { ...c, name: newName } : c))
     setCharacters(updated)
@@ -1125,6 +1171,18 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setStageReversed(r => !r)
   }
 
+  // Update visibility for a character in the current keyframe only
+  function handleUpdateCharVisible(charId: string, visible: boolean) {
+    if (!keyframeMode) return;
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === activeKeyframeIndex
+        ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible } : c) }
+        : kf
+    ));
+    // Also update local characters state for immediate UI feedback
+    setCharacters(prev => prev.map(c => c.id === charId ? { ...c, visible } : c));
+  }
+
   return (
     <div className="app">
       <Toolbar
@@ -1135,7 +1193,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         awaitingDirectionFor={awaitingDirectionFor}
         onDeleteSelected={handleDeleteSelected}
         onDuplicateSelected={handleDuplicateSelected}
-        onClearAll={handleClearAll}
+        
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
         onUndo={undo}
@@ -1174,6 +1232,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         onStop={stopPlayback}
         onPrev={goToPrevKeyframe}
         onNext={goToNextKeyframe}
+        onUpdateCharVisible={handleUpdateCharVisible}
       />
       <StageCanvas
         canvasRef={canvasRef}
