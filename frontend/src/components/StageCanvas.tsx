@@ -18,7 +18,7 @@ export default function StageCanvas({
   return (
     <main style={{ marginTop: 24 }}>
       <canvas
-        ref={canvasRef as React.Ref<HTMLCanvasElement>}
+        ref={canvasRef as React.RefObject<HTMLCanvasElement>}
         width={canvasSize.width}
         height={canvasSize.height}
         className="stage"

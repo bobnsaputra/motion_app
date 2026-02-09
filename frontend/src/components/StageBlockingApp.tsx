@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Character, Guide, User, Keyframe } from '../types'
 import Toolbar from './Toolbar'
+import OffstagePanel from './OffstagePanel'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
 
@@ -27,7 +28,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [stageReversed, setStageReversed] = useState(false)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
 
-  const [history, setHistory] = useState<Character[][]>([[]])
+  type HistoryEntry = { characters: Character[]; keyframes?: Keyframe[]; activeKeyframeIndex?: number }
+  const [history, setHistory] = useState<HistoryEntry[]>([{ characters: [] }])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [toast, setToast] = useState<{ message: string; type: ToastType; key: number } | null>(null)
   const toastKey = useRef(0)
@@ -44,6 +46,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback
   const animFrameRef = useRef<number | null>(null)
   const nextKfId = useRef(1)
+  const [offstageOpen, setOffstageOpen] = useState(false)
   const kfsRef = useRef<Keyframe[] | null>(null)
   const animPairRef = useRef(0)
 
@@ -231,7 +234,16 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         }
       }
       if (dragRef.current.type === 'char-move' && dragRef.current.hasMoved) {
-        if (!keyframeMode) saveToHistory(characters)
+        if (keyframeMode) {
+          const kfsSnapshot = keyframes.map((kf, i) =>
+            i === activeKeyframeIndex
+              ? { ...JSON.parse(JSON.stringify(kf)), characters: JSON.parse(JSON.stringify(characters)) }
+              : JSON.parse(JSON.stringify(kf))
+          ) as Keyframe[]
+          saveToHistory(characters, kfsSnapshot, activeKeyframeIndex)
+        } else {
+          saveToHistory(characters)
+        }
         setSelectedCharId(null)
       }
 
@@ -283,10 +295,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if ((e.key === 'p' || e.key === 'P') && !keyframeMode) {
         if (selectedCharId) handleDuplicateSelected()
       }
-      if ((e.key === 'u' || e.key === 'U') && !keyframeMode) {
+      if ((e.key === 'u' || e.key === 'U')) {
         undo()
       }
-      if ((e.key === 'o' || e.key === 'O') && !keyframeMode) {
+      if ((e.key === 'o' || e.key === 'O')) {
         redo()
       }
       if (e.key === 'k' || e.key === 'K') {
@@ -309,6 +321,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         e.preventDefault()
         if (isPlaying) { stopPlayback() } else { startPlayback() }
       }
+      if ((e.key === 'b' || e.key === 'B') && keyframeMode) {
+        toggleOffstage()
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
         undo()
@@ -329,9 +344,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     return Math.round(a / step) * step
   }
 
-  function saveToHistory(newCharacters: Character[]) {
+  function saveToHistory(newCharacters: Character[], optKeyframes?: Keyframe[], optActiveIndex?: number) {
     const newHistory = history.slice(0, historyIndex + 1)
-    newHistory.push(JSON.parse(JSON.stringify(newCharacters)))
+    const entry: HistoryEntry = {
+      characters: JSON.parse(JSON.stringify(newCharacters))
+    }
+    if (optKeyframes) {
+      entry.keyframes = JSON.parse(JSON.stringify(optKeyframes))
+      entry.activeKeyframeIndex = optActiveIndex ?? 0
+    } else if (keyframeMode) {
+      entry.keyframes = JSON.parse(JSON.stringify(keyframes))
+      entry.activeKeyframeIndex = activeKeyframeIndex
+    }
+    newHistory.push(entry)
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
   }
@@ -339,16 +364,28 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function undo() {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1
+      const entry = history[newIndex]
       setHistoryIndex(newIndex)
-      setCharacters(JSON.parse(JSON.stringify(history[newIndex])))
+      setCharacters(JSON.parse(JSON.stringify(entry.characters)))
+      if (entry.keyframes) {
+        setKeyframes(JSON.parse(JSON.stringify(entry.keyframes)))
+        setKeyframeMode(true)
+        setActiveKeyframeIndex(Math.min(entry.activeKeyframeIndex ?? 0, entry.keyframes.length - 1))
+      }
     }
   }
 
   function redo() {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1
+      const entry = history[newIndex]
       setHistoryIndex(newIndex)
-      setCharacters(JSON.parse(JSON.stringify(history[newIndex])))
+      setCharacters(JSON.parse(JSON.stringify(entry.characters)))
+      if (entry.keyframes) {
+        setKeyframes(JSON.parse(JSON.stringify(entry.keyframes)))
+        setKeyframeMode(true)
+        setActiveKeyframeIndex(Math.min(entry.activeKeyframeIndex ?? 0, entry.keyframes.length - 1))
+      }
     }
   }
 
@@ -723,14 +760,17 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         setActiveKeyframeIndex(activeKeyframeIndex)
         setCharacters(JSON.parse(JSON.stringify(synced[activeKeyframeIndex].characters)))
         setKeyframeMode(true)
+        saveToHistory(JSON.parse(JSON.stringify(synced[activeKeyframeIndex].characters)), synced, activeKeyframeIndex)
       } else {
         // When creating first keyframes, set all visible true
         const snap = characters.map(c => ({ ...c, visible: true }))
         const kf1: Keyframe = { id: nextKfId.current++, label: '1', characters: snap }
         const kf2: Keyframe = { id: nextKfId.current++, label: '2', characters: snap.map(c => ({ ...c })) }
-        setKeyframes([kf1, kf2])
+        const initialKfs = [kf1, kf2]
+        setKeyframes(initialKfs)
         setActiveKeyframeIndex(1)
         setKeyframeMode(true)
+        saveToHistory(characters, initialKfs, 1)
       }
     } else {
       stopPlayback()
@@ -758,6 +798,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const updated = renumberKeyframes([...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)])
     setKeyframes(updated)
     setActiveKeyframeIndex(newIndex)
+    saveToHistory(characters, updated, newIndex)
   }
 
   function deleteKeyframe(index: number) {
@@ -767,10 +808,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const newIndex = Math.min(index, updated.length - 1)
     setActiveKeyframeIndex(newIndex)
     setCharacters(JSON.parse(JSON.stringify(updated[newIndex].characters)))
+    saveToHistory(JSON.parse(JSON.stringify(updated[newIndex].characters)), updated, newIndex)
   }
 
   function renameKeyframe(index: number, name: string) {
-    setKeyframes(prev => prev.map((kf, i) => i === index ? { ...kf, label: name } : kf))
+    const updated = keyframes.map((kf, i) => i === index ? { ...kf, label: name } : kf)
+    setKeyframes(updated)
+    saveToHistory(characters, updated, activeKeyframeIndex)
   }
 
   function selectKeyframe(index: number) {
@@ -807,11 +851,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const msPerTransition = 1200
     let startTime: number | null = null
 
-    // Set starting position immediately (no flash)
-    kfsRef.current = kfs
-    animPairRef.current = 0
-    setActiveKeyframeIndex(0)
-    setCharacters(JSON.parse(JSON.stringify(kfs[0].characters)))
+      // Start playback from the currently-selected keyframe (no flash)
+      const startIndex = Math.max(0, Math.min(activeKeyframeIndex, kfs.length - 1))
+      kfsRef.current = kfs
+      animPairRef.current = startIndex
+      setActiveKeyframeIndex(startIndex)
+      setCharacters(JSON.parse(JSON.stringify(kfs[startIndex].characters)))
 
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
@@ -1157,15 +1202,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     // Flip current characters
     const flipped = mirrorChars(characters)
     setCharacters(flipped)
-    if (!keyframeMode) saveToHistory(flipped)
+    if (!keyframeMode && keyframes.length === 0) {
+      saveToHistory(flipped)
+    }
 
     // Flip all keyframe snapshots (regardless of whether keyframe mode is active)
     if (keyframes.length > 0) {
-      setKeyframes(prev => prev.map((kf, i) =>
+      const updatedKfs = keyframes.map((kf, i) =>
         i === activeKeyframeIndex
           ? { ...kf, characters: JSON.parse(JSON.stringify(flipped)) }
           : { ...kf, characters: mirrorChars(kf.characters) }
-      ))
+      )
+      setKeyframes(updatedKfs)
+      saveToHistory(flipped, updatedKfs, activeKeyframeIndex)
     }
 
     setStageReversed(r => !r)
@@ -1174,13 +1223,62 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   // Update visibility for a character in the current keyframe only
   function handleUpdateCharVisible(charId: string, visible: boolean) {
     if (!keyframeMode) return;
-    setKeyframes(prev => prev.map((kf, i) =>
-      i === activeKeyframeIndex
-        ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible } : c) }
-        : kf
-    ));
-    // Also update local characters state for immediate UI feedback
-    setCharacters(prev => prev.map(c => c.id === charId ? { ...c, visible } : c));
+    // If hiding, propagate invisibility to all subsequent keyframes (from current to end)
+    if (visible === false) {
+      setKeyframes(prev => {
+        const updated = prev.map((kf, i) => i >= activeKeyframeIndex
+          ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: false } : c) }
+          : kf
+        )
+        // update local characters to reflect active keyframe
+        setCharacters(JSON.parse(JSON.stringify(updated[activeKeyframeIndex].characters)))
+        return updated
+      })
+      // If the currently selected character was hidden, deselect it
+      if (selectedCharId === charId) setSelectedCharId(null)
+      return
+    }
+
+    // If showing, only set visible in the active keyframe
+    setKeyframes(prev => {
+      const updated = prev.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: true } : c) } : kf
+      )
+      setCharacters(JSON.parse(JSON.stringify(updated[activeKeyframeIndex].characters)))
+      return updated
+    })
+  }
+
+  // Offstage panel actions
+  function toggleOffstage() {
+    setOffstageOpen(s => !s)
+  }
+
+  // Listen for toolbar's custom event so the toolbar can toggle the offstage panel
+  useEffect(() => {
+    function handleToggleEvt() {
+      toggleOffstage()
+    }
+    window.addEventListener('toggleOffstage', handleToggleEvt as EventListener)
+    return () => window.removeEventListener('toggleOffstage', handleToggleEvt as EventListener)
+  }, [])
+
+  function offstageUnhide(charId: string) {
+    // Unhide only in active keyframe
+    setKeyframes(prev => prev.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: true } : c) } : kf))
+    setCharacters(prev => prev.map(c => c.id === charId ? { ...c, visible: true } : c))
+  }
+
+  function offstageUnhideAll() {
+    setKeyframes(prev => prev.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => ({ ...c, visible: true })) } : kf))
+    setCharacters(prev => prev.map(c => ({ ...c, visible: true })))
+  }
+
+  function offstageDelete(charId: string) {
+    // Remove character from all keyframes and from main characters list
+    setKeyframes(prev => prev.map(kf => ({ ...kf, characters: kf.characters.filter(c => c.id !== charId) })))
+    setCharacters(prev => prev.filter(c => c.id !== charId))
+    if (selectedCharId === charId) setSelectedCharId(null)
   }
 
   return (
@@ -1233,6 +1331,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         onPrev={goToPrevKeyframe}
         onNext={goToNextKeyframe}
         onUpdateCharVisible={handleUpdateCharVisible}
+      />
+      <OffstagePanel
+        isOpen={offstageOpen}
+        onClose={() => setOffstageOpen(false)}
+        keyframe={keyframes[activeKeyframeIndex] ?? null}
+        onUnhide={offstageUnhide}
+        onUnhideAll={offstageUnhideAll}
+        onDelete={offstageDelete}
       />
       <StageCanvas
         canvasRef={canvasRef}
