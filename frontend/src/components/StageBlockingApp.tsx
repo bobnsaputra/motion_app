@@ -1328,9 +1328,26 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
 
   function handleNameChange(newName: string) {
+    if (!selectedCharId) return
     const updated = characters.map((c) => (c.id === selectedCharId ? { ...c, name: newName } : c))
     setCharacters(updated)
-    saveToHistory(updated)
+
+    // Always propagate rename into keyframe snapshots if any exist so playback
+    // and future keyframe edits reflect the new name, even when renaming outside
+    // of keyframe mode.
+    if (keyframes.length > 0) {
+      const updatedKfs = keyframes.map(kf => ({ ...kf, characters: kf.characters.map(c => c.id === selectedCharId ? { ...c, name: newName } : c) }))
+      setKeyframes(updatedKfs)
+      if (kfsRef.current) {
+        kfsRef.current = kfsRef.current.map(kf => ({ ...kf, characters: kf.characters.map(c => c.id === selectedCharId ? { ...c, name: newName } : c) }))
+      }
+      saveToHistory(updated, updatedKfs, activeKeyframeIndex)
+    } else {
+      if (kfsRef.current) {
+        kfsRef.current = kfsRef.current.map(kf => ({ ...kf, characters: kf.characters.map(c => c.id === selectedCharId ? { ...c, name: newName } : c) }))
+      }
+      saveToHistory(updated)
+    }
   }
 
   function handleSizeChange(v: number) {

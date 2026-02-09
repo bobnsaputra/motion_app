@@ -81,6 +81,8 @@ export default function Toolbar(props: ToolbarProps) {
   const [editKfValue, setEditKfValue] = useState('')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showAddTooltip, setShowAddTooltip] = useState(false)
+  const [renameEditing, setRenameEditing] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -91,6 +93,12 @@ export default function Toolbar(props: ToolbarProps) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
+
+  // Reset rename input when selection changes
+  useEffect(() => {
+    setRenameEditing(false)
+    setRenameValue('')
+  }, [selectedCharId])
 
   return (
     <header className="relative flex flex-col gap-2 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
@@ -208,13 +216,24 @@ export default function Toolbar(props: ToolbarProps) {
               )}
 
               {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
-                <>
+                <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={onDuplicateSelected}><Copy className="h-4 w-4" /><span>Du<u>p</u>licate</span></Button>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    const name = window.prompt('Rename character', selectedChar?.name || '')
-                    if (name !== null && name.trim() !== '') onNameChange(name.trim())
-                  }} title="Rename"><Pencil className="h-4 w-4" /><span className="sr-only">Rename</span></Button>
-                </>
+                  {renameEditing ? (
+                    <input
+                      autoFocus
+                      className="w-28 rounded border px-2 py-1 text-sm"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={() => { if (renameValue.trim()) onNameChange(renameValue.trim()); setRenameEditing(false) }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { if (renameValue.trim()) onNameChange(renameValue.trim()); setRenameEditing(false) }
+                        if (e.key === 'Escape') { setRenameEditing(false); setRenameValue(selectedChar?.name || '') }
+                      }}
+                    />
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => { setRenameValue(selectedChar?.name || ''); setRenameEditing(true) }} title="Rename"><Pencil className="h-4 w-4" /><span className="sr-only">Rename</span></Button>
+                  )}
+                </div>
               )}
 
             </div>
