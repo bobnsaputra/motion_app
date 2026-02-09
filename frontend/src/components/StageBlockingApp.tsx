@@ -1012,7 +1012,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     keyframes.forEach(kf => kf.characters.forEach(c => charIds.add(c.id)))
 
     charIds.forEach(charId => {
-      // Get positions & visibility across keyframes for this character, with keyframe indices
+      // Get positions across keyframes for this character
       const positions: { kfIndex: number; x: number; y: number; color: string; visible: boolean }[] = []
       keyframes.forEach((kf, kfi) => {
         const c = kf.characters.find(ch => ch.id === charId)
@@ -1021,64 +1021,100 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if (positions.length < 2) return
 
       ctx.save()
-      // Show only the connector from current keyframe to the next keyframe (and a single dot at the next)
-      // This applies both when playing (with moving arrow) and when paused.
-      const curKf = activeKeyframeIndex
-      const idx = positions.findIndex(p => p.kfIndex === curKf)
-      if (idx !== -1 && idx < positions.length - 1) {
-        const fromPos = positions[idx]
-        const toPos = positions[idx + 1]
 
-        // If the character is hidden in the current keyframe, don't draw past/next markers
-        // while playing. When not playing (paused/editing) show the connector so users
-        // can preview moves; also always show while actively dragging.
-        if (isPlaying && fromPos.visible === false) {
-          ctx.restore()
-          return
-        }
+      // Two modes:
+      // - Playing: draw only the currently-walking pair (animPairRef.current -> animPairRef.current+1)
+      //   and respect visibility rules (hide segments when source is hidden).
+      // - Editing (paused keyframe mode): draw the previous -> current keyframe connector
+      //   so users can preview the move; use live `characters` as the target so dragging
+      //   shows the live connector from previous snapshot to the current (dragged) position.
+      if (isPlaying) {
+        const curPair = animPairRef.current
+        const fromEntry = positions.find(p => p.kfIndex === curPair)
+        const toEntry = positions.find(p => p.kfIndex === curPair + 1)
+        if (!fromEntry || !toEntry) { ctx.restore(); return }
 
-        // Skip if transition is hidden->visible (jump)
-        if (!(fromPos.visible === false && toPos.visible === true)) {
-          ctx.strokeStyle = '#f1c40f'
-          ctx.globalAlpha = 0.6
-          ctx.lineWidth = 2
-          ctx.setLineDash([6, 4])
-          ctx.beginPath()
-          ctx.moveTo(fromPos.x, fromPos.y)
-          ctx.lineTo(toPos.x, toPos.y)
-          ctx.stroke()
+        // If the character is hidden in the from frame, don't draw while playing
+        if (fromEntry.visible === false) { ctx.restore(); return }
 
-          // Draw single dot at the next key position
-          ctx.setLineDash([])
-          ctx.globalAlpha = 0.6
-          ctx.beginPath()
-          ctx.arc(toPos.x, toPos.y, 4, 0, Math.PI * 2)
-          ctx.fillStyle = toPos.color
-          ctx.fill()
+        const fromPos = fromEntry
+        const toPos = toEntry
 
-          // If playing, draw moving arrow along the segment using animationProgress
-          if (isPlaying && animationProgress !== null) {
-            const dx = toPos.x - fromPos.x
-            const dy = toPos.y - fromPos.y
-            const dist = Math.hypot(dx, dy)
-            if (dist >= 20) {
-              const t = animationProgress
-              const ax = fromPos.x + dx * t
-              const ay = fromPos.y + dy * t
-              const angle = Math.atan2(dy, dx)
-              const arrowSize = 6
-              ctx.setLineDash([])
-              ctx.beginPath()
-              ctx.moveTo(ax + Math.cos(angle) * arrowSize, ay + Math.sin(angle) * arrowSize)
-              ctx.lineTo(ax + Math.cos(angle + 2.5) * arrowSize, ay + Math.sin(angle + 2.5) * arrowSize)
-              ctx.lineTo(ax + Math.cos(angle - 2.5) * arrowSize, ay + Math.sin(angle - 2.5) * arrowSize)
-              ctx.closePath()
-              ctx.fillStyle = '#f1c40f'
-              ctx.fill()
-            }
+        // Draw segment
+        ctx.strokeStyle = '#f1c40f'
+        ctx.globalAlpha = 0.6
+        ctx.lineWidth = 2
+        ctx.setLineDash([6, 4])
+        ctx.beginPath()
+        ctx.moveTo(fromPos.x, fromPos.y)
+        ctx.lineTo(toPos.x, toPos.y)
+        ctx.stroke()
+
+        // Dot at target
+        ctx.setLineDash([])
+        ctx.globalAlpha = 0.6
+        ctx.beginPath()
+        ctx.arc(toPos.x, toPos.y, 4, 0, Math.PI * 2)
+        ctx.fillStyle = toPos.color
+        ctx.fill()
+
+        // Moving arrow
+        if (animationProgress !== null) {
+          const dx = toPos.x - fromPos.x
+          const dy = toPos.y - fromPos.y
+          const dist = Math.hypot(dx, dy)
+          if (dist >= 20) {
+            const t = animationProgress
+            const ax = fromPos.x + dx * t
+            const ay = fromPos.y + dy * t
+            const angle = Math.atan2(dy, dx)
+            const arrowSize = 6
+            ctx.setLineDash([])
+            ctx.beginPath()
+            ctx.moveTo(ax + Math.cos(angle) * arrowSize, ay + Math.sin(angle) * arrowSize)
+            ctx.lineTo(ax + Math.cos(angle + 2.5) * arrowSize, ay + Math.sin(angle + 2.5) * arrowSize)
+            ctx.lineTo(ax + Math.cos(angle - 2.5) * arrowSize, ay + Math.sin(angle - 2.5) * arrowSize)
+            ctx.closePath()
+            ctx.fillStyle = '#f1c40f'
+            ctx.fill()
           }
         }
+
+        ctx.restore()
+        return
       }
+
+      // Editing/paused: show previous -> current connector. Use live `characters` as the
+      // target so dragging updates the endpoint in real time.
+      const curIdx = activeKeyframeIndex
+      const prevIdx = curIdx - 1
+      if (prevIdx < 0) { ctx.restore(); return }
+
+      const fromEntry = positions.find(p => p.kfIndex === prevIdx)
+      // live target from `characters` state (reflects dragging)
+      const liveTarget = characters.find(c => c.id === charId)
+      if (!fromEntry || !liveTarget) { ctx.restore(); return }
+
+      const fromPos = fromEntry
+      const toPos = { kfIndex: curIdx, x: liveTarget.x, y: liveTarget.y, color: liveTarget.color || '#ffd93d', visible: liveTarget.visible !== false }
+
+      // Draw the editing connector regardless of playback visibility rules so users can preview
+      // their move while dragging.
+      ctx.strokeStyle = '#f1c40f'
+      ctx.globalAlpha = 0.75
+      ctx.lineWidth = 2
+      ctx.setLineDash([6, 4])
+      ctx.beginPath()
+      ctx.moveTo(fromPos.x, fromPos.y)
+      ctx.lineTo(toPos.x, toPos.y)
+      ctx.stroke()
+
+      ctx.setLineDash([])
+      ctx.globalAlpha = 0.75
+      ctx.beginPath()
+      ctx.arc(toPos.x, toPos.y, 4, 0, Math.PI * 2)
+      ctx.fillStyle = toPos.color
+      ctx.fill()
 
       ctx.restore()
     })
