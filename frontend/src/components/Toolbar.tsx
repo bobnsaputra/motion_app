@@ -80,6 +80,7 @@ export default function Toolbar(props: ToolbarProps) {
   const [editingKfIndex, setEditingKfIndex] = useState<number | null>(null)
   const [editKfValue, setEditKfValue] = useState('')
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showAddTooltip, setShowAddTooltip] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -143,7 +144,7 @@ export default function Toolbar(props: ToolbarProps) {
                   <div className="leading-tight">P: Duplicate selected</div>
                   <div className="leading-tight">U: Undo, O: Redo</div>
                   <div className="leading-tight">S: Save</div>
-                  <div className="leading-tight">L: Load</div>
+                  <div className="leading-tight">Y: Add keyframe</div>
                   <div className="leading-tight">V: Toggle visibility (keyframe mode)</div>
                   <div className="leading-tight">R: Reverse stage</div>
                   <div className="leading-tight">Esc: Exit / Cancel</div>
@@ -177,7 +178,7 @@ export default function Toolbar(props: ToolbarProps) {
               ))}
             </div>
 
-            <Button variant="outline" size="icon" className="h-7 w-7 ml-1" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)">
+            <Button variant="outline" size="icon" className="h-7 w-7 ml-1" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (Y)">
               <Plus className="h-3.5 w-3.5" />
             </Button>
 
@@ -190,17 +191,30 @@ export default function Toolbar(props: ToolbarProps) {
         ) : (
           <>
             <div className="flex items-center gap-1.5">
-              <Button variant={addMode ? 'default' : 'outline'} size="sm" onClick={() => setAddMode(s => !s)}>
-                <UserPlus className="h-4 w-4" />
-                {addMode ? 'Adding… (Esc)' : <span><u>A</u>dd</span>}
-              </Button>
+              <div className="relative">
+                <Button variant={addMode ? 'default' : 'outline'} size="sm" onClick={() => setAddMode(s => !s)} title="Add character (A)" onMouseEnter={() => setShowAddTooltip(true)} onMouseLeave={() => setShowAddTooltip(false)}>
+                  <UserPlus className="h-4 w-4" />
+                  {addMode ? 'Adding… (Esc)' : <span><u>A</u>dd</span>}
+                </Button>
+                {showAddTooltip && (
+                  <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 w-max rounded-md border border-border bg-white px-2 py-1 text-xs shadow-sm">
+                    Add character (A)
+                  </div>
+                )}
+              </div>
 
               {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
                 <Button variant="destructive" size="sm" onClick={onDeleteSelected}><Trash2 className="h-4 w-4" /><span><u>D</u>elete</span></Button>
               )}
 
               {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
-                <Button variant="outline" size="sm" onClick={onDuplicateSelected}><Copy className="h-4 w-4" /><span>Du<u>p</u>licate</span></Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={onDuplicateSelected}><Copy className="h-4 w-4" /><span>Du<u>p</u>licate</span></Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const name = window.prompt('Rename character', selectedChar?.name || '')
+                    if (name !== null && name.trim() !== '') onNameChange(name.trim())
+                  }} title="Rename"><Pencil className="h-4 w-4" /><span className="sr-only">Rename</span></Button>
+                </>
               )}
 
             </div>

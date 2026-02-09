@@ -234,11 +234,18 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
       if (dragRef.current.type === 'char-move' && dragRef.current.hasMoved) {
           if (keyframeMode) {
-            // Commit current characters into keyframes state immediately
-            const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf)
-            setKeyframes(committed)
-            // Now save history with full keyframe objects
-            saveToHistory(characters, committed, activeKeyframeIndex)
+            // Commit current characters into keyframes state immediately, but validate
+            // that no character both moves and toggles visibility relative to previous.
+            const proposedChars = JSON.parse(JSON.stringify(characters)) as Character[]
+            if (validateNoMoveHideConflict(activeKeyframeIndex, proposedChars)) {
+              const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: proposedChars } : kf)
+              setKeyframes(committed)
+              // Now save history with full keyframe objects
+              saveToHistory(characters, committed, activeKeyframeIndex)
+            } else {
+              // Revert characters to the keyframe's stored characters
+              setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
+            }
           } else {
             saveToHistory(characters)
           }
@@ -315,13 +322,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         const sel = characters.find(c => c.id === selectedCharId)
         if (sel) {
           const newVis = !(sel.visible !== false)
-          // Toggle visibility in active keyframe only
-          setKeyframes(prev => prev.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === selectedCharId ? { ...c, visible: newVis } : c) } : kf))
-          setCharacters(prev => prev.map(c => c.id === selectedCharId ? { ...c, visible: newVis } : c))
+          handleUpdateCharVisible(selectedCharId, newVis)
         }
       }
       if ((e.key === 'r' || e.key === 'R') && !keyframeMode) {
         handleToggleReverse()
+      }
+      if ((e.key === 'y' || e.key === 'Y') && keyframeMode) {
+        e.preventDefault()
+        addKeyframe()
       }
       if (e.key === ' ' && keyframeMode) {
         e.preventDefault()
@@ -363,6 +372,30 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     newHistory.push(entry)
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
+  }
+
+  // Validate that a proposed characters array for `index` does not introduce a
+  // conflict where a character both moves and toggles visibility compared to
+  // the previous keyframe. Returns true if valid, false if conflict (and shows toast).
+  function validateNoMoveHideConflict(index: number, proposedChars: Character[]): boolean {
+    if (index <= 0 || keyframes.length === 0) return true
+    const prev = keyframes[index - 1]
+    if (!prev) return true
+
+    const conflicts: string[] = []
+    proposedChars.forEach(pc => {
+      const prevChar = prev.characters.find(c => c.id === pc.id)
+      if (!prevChar) return
+      const moved = prevChar.x !== pc.x || prevChar.y !== pc.y || (prevChar.angle ?? 0) !== (pc.angle ?? 0)
+      const visChanged = (prevChar.visible !== false) !== (pc.visible !== false)
+      if (moved && visChanged) conflicts.push(pc.name || pc.id)
+    })
+
+    if (conflicts.length > 0) {
+      showToast(`Conflicting change: characters cannot both move and toggle visibility in the same keyframe: ${conflicts.join(', ')} — please remove one of the actions.`, 'error')
+      return false
+    }
+    return true
   }
 
   function undo() {
@@ -821,8 +854,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   }
 
   function saveCurrentToActiveKeyframe() {
+    const proposed = JSON.parse(JSON.stringify(characters)) as Character[]
+    if (!validateNoMoveHideConflict(activeKeyframeIndex, proposed)) return
     setKeyframes(prev => prev.map((kf, i) =>
-      i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+      i === activeKeyframeIndex ? { ...kf, characters: proposed } : kf
     ))
   }
 
@@ -1357,28 +1392,27 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     if (!keyframeMode) return;
     // If hiding, propagate invisibility to all subsequent keyframes (from current to end)
     if (visible === false) {
-      setKeyframes(prev => {
-        const updated = prev.map((kf, i) => i >= activeKeyframeIndex
-          ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: false } : c) }
-          : kf
-        )
-        // update local characters to reflect active keyframe
-        setCharacters(JSON.parse(JSON.stringify(updated[activeKeyframeIndex].characters)))
-        return updated
-      })
+      // Build proposed keyframes and validate the active snapshot first
+      const proposed = keyframes.map((kf, i) => i >= activeKeyframeIndex
+        ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: false } : c) }
+        : kf
+      )
+        const proposedActiveChars = JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)) as Character[]
+        if (!validateNoMoveHideConflict(activeKeyframeIndex, proposedActiveChars)) return
+      setKeyframes(proposed)
+      // update local characters to reflect active keyframe
+      setCharacters(JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)))
       // If the currently selected character was hidden, deselect it
       if (selectedCharId === charId) setSelectedCharId(null)
       return
     }
 
     // If showing, only set visible in the active keyframe
-    setKeyframes(prev => {
-      const updated = prev.map((kf, i) =>
-        i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: true } : c) } : kf
-      )
-      setCharacters(JSON.parse(JSON.stringify(updated[activeKeyframeIndex].characters)))
-      return updated
-    })
+    const proposed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: true } : c) } : kf)
+    const proposedActive = JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)) as Character[]
+    if (!validateNoMoveHideConflict(activeKeyframeIndex, proposedActive)) return
+    setKeyframes(proposed)
+    setCharacters(JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)))
   }
 
   // Offstage panel removed — a simple right-side label is rendered instead.
