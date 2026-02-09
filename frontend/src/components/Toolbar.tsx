@@ -5,6 +5,7 @@ import {
   UserPlus, Trash2, Copy, Undo2, Redo2,
   Settings, Save, LogOut, Menu, Film,
   Eye, EyeOff,
+  Info,
   Plus, Play, Square, ChevronLeft, ChevronRight, Pencil
 } from 'lucide-react'
 import ConfigMenu from './ConfigMenu'
@@ -136,9 +137,12 @@ export default function Toolbar({
 
   const [editingKfIndex, setEditingKfIndex] = useState<number | null>(null)
   const [editKfValue, setEditKfValue] = useState('')
+  const [offstageOpenLocal, setOffstageOpenLocal] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   return (
-    <header className="flex flex-col gap-2 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+    <header className="relative flex flex-col gap-2 rounded-lg border border-border bg-white px-4 py-3 shadow-sm">
+      {/* Tooltip is shown under the info icon (rendered next to playback controls) */}
       <div className="flex items-center gap-2">
         {keyframeMode ? (
           <>
@@ -159,6 +163,7 @@ export default function Toolbar({
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onPrev} disabled={isPlaying || activeKeyframeIndex <= 0} title="Previous">
               <ChevronLeft className="h-4 w-4" />
             </Button>
+            {/* Offstage panel removed — Offstage is shown next to the stage box */}
             {/* Visibility toggle (keyframe mode) */}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
               if (!selectedCharId) return
@@ -168,19 +173,60 @@ export default function Toolbar({
               {selectedChar?.visible === false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
             {isPlaying ? (
-              <Button variant="default" size="sm" className="h-8 gap-1" onClick={onStop} title="Stop (Space)">
-                <Square className="h-4 w-4" />
-                <span className="text-xs">Sto<u>p</u></span>
-              </Button>
+              <div>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onStop}
+                  title="Stop (Space)"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              </div>
             ) : (
-              <Button variant="default" size="sm" className="h-8 gap-1" onClick={onPlay} disabled={keyframes.length < 2} title="Play (Space)">
-                <Play className="h-4 w-4" />
-                <span className="text-xs"><u>P</u>lay</span>
-              </Button>
+              <div>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onPlay}
+                  disabled={keyframes.length < 2}
+                  title="Play (Space)"
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+              </div>
             )}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNext} disabled={isPlaying || activeKeyframeIndex >= keyframes.length - 1} title="Next">
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="Shortcuts"
+                onMouseEnter={() => setShowShortcuts(true)}
+                onMouseLeave={() => setShowShortcuts(false)}
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+              {showShortcuts && (
+                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-56 rounded-md border border-border bg-white p-3 text-xs shadow-sm">
+                  <strong className="block text-sm mb-1">Shortcuts</strong>
+                  <div className="leading-tight">Space: Play / Stop</div>
+                  <div className="leading-tight">K: Toggle Keyframe Mode</div>
+                  <div className="leading-tight">A: Add</div>
+                  <div className="leading-tight">D: Delete selected</div>
+                  <div className="leading-tight">P: Duplicate selected</div>
+                  <div className="leading-tight">U: Undo, O: Redo</div>
+                  <div className="leading-tight">V: Toggle visibility (keyframe mode)</div>
+                  <div className="leading-tight">R: Reverse stage</div>
+                  <div className="leading-tight">Esc: Exit / Cancel</div>
+                </div>
+              )}
+            </div>
 
             <div className="mx-1 h-6 w-px bg-border" />
 
@@ -255,10 +301,18 @@ export default function Toolbar({
               Add
             </Button>
 
-            {/* Counter */}
-            <span className="ml-auto text-xs text-muted-foreground">
-              {activeKeyframeIndex + 1} / {keyframes.length}
-            </span>
+            {/* Counter + undo/redo (right side) */}
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {activeKeyframeIndex + 1} / {keyframes.length}
+              </span>
+              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
+                <Redo2 className="h-4 w-4" />
+              </Button>
+            </div>
           </>
         ) : (
           <>
@@ -273,19 +327,26 @@ export default function Toolbar({
                 {addMode ? 'Adding\u2026 (Esc)' : <span><u>A</u>dd</span>}
               </Button>
 
-              {selectedCharId && (
+              {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
                 <Button variant="destructive" size="sm" onClick={onDeleteSelected}>
                   <Trash2 className="h-4 w-4" />
                   <span><u>D</u>elete</span>
                 </Button>
               )}
 
-              {selectedCharId && (
+              {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
                 <Button variant="outline" size="sm" onClick={onDuplicateSelected}>
                   <Copy className="h-4 w-4" />
                   <span>Du<u>p</u>licate</span>
                 </Button>
               )}
+
+              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
+                <Redo2 className="h-4 w-4" />
+              </Button>
 
               <div className="mx-1 h-6 w-px bg-border" />
 
@@ -312,13 +373,11 @@ export default function Toolbar({
             </p>
 
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="sm" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
+              <Button variant="ghost" size="icon" disabled={!canUndo} onClick={onUndo} title="Undo (U)">
                 <Undo2 className="h-4 w-4" />
-                <span><u>U</u>ndo</span>
               </Button>
-              <Button variant="ghost" size="sm" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
+              <Button variant="ghost" size="icon" disabled={!canRedo} onClick={onRedo} title="Redo (O)">
                 <Redo2 className="h-4 w-4" />
-                <span>Red<u>o</u></span>
               </Button>
 
               <div className="mx-1 h-6 w-px bg-border" />
