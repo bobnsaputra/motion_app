@@ -171,6 +171,31 @@ export default function Toolbar(props: ToolbarProps) {
               )}
             </div>
 
+            {/* Global keyframe actions (rename / delete) — placed near Shortcuts */}
+            <div className="flex items-center gap-1">
+              <button
+                className="rounded p-1 hover:bg-accent disabled:opacity-50"
+                onClick={() => {
+                  if (!keyframes || keyframes.length === 0) return
+                  const idx = Math.min(activeKeyframeIndex, keyframes.length - 1)
+                  setEditingKfIndex(idx)
+                  setEditKfValue(keyframes[idx].label)
+                }}
+                disabled={keyframes.length === 0}
+                title="Rename selected keyframe"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button
+                className="rounded p-1 hover:bg-destructive/10 text-destructive disabled:opacity-50"
+                onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
+                disabled={keyframes.length <= 1}
+                title="Delete selected keyframe"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+
             <div className="mx-1 h-6 w-px bg-border flex-shrink-0" />
 
             {/* Compact Horizontal Scroll Area for Keyframes */}
@@ -187,10 +212,7 @@ export default function Toolbar(props: ToolbarProps) {
                         {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
                           <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">{kf.characters.filter(c => c.visible === false).length}</span>
                         )}
-                        <div className="ml-1 hidden gap-0.5 group-hover:flex">
-                          <button className="rounded p-0.5 hover:bg-accent" onClick={(e) => { e.stopPropagation(); setEditingKfIndex(i); setEditKfValue(kf.label) }} title="Rename"><Pencil className="h-3 w-3" /></button>
-                          {keyframes.length > 1 && (<button className="rounded p-0.5 hover:bg-destructive/10 text-destructive" onClick={(e) => { e.stopPropagation(); onDeleteKeyframe(i) }} title="Delete keyframe"><Trash2 className="h-3 w-3" /></button>)}
-                        </div>
+                        {/* icons moved to global controls */}
                       </>
                     )}
                   </div>
