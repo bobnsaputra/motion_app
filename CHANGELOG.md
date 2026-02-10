@@ -6,6 +6,11 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 ## 2026-02-10
+### Layout & Styling
+- 13:45 — **Sidebar Dock**: Added collapsible left sidebar as an overlay (`fixed z-50`) with **yellow-to-white gradient** background and shadow-xl (`StageBlockingApp.tsx`).
+- 13:45 — **Horizontal Toolbar**: Reverted to floating horizontal toolbar at the top with improved spacing (`pt-8`, `pl-12`) (`StageBlockingApp.tsx`).
+- 13:40 — **Shortcuts**: Added `=` as an alternative to `+` for adding keyframes (`StageBlockingApp.tsx`).
+- 13:30 — **Visuals**: Restored yellow-to-white gradient background and updated canvas label typography (Inter font, subtle color) (`styles.css`, `StageBlockingApp.tsx`).
 ### Usability fixes and keybindings
 - 10:05 — Validation: prevent characters from both moving and toggling visibility in the same keyframe; shows toast with instruction "please remove one of the actions." (`StageBlockingApp.tsx`).
 - 10:15 — Changed add-keyframe shortcut to `Y` and added it to the shortcuts help (`StageBlockingApp.tsx`, `Toolbar.tsx`).

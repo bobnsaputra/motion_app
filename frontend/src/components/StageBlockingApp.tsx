@@ -1,8 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Character, Guide, User, Keyframe } from '../types'
-import { PanelLeft } from 'lucide-react'
 import Toolbar from './Toolbar'
-import OffstagePanel from './OffstagePanel'
+import Sidebar from './Sidebar'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
 
@@ -1322,14 +1321,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
   }
 
-  function handleClearAll() {
-    setCharacters([])
-    saveToHistory([])
-    setSelectedCharId(null)
-    setAwaitingDirectionFor(null)
-    setCounter(0)
-  }
-
 
   function handleNameChange(newName: string) {
     if (!selectedCharId) return
@@ -1441,28 +1432,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   return (
     <div className="app">
       {/* Collapsible Sidebar Dock (Overlay) */}
-      <div
-        className={`fixed left-0 top-0 h-screen z-50 flex flex-col border-r border-border/50 bg-white transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-12'
-          }`}
-      >
-        <div className="p-2 flex items-center justify-center border-b border-border/20">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-md hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700 transition-colors"
-            title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-          >
-            <PanelLeft className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Sidebar Content (Hidden when collapsed) */}
-        <div className={`flex-1 overflow-hidden transition-opacity duration-200 ${sidebarOpen ? 'opacity-100' : 'opacity-0 invisible'}`}>
-          <div className="p-4">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Library</p>
-            {/* Future library content here */}
-          </div>
-        </div>
-      </div>
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content Area (Full width, sidebar sits on top) */}
       <div className="flex-1 flex flex-col min-w-0 relative pt-8 pl-12">
