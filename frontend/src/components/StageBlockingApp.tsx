@@ -28,6 +28,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [configMenuOpen, setConfigMenuOpen] = useState(false)
   const [stageReversed, setStageReversed] = useState(false)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
+  const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
 
   type HistoryEntry = { characters: Character[]; keyframes?: Keyframe[]; activeKeyframeIndex?: number }
   const [history, setHistory] = useState<HistoryEntry[]>([{ characters: [] }])
@@ -892,8 +893,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     let currentKfPair = 0
     const totalPairs = kfs.length - 1
     // Separate durations: slower movement interpolation, faster fade for hide/show
-    const msMove = 1200
-    const msFade = 300
+    const msMove = keyframeSpeed
     let startTime: number | null = null
 
     // Start playback from the currently-selected keyframe (no flash)
@@ -928,8 +928,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       const t = Math.max(0, Math.min(pairProgress, 1))
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
-      // compute an independent, faster fade progress for hide/show transitions
-      const fadeT = Math.max(0, Math.min(elapsed / msFade, 1))
+      // Use the same progress for fading as movement
+      const fadeT = t
 
       const fromChars = kfs[currentKfPair].characters
       const toChars = kfs[currentKfPair + 1].characters
@@ -1144,7 +1144,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       defaultShoulderColor,
       keyframes: committedKfs,
       keyframeMode,
-      activeKeyframeIndex
+      activeKeyframeIndex,
+      keyframeSpeed
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
@@ -1399,18 +1400,52 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   // Update visibility for a character in the current keyframe only
   function handleUpdateCharVisible(charId: string, visible: boolean) {
     if (!keyframeMode) return;
-    // If hiding, propagate invisibility to all subsequent keyframes (from current to end)
+    // If hiding, check if character moved in this keyframe.
+    // If it moved, we auto-create a new keyframe for the hide action.
     if (visible === false) {
-      // Build proposed keyframes and validate the active snapshot first
+      let charMovedInThisKf = false
+      if (activeKeyframeIndex > 0) {
+        const prevKf = keyframes[activeKeyframeIndex - 1]
+        const currentKf = keyframes[activeKeyframeIndex]
+        if (prevKf && currentKf) {
+          const prevChar = prevKf.characters.find(c => c.id === charId)
+          const currChar = characters.find(c => c.id === charId) // Use live characters state
+          if (prevChar && currChar) {
+            charMovedInThisKf = prevChar.x !== currChar.x || prevChar.y !== currChar.y || (prevChar.angle ?? 0) !== (currChar.angle ?? 0)
+          }
+        }
+      }
+
+      if (charMovedInThisKf) {
+        // Smart Hide: Create new keyframe and hide there
+        const kf: Keyframe = {
+          id: nextKfId.current++,
+          label: '',
+          characters: characters.map(c => ({
+            ...c,
+            visible: c.id === charId ? false : (c.visible !== false)
+          }))
+        }
+        const newIndex = activeKeyframeIndex + 1
+        const updated = renumberKeyframes([...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)])
+        setKeyframes(updated)
+        setActiveKeyframeIndex(newIndex)
+        setCharacters(JSON.parse(JSON.stringify(kf.characters)))
+        saveToHistory(kf.characters, updated, newIndex)
+
+        const charName = characters.find(c => c.id === charId)?.name || charId
+        showToast(`Created new keyframe to hide ${charName} because they moved here.`, 'warning')
+        if (selectedCharId === charId) setSelectedCharId(null)
+        return
+      }
+
+      // Normal hide propagation logic
       const proposed = keyframes.map((kf, i) => i >= activeKeyframeIndex
         ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: false } : c) }
         : kf
       )
-      const proposedActiveChars = JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)) as Character[]
       setKeyframes(proposed)
-      // update local characters to reflect active keyframe
       setCharacters(JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)))
-      // If the currently selected character was hidden, deselect it
       if (selectedCharId === charId) setSelectedCharId(null)
       return
     }
@@ -1479,6 +1514,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onPrev={goToPrevKeyframe}
           onNext={goToNextKeyframe}
           onUpdateCharVisible={handleUpdateCharVisible}
+          keyframeSpeed={keyframeSpeed}
+          onKeyframeSpeedChange={setKeyframeSpeed}
         />
         <div className="inline-block relative">
           <StageCanvas

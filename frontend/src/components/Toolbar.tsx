@@ -58,6 +58,8 @@ interface ToolbarProps {
   onPrev: () => void
   onNext: () => void
   onUpdateCharVisible: (charId: string, visible: boolean) => void
+  keyframeSpeed: number
+  onKeyframeSpeedChange: (speed: number) => void
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -278,7 +280,7 @@ export default function Toolbar(props: ToolbarProps) {
 
               <div className="relative">
                 <Button variant="ghost" size="icon" onClick={() => setConfigMenuOpen(!configMenuOpen)} title="Configuration"><Settings className="h-4 w-4" /></Button>
-                <ConfigMenu isOpen={configMenuOpen} canvasSize={canvasSize} onCanvasSizeChange={onCanvasSizeChange} selectedCharId={selectedCharId} characters={characters} defaultPersonSize={defaultPersonSize} defaultPersonColor={defaultPersonColor} defaultShoulderColor={defaultShoulderColor} onSizeChange={onSizeChange} onColorChange={onColorChange} stageReversed={stageReversed} onToggleReverse={onToggleReverse} />
+                <ConfigMenu isOpen={configMenuOpen} canvasSize={canvasSize} onCanvasSizeChange={onCanvasSizeChange} selectedCharId={selectedCharId} characters={characters} defaultPersonSize={defaultPersonSize} defaultPersonColor={defaultPersonColor} defaultShoulderColor={defaultShoulderColor} onSizeChange={onSizeChange} onColorChange={onColorChange} stageReversed={stageReversed} onToggleReverse={onToggleReverse} keyframeSpeed={props.keyframeSpeed} onKeyframeSpeedChange={props.onKeyframeSpeedChange} />
               </div>
 
               <div className="relative">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 
-export type ToastType = 'success' | 'error' | 'info'
+export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
 interface Toast {
   id: number
@@ -44,7 +44,8 @@ export default function ToastContainer({ toast }: ToastContainerProps) {
   const colors: Record<ToastType, { bg: string; border: string; text: string }> = {
     success: { bg: '#f0fdf4', border: '#86efac', text: '#166534' },
     error: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
-    info: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' }
+    info: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
+    warning: { bg: '#fffbeb', border: '#fcd34d', text: '#92400e' }
   }
 
   return (
