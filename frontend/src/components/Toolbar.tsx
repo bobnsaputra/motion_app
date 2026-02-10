@@ -60,6 +60,8 @@ interface ToolbarProps {
   onUpdateCharVisible: (charId: string, visible: boolean) => void
   keyframeSpeed: number
   onKeyframeSpeedChange: (speed: number) => void
+  fadeSpeed?: number
+  onFadeSpeedChange?: (speed: number) => void
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -72,7 +74,7 @@ export default function Toolbar(props: ToolbarProps) {
     fileMenuOpen, setFileMenuOpen, onSave, onLoad, onExportJSON, onImportJSON, onExportPNG,
     keyframeMode, onToggleKeyframeMode, keyframes, activeKeyframeIndex, isPlaying,
     onSelectKeyframe, onAddKeyframe, onDeleteKeyframe, onRenameKeyframe, onPlay, onStop, onPrev, onNext,
-    onUpdateCharVisible
+    onUpdateCharVisible, keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
   } = props
 
   const selectedChar = selectedCharId ? characters.find(c => c.id === selectedCharId) : null
@@ -287,7 +289,7 @@ export default function Toolbar(props: ToolbarProps) {
 
               <div className="relative">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setConfigMenuOpen(!configMenuOpen)} title="Configuration"><Settings className="h-4 w-4" /></Button>
-                <ConfigMenu isOpen={configMenuOpen} canvasSize={canvasSize} onCanvasSizeChange={onCanvasSizeChange} selectedCharId={selectedCharId} characters={characters} defaultPersonSize={defaultPersonSize} defaultPersonColor={defaultPersonColor} defaultShoulderColor={defaultShoulderColor} onSizeChange={onSizeChange} onColorChange={onColorChange} stageReversed={stageReversed} onToggleReverse={onToggleReverse} keyframeSpeed={props.keyframeSpeed} onKeyframeSpeedChange={props.onKeyframeSpeedChange} />
+                <ConfigMenu isOpen={configMenuOpen} canvasSize={canvasSize} onCanvasSizeChange={onCanvasSizeChange} selectedCharId={selectedCharId} characters={characters} defaultPersonSize={defaultPersonSize} defaultPersonColor={defaultPersonColor} defaultShoulderColor={defaultShoulderColor} onSizeChange={onSizeChange} onColorChange={onColorChange} stageReversed={stageReversed} onToggleReverse={onToggleReverse} keyframeSpeed={keyframeSpeed} onKeyframeSpeedChange={onKeyframeSpeedChange} fadeSpeed={fadeSpeed} onFadeSpeedChange={onFadeSpeedChange} />
               </div>
 
               <div className="relative">

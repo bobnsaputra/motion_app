@@ -29,6 +29,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [stageReversed, setStageReversed] = useState(false)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
   const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
+  const [fadeSpeed, setFadeSpeed] = useState(1200)
 
   type HistoryEntry = { characters: Character[]; keyframes?: Keyframe[]; activeKeyframeIndex?: number }
   const [history, setHistory] = useState<HistoryEntry[]>([{ characters: [] }])
@@ -892,8 +893,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     let currentKfPair = 0
     const totalPairs = kfs.length - 1
-    // Separate durations: slower movement interpolation, faster fade for hide/show
+    // Separate durations: slower movement interpolation, configurable faster fade for hide/show
     const msMove = keyframeSpeed
+    const msFade = fadeSpeed
     let startTime: number | null = null
 
     // Start playback from the currently-selected keyframe (no flash)
@@ -928,8 +930,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       const t = Math.max(0, Math.min(pairProgress, 1))
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
-      // Use the same progress for fading as movement
-      const fadeT = t
+      // Compute fade progress independently so fadeSpeed can be different from move duration
+      const fadeElapsed = timestamp - startTime
+      const fadeT = Math.max(0, Math.min(fadeElapsed / msFade, 1))
 
       const fromChars = kfs[currentKfPair].characters
       const toChars = kfs[currentKfPair + 1].characters
@@ -1460,7 +1463,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   // Offstage panel removed — a simple right-side label is rendered instead.
 
   return (
-    <div className="app" style={{ maxWidth: canvasSize.width + 'px' }}>
+    <div className="app">
       {/* Collapsible Sidebar Dock (Overlay) */}
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
 
@@ -1516,8 +1519,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onUpdateCharVisible={handleUpdateCharVisible}
           keyframeSpeed={keyframeSpeed}
           onKeyframeSpeedChange={setKeyframeSpeed}
+          fadeSpeed={fadeSpeed}
+          onFadeSpeedChange={setFadeSpeed}
         />
-        <div className="inline-block relative">
+        <div className="inline-block relative" style={{ width: canvasSize.width + 'px' }}>
           <StageCanvas
             canvasRef={canvasRef}
             canvasSize={canvasSize}

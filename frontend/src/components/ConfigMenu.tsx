@@ -27,6 +27,10 @@ interface ConfigMenuProps {
   onColorChange: (head: string, shoulder: string) => void
   stageReversed: boolean
   onToggleReverse: () => void
+  keyframeSpeed?: number
+  onKeyframeSpeedChange?: (speed: number) => void
+  fadeSpeed?: number
+  onFadeSpeedChange?: (speed: number) => void
 }
 
 export default function ConfigMenu({
@@ -42,6 +46,7 @@ export default function ConfigMenu({
   onColorChange,
   stageReversed,
   onToggleReverse
+  , keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -103,6 +108,34 @@ export default function ConfigMenu({
       </div>
 
       <div className="my-3 h-px bg-border" />
+
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Keyframe Timing
+      </h3>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs text-muted-foreground">
+          Move ms
+          <input
+            type="number"
+            min={100}
+            max={5000}
+            value={keyframeSpeed ?? 1200}
+            onChange={(e) => onKeyframeSpeedChange && onKeyframeSpeedChange(Math.max(100, Number(e.target.value) || 1200))}
+            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </label>
+        <label className="text-xs text-muted-foreground">
+          Fade ms
+          <input
+            type="number"
+            min={50}
+            max={3000}
+            value={fadeSpeed ?? 300}
+            onChange={(e) => onFadeSpeedChange && onFadeSpeedChange(Math.max(50, Number(e.target.value) || 300))}
+            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </label>
+      </div>
 
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"><u>R</u>everse Stage</span>
