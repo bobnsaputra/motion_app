@@ -1460,7 +1460,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   // Offstage panel removed — a simple right-side label is rendered instead.
 
   return (
-    <div className="app">
+    <div className="app" style={{ maxWidth: canvasSize.width + 'px' }}>
       {/* Collapsible Sidebar Dock (Overlay) */}
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
 

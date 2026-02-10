@@ -36,14 +36,16 @@ body {
 }
 
 .app {
-  width: 100%;
-  padding: 0;
+  box-sizing: border-box;
+  padding: 0px;
+  margin: 0 auto;
   display: flex;
   flex-direction: row;
   /* Sidebar | Stage */
   align-items: stretch;
   gap: 0;
 }
+
 
 .stage-container {
   flex: 1;
@@ -63,3 +65,56 @@ body {
   display: block;
   border-radius: 8px;
 }
+
+/* Thin, subtle scrollbar for keyframe scrollers */
+.kf-scrollbar {
+  overflow-x: auto;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(15,23,36,0.12) transparent;
+}
+.kf-scrollbar::-webkit-scrollbar {
+  height: 4px; /* smaller horizontal scrollbar */
+}
+.kf-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kf-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15,23,36,0.12);
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.02);
+}
+.kf-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Optional: hide large default outlines while keeping keyboard focus visible */
+.kf-scrollbar:focus {
+  outline: none;
+}
+
+/* Toolbar-specific container to prevent horizontal growth
+   - keeps toolbar fixed within page layout
+   - ensures child row can overflow internally without pushing parent */
+.toolbar-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: visible; /* allow absolute menus to render outside */
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e6e9ee;
+  padding: 12px 16px;
+  z-index: 20;
+}
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Prevent scrollbar from occupying button height by inset negative margin */
+.kf-scrollbar { padding-bottom: 2px; }

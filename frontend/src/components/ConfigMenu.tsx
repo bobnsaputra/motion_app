@@ -27,8 +27,6 @@ interface ConfigMenuProps {
   onColorChange: (head: string, shoulder: string) => void
   stageReversed: boolean
   onToggleReverse: () => void
-  keyframeSpeed: number
-  onKeyframeSpeedChange: (speed: number) => void
 }
 
 export default function ConfigMenu({
@@ -43,9 +41,7 @@ export default function ConfigMenu({
   onSizeChange,
   onColorChange,
   stageReversed,
-  onToggleReverse,
-  keyframeSpeed,
-  onKeyframeSpeedChange
+  onToggleReverse
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -112,12 +108,14 @@ export default function ConfigMenu({
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"><u>R</u>everse Stage</span>
         <button
           onClick={onToggleReverse}
-          className={`relative h-5 w-9 rounded-full transition-colors ${stageReversed ? 'bg-primary' : 'bg-border'
-            }`}
+          className={`relative h-5 w-9 rounded-full transition-colors ${
+            stageReversed ? 'bg-primary' : 'bg-border'
+          }`}
         >
           <span
-            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${stageReversed ? 'translate-x-4' : 'translate-x-0'
-              }`}
+            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              stageReversed ? 'translate-x-4' : 'translate-x-0'
+            }`}
           />
         </button>
       </div>
@@ -156,10 +154,11 @@ export default function ConfigMenu({
               e.preventDefault()
               onColorChange(colorPair.head, colorPair.shoulder)
             }}
-            className={`cursor-pointer rounded border-2 bg-white transition-all hover:scale-110 ${currentColor === colorPair.head
-              ? 'border-foreground shadow-sm'
-              : 'border-border'
-              }`}
+            className={`cursor-pointer rounded border-2 bg-white transition-all hover:scale-110 ${
+              currentColor === colorPair.head
+                ? 'border-foreground shadow-sm'
+                : 'border-border'
+            }`}
           >
             <ellipse cx="18" cy="24" rx="9" ry="5" fill={colorPair.shoulder} />
             <ellipse cx="18" cy="18" rx="6" ry="5" fill={colorPair.head} stroke="#ccc" strokeWidth="1" />
@@ -188,27 +187,6 @@ export default function ConfigMenu({
           />
         </label>
       </div>
-
-      <div className="my-3 h-px bg-border" />
-
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Keyframe Speed (ms)
-      </h3>
-      <label className="text-xs text-muted-foreground">
-        Duration
-        <input
-          type="number"
-          min={100}
-          max={5000}
-          step={50}
-          value={keyframeSpeed}
-          onChange={(e) => {
-            const v = Math.max(100, Math.min(5000, Number(e.target.value) || 1200))
-            onKeyframeSpeedChange(v)
-          }}
-          className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </label>
 
       <div className="my-3 h-px bg-border" />
     </div>

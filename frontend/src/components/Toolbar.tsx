@@ -103,8 +103,8 @@ export default function Toolbar(props: ToolbarProps) {
   }, [selectedCharId])
 
   return (
-    <header className="relative flex flex-col gap-2 rounded-lg border border-border bg-white px-4 py-3 shadow-sm select-none">
-      <div className="flex items-center gap-2">
+    <header className="toolbar-root">
+      <div className="toolbar-row">
         {keyframeMode ? (
           <>
             <Button variant="default" size="sm" onClick={onToggleKeyframeMode} title="Exit Keyframe Mode (Esc)">
@@ -172,7 +172,7 @@ export default function Toolbar(props: ToolbarProps) {
             <div className="mx-1 h-6 w-px bg-border flex-shrink-0" />
 
             {/* Compact Horizontal Scroll Area for Keyframes */}
-            <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent py-1 px-1">
+            <div className="flex-1 min-w-0 flex items-center gap-1 kf-scrollbar py-1 px-1">
               {keyframes.map((kf, i) => (
                 <div key={kf.id} className="flex items-center flex-shrink-0">
                   {i > 0 && <div className="h-px w-3 bg-border" />}
