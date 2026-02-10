@@ -237,18 +237,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
       if (dragRef.current.type === 'char-move' && dragRef.current.hasMoved) {
         if (keyframeMode) {
-          // Commit current characters into keyframes state immediately, but validate
-          // that no character both moves and toggles visibility relative to previous.
           const proposedChars = JSON.parse(JSON.stringify(characters)) as Character[]
-          if (validateNoMoveHideConflict(activeKeyframeIndex, proposedChars)) {
-            const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: proposedChars } : kf)
-            setKeyframes(committed)
-            // Now save history with full keyframe objects
-            saveToHistory(characters, committed, activeKeyframeIndex)
-          } else {
-            // Revert characters to the keyframe's stored characters
-            setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
-          }
+          const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: proposedChars } : kf)
+          setKeyframes(committed)
+          // Now save history with full keyframe objects
+          saveToHistory(characters, committed, activeKeyframeIndex)
         } else {
           saveToHistory(characters)
         }
@@ -377,29 +370,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setHistoryIndex(newHistory.length - 1)
   }
 
-  // Validate that a proposed characters array for `index` does not introduce a
-  // conflict where a character both moves and toggles visibility compared to
-  // the previous keyframe. Returns true if valid, false if conflict (and shows toast).
-  function validateNoMoveHideConflict(index: number, proposedChars: Character[]): boolean {
-    if (index <= 0 || keyframes.length === 0) return true
-    const prev = keyframes[index - 1]
-    if (!prev) return true
 
-    const conflicts: string[] = []
-    proposedChars.forEach(pc => {
-      const prevChar = prev.characters.find(c => c.id === pc.id)
-      if (!prevChar) return
-      const moved = prevChar.x !== pc.x || prevChar.y !== pc.y || (prevChar.angle ?? 0) !== (pc.angle ?? 0)
-      const visChanged = (prevChar.visible !== false) !== (pc.visible !== false)
-      if (moved && visChanged) conflicts.push(pc.name || pc.id)
-    })
-
-    if (conflicts.length > 0) {
-      showToast(`Conflicting change: characters cannot both move and toggle visibility in the same keyframe: ${conflicts.join(', ')} — please remove one of the actions.`, 'error')
-      return false
-    }
-    return true
-  }
 
   function undo() {
     if (historyIndex > 0) {
@@ -856,16 +827,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
   }
 
-  function saveCurrentToActiveKeyframe() {
-    const proposed = JSON.parse(JSON.stringify(characters)) as Character[]
-    if (!validateNoMoveHideConflict(activeKeyframeIndex, proposed)) return
-    setKeyframes(prev => prev.map((kf, i) =>
-      i === activeKeyframeIndex ? { ...kf, characters: proposed } : kf
-    ))
-  }
 
   function addKeyframe() {
-    saveCurrentToActiveKeyframe()
+
     // When adding a keyframe, preserve visibility
     const kf: Keyframe = {
       id: nextKfId.current++,
@@ -916,7 +880,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   function startPlayback() {
     if (keyframes.length < 2) return
-    saveCurrentToActiveKeyframe()
     setIsPlaying(true)
     setSelectedCharId(null)
     setAwaitingDirectionFor(null)
@@ -1133,6 +1096,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const liveTarget = characters.find(c => c.id === charId)
       if (!fromEntry || !liveTarget) { ctx.restore(); return }
 
+      // Skip path if previous state was offstage
+      if (fromEntry.visible === false) { ctx.restore(); return }
+
       const fromPos = fromEntry
       const toPos = { kfIndex: curIdx, x: liveTarget.x, y: liveTarget.y, color: liveTarget.color || '#ffd93d', visible: liveTarget.visible !== false }
 
@@ -1158,27 +1124,89 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     })
   }
 
-  // ── File operations ──
   function saveToLocalStorage() {
+    let committedKfs = keyframes
     if (keyframeMode) {
-      // Commit current characters into keyframes before saving
-      const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : JSON.parse(JSON.stringify(kf))) as Keyframe[]
-      setKeyframes(committed)
-      const state = {
-        characters: JSON.parse(JSON.stringify(characters)),
-        guides,
-        canvasSize,
-        counter,
-        defaultPersonSize,
-        defaultPersonColor,
-        defaultShoulderColor,
-        keyframes: committed,
-        keyframeMode: true,
-        activeKeyframeIndex: activeKeyframeIndex
+      // Commit current characters into the active keyframe before saving
+      committedKfs = keyframes.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+      )
+      setKeyframes(committedKfs)
+    }
+
+    const state = {
+      characters: JSON.parse(JSON.stringify(characters)),
+      guides,
+      canvasSize,
+      counter,
+      defaultPersonSize,
+      defaultPersonColor,
+      defaultShoulderColor,
+      keyframes: committedKfs,
+      keyframeMode,
+      activeKeyframeIndex
+    }
+    localStorage.setItem('stageLayout', JSON.stringify(state))
+    showToast('Layout saved')
+  }
+
+  function loadFromLocalStorage() {
+    const saved = localStorage.getItem('stageLayout')
+    if (saved) {
+      try {
+        const state = JSON.parse(saved)
+        setGuides(state.guides || [])
+        setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
+        setCounter(state.counter || 0)
+        setDefaultPersonSize(state.defaultPersonSize || 1)
+        setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
+        setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
+
+        if (state.keyframes && state.keyframes.length > 0) {
+          const loadedKfs = state.keyframes
+          setKeyframes(loadedKfs)
+
+          let idx = state.activeKeyframeIndex ?? 0
+          if (idx < 0) idx = 0
+          if (idx >= loadedKfs.length) idx = loadedKfs.length - 1
+
+          setActiveKeyframeIndex(idx)
+
+          // Re-calculate nextKfId safely
+          const maxId = Math.max(0, ...loadedKfs.map((kf: Keyframe) => kf.id))
+          nextKfId.current = maxId + 1
+
+          // If it was saved in keyframe mode, restore that mode and character positions
+          if (state.keyframeMode) {
+            setKeyframeMode(true)
+            setCharacters(JSON.parse(JSON.stringify(loadedKfs[idx].characters || [])))
+          } else {
+            setKeyframeMode(false)
+            setCharacters(state.characters || [])
+          }
+        } else {
+          setKeyframes([])
+          setKeyframeMode(false)
+          setCharacters(state.characters || [])
+          nextKfId.current = 1
+        }
+        setSelectedCharId(null)
+        setAwaitingDirectionFor(null)
+        showToast('Layout loaded')
+      } catch (err) {
+        showToast('Failed to load saved layout', 'error')
       }
-      localStorage.setItem('stageLayout', JSON.stringify(state))
-      showToast('Layout saved')
-      return
+    } else {
+      showToast('No saved layout found', 'info')
+    }
+  }
+
+  function exportAsJSON() {
+    let committedKfs = keyframes
+    if (keyframeMode) {
+      committedKfs = keyframes.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+      )
     }
 
     const state = {
@@ -1189,50 +1217,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       defaultPersonSize,
       defaultPersonColor,
       defaultShoulderColor,
-      keyframes: [],
-      keyframeMode: false
-    }
-    localStorage.setItem('stageLayout', JSON.stringify(state))
-    showToast('Layout saved')
-  }
-
-  function loadFromLocalStorage() {
-    const saved = localStorage.getItem('stageLayout')
-    if (saved) {
-      const state = JSON.parse(saved)
-      setGuides(state.guides || [])
-      setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
-      setCounter(state.counter || 0)
-      setDefaultPersonSize(state.defaultPersonSize || 1)
-      setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
-      setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
-      if (state.keyframes && state.keyframes.length > 0) {
-        const idx = state.activeKeyframeIndex ?? 0
-        setKeyframes(state.keyframes)
-        setCharacters(state.keyframes[idx].characters || [])
-        setActiveKeyframeIndex(idx)
-        setKeyframeMode(true)
-        nextKfId.current = Math.max(...state.keyframes.map((kf: Keyframe) => kf.id)) + 1
-      } else {
-        setKeyframes([])
-        setKeyframeMode(false)
-        setCharacters(state.characters || [])
-      }
-      setSelectedCharId(null)
-      setAwaitingDirectionFor(null)
-      showToast('Layout loaded')
-    } else {
-      showToast('No saved layout found', 'error')
-    }
-  }
-
-  function exportAsJSON() {
-    const state = {
-      characters, guides, canvasSize, counter,
-      defaultPersonSize, defaultPersonColor, defaultShoulderColor,
-      keyframes: keyframeMode ? keyframes.map((kf, i) =>
-        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
-      ) : [],
+      keyframes: committedKfs,
       keyframeMode
     }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
@@ -1262,14 +1247,26 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setDefaultPersonSize(state.defaultPersonSize || 1)
             setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
             setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
-            if (state.keyframes && state.keyframes.length > 0) {
+            if (state.keyframes && Array.isArray(state.keyframes) && state.keyframes.length > 0) {
               setKeyframes(state.keyframes)
-              setActiveKeyframeIndex(0)
-              setKeyframeMode(true)
-              nextKfId.current = Math.max(...state.keyframes.map((kf: Keyframe) => kf.id)) + 1
+              const idx = state.activeKeyframeIndex ?? 0
+              setActiveKeyframeIndex(idx)
+
+              const maxId = Math.max(0, ...state.keyframes.map((kf: any) => kf.id))
+              nextKfId.current = maxId + 1
+
+              if (state.keyframeMode) {
+                setKeyframeMode(true)
+                setCharacters(JSON.parse(JSON.stringify(state.keyframes[idx].characters || [])))
+              } else {
+                setKeyframeMode(false)
+                setCharacters(state.characters || [])
+              }
             } else {
               setKeyframes([])
               setKeyframeMode(false)
+              setCharacters(state.characters || [])
+              nextKfId.current = 1
             }
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
@@ -1410,7 +1407,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         : kf
       )
       const proposedActiveChars = JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)) as Character[]
-      if (!validateNoMoveHideConflict(activeKeyframeIndex, proposedActiveChars)) return
       setKeyframes(proposed)
       // update local characters to reflect active keyframe
       setCharacters(JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)))
@@ -1422,7 +1418,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     // If showing, only set visible in the active keyframe
     const proposed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: true } : c) } : kf)
     const proposedActive = JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)) as Character[]
-    if (!validateNoMoveHideConflict(activeKeyframeIndex, proposedActive)) return
     setKeyframes(proposed)
     setCharacters(JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)))
   }
