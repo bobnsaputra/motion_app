@@ -233,22 +233,22 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         }
       }
       if (dragRef.current.type === 'char-move' && dragRef.current.hasMoved) {
-          if (keyframeMode) {
-            // Commit current characters into keyframes state immediately, but validate
-            // that no character both moves and toggles visibility relative to previous.
-            const proposedChars = JSON.parse(JSON.stringify(characters)) as Character[]
-            if (validateNoMoveHideConflict(activeKeyframeIndex, proposedChars)) {
-              const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: proposedChars } : kf)
-              setKeyframes(committed)
-              // Now save history with full keyframe objects
-              saveToHistory(characters, committed, activeKeyframeIndex)
-            } else {
-              // Revert characters to the keyframe's stored characters
-              setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
-            }
+        if (keyframeMode) {
+          // Commit current characters into keyframes state immediately, but validate
+          // that no character both moves and toggles visibility relative to previous.
+          const proposedChars = JSON.parse(JSON.stringify(characters)) as Character[]
+          if (validateNoMoveHideConflict(activeKeyframeIndex, proposedChars)) {
+            const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: proposedChars } : kf)
+            setKeyframes(committed)
+            // Now save history with full keyframe objects
+            saveToHistory(characters, committed, activeKeyframeIndex)
           } else {
-            saveToHistory(characters)
+            // Revert characters to the keyframe's stored characters
+            setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
           }
+        } else {
+          saveToHistory(characters)
+        }
         setSelectedCharId(null)
       }
 
@@ -930,12 +930,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const msFade = 300
     let startTime: number | null = null
 
-      // Start playback from the currently-selected keyframe (no flash)
-      const startIndex = Math.max(0, Math.min(activeKeyframeIndex, kfs.length - 1))
-      kfsRef.current = kfs
-      animPairRef.current = startIndex
-      setActiveKeyframeIndex(startIndex)
-      setCharacters(JSON.parse(JSON.stringify(kfs[startIndex].characters)))
+    // Start playback from the currently-selected keyframe (no flash)
+    const startIndex = Math.max(0, Math.min(activeKeyframeIndex, kfs.length - 1))
+    kfsRef.current = kfs
+    animPairRef.current = startIndex
+    setActiveKeyframeIndex(startIndex)
+    setCharacters(JSON.parse(JSON.stringify(kfs[startIndex].characters)))
 
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
@@ -1414,8 +1414,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ? { ...kf, characters: kf.characters.map(c => c.id === charId ? { ...c, visible: false } : c) }
         : kf
       )
-        const proposedActiveChars = JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)) as Character[]
-        if (!validateNoMoveHideConflict(activeKeyframeIndex, proposedActiveChars)) return
+      const proposedActiveChars = JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)) as Character[]
+      if (!validateNoMoveHideConflict(activeKeyframeIndex, proposedActiveChars)) return
       setKeyframes(proposed)
       // update local characters to reflect active keyframe
       setCharacters(JSON.parse(JSON.stringify(proposed[activeKeyframeIndex].characters)))
@@ -1444,7 +1444,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         awaitingDirectionFor={awaitingDirectionFor}
         onDeleteSelected={handleDeleteSelected}
         onDuplicateSelected={handleDuplicateSelected}
-        
+
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
         onUndo={undo}
@@ -1510,26 +1510,26 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 style={{ userSelect: 'none' }}
               >
                 <svg width="36" height="36" viewBox="0 0 36 36" className="flex-shrink-0">
-                      {(() => {
-                        const s = c.size ?? defaultPersonSize
-                        const shoulderRx = 9 * s
-                        const shoulderRy = 5 * s
-                        const headRx = 6 * s
-                        const headRy = 5 * s
-                        return (
-                          <g>
-                            <ellipse cx="18" cy="24" rx={shoulderRx} ry={shoulderRy} fill={c.shoulderColor || '#ff6b6b'} />
-                            <ellipse cx="18" cy="18" rx={headRx} ry={headRy} fill={c.color || '#ffd93d'} stroke="#ccc" strokeWidth="1" />
-                          </g>
-                        )
-                      })()}
-                    </svg>
+                  {(() => {
+                    const s = c.size ?? defaultPersonSize
+                    const shoulderRx = 9 * s
+                    const shoulderRy = 5 * s
+                    const headRx = 6 * s
+                    const headRy = 5 * s
+                    return (
+                      <g>
+                        <ellipse cx="18" cy="24" rx={shoulderRx} ry={shoulderRy} fill={c.shoulderColor || '#ff6b6b'} />
+                        <ellipse cx="18" cy="18" rx={headRx} ry={headRy} fill={c.color || '#ffd93d'} stroke="#ccc" strokeWidth="1" />
+                      </g>
+                    )
+                  })()}
+                </svg>
                 <div className="text-sm text-foreground">{c.name}</div>
               </div>
             ))}
           </div>
         </div>
-        </div>
+      </div>
       <ToastContainer toast={toast} />
     </div>
   )
