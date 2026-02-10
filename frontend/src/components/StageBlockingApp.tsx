@@ -328,7 +328,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if ((e.key === 'r' || e.key === 'R') && !keyframeMode) {
         handleToggleReverse()
       }
-      if ((e.key === 'y' || e.key === 'Y') && keyframeMode) {
+      if ((e.key === '+') && keyframeMode) {
         e.preventDefault()
         addKeyframe()
       }
@@ -669,14 +669,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     ctx.save()
-    ctx.font = '28px sans-serif'
-    ctx.letterSpacing = '10px'
+    ctx.font = '600 20px "Inter", sans-serif'
+    ctx.letterSpacing = '12px'
     ctx.textAlign = 'center'
-    ctx.fillStyle = '#000'
+    ctx.fillStyle = '#94a3b8' // Zinc 400 for subtle contrast
     const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
     const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
-    ctx.fillText(topLabel, canvas.width / 2, 40)
-    ctx.fillText(bottomLabel, canvas.width / 2, canvas.height - 18)
+    ctx.fillText(topLabel, canvas.width / 2, 50)
+    ctx.fillText(bottomLabel, canvas.width / 2, canvas.height - 25)
     ctx.restore()
 
     drawGuides(ctx)

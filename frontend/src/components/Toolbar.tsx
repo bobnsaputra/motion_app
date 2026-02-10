@@ -152,7 +152,7 @@ export default function Toolbar(props: ToolbarProps) {
                   <div className="leading-tight">P: Duplicate selected</div>
                   <div className="leading-tight">U: Undo, O: Redo</div>
                   <div className="leading-tight">S: Save</div>
-                  <div className="leading-tight">Y: Add keyframe</div>
+                  <div className="leading-tight">+: Add keyframe</div>
                   <div className="leading-tight">V: Toggle visibility (keyframe mode)</div>
                   <div className="leading-tight">R: Reverse stage</div>
                   <div className="leading-tight">Esc: Exit / Cancel</div>
@@ -186,7 +186,7 @@ export default function Toolbar(props: ToolbarProps) {
               ))}
             </div>
 
-            <Button variant="outline" size="icon" className="h-7 w-7 ml-1" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (Y)">
+            <Button variant="outline" size="icon" className="h-7 w-7 ml-1" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)">
               <Plus className="h-3.5 w-3.5" />
             </Button>
 
