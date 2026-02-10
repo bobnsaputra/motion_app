@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
+## 2026-02-10
+### Usability fixes and keybindings
+- 10:05 — Validation: prevent characters from both moving and toggling visibility in the same keyframe; shows toast with instruction "please remove one of the actions." (`StageBlockingApp.tsx`).
+- 10:15 — Changed add-keyframe shortcut to `Y` and added it to the shortcuts help (`StageBlockingApp.tsx`, `Toolbar.tsx`).
+- 10:20 — Added hover tooltip beside the Add Character button and updated Add Keyframe button tooltip to show the `Y` hint (`Toolbar.tsx`).
+- 10:25 — Added a Rename character button next to Duplicate that prompts for a new name (`Toolbar.tsx`).
+- 10:30 — Removed `L: Load` from the shortcuts help tooltip (Load still available via the File menu). (`Toolbar.tsx`).
+
 ## 2026-02-09
 ### Keyframe & Shortcut Polish
 - 15:xx — Keyframe labels simplified from "K1/K2/K3" to just "1/2/3" (`renumberKeyframes` and `toggleKeyframeMode` in `StageBlockingApp.tsx`).
@@ -20,13 +28,7 @@ Entries format:
  - 16:00 — Render hidden characters as a draggable preview during keyframe editing so you can place them while creating keyframes (`StageBlockingApp.tsx`).
  - 16:05 — Fixed runtime ReferenceError in movement-path drawing (`from`/`to` → `fromPos`/`toPos`) and ensured connectors draw from live position while dragging (`StageBlockingApp.tsx`).
 
-## 2026-02-10
-### Usability fixes and keybindings
-- 10:05 — Validation: prevent characters from both moving and toggling visibility in the same keyframe; shows toast with instruction "please remove one of the actions." (`StageBlockingApp.tsx`).
-- 10:15 — Changed add-keyframe shortcut to `Y` and added it to the shortcuts help (`StageBlockingApp.tsx`, `Toolbar.tsx`).
-- 10:20 — Added hover tooltip beside the Add Character button and updated Add Keyframe button tooltip to show the `Y` hint (`Toolbar.tsx`).
-- 10:25 — Added a Rename character button next to Duplicate that prompts for a new name (`Toolbar.tsx`).
-- 10:30 — Removed `L: Load` from the shortcuts help tooltip (Load still available via the File menu). (`Toolbar.tsx`).
+
 
 ## 2026-02-08
 ### Toolbar Revamp

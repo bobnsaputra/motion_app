@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Character, Guide, User, Keyframe } from '../types'
+import { PanelLeft } from 'lucide-react'
 import Toolbar from './Toolbar'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
@@ -12,6 +13,7 @@ interface StageBlockingAppProps {
 export default function StageBlockingApp({ user, onLogout }: StageBlockingAppProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [characters, setCharacters] = useState<Character[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [addMode, setAddMode] = useState(false)
   const [counter, setCounter] = useState(0)
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null)
@@ -328,7 +330,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if ((e.key === 'r' || e.key === 'R') && !keyframeMode) {
         handleToggleReverse()
       }
-      if ((e.key === '+') && keyframeMode) {
+      if ((e.key === '=') && keyframeMode) {
         e.preventDefault()
         addKeyframe()
       }
@@ -1436,101 +1438,128 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   return (
     <div className="app">
-      <Toolbar
-        addMode={addMode}
-        setAddMode={setAddMode}
-        selectedCharId={selectedCharId}
-        characters={characters}
-        awaitingDirectionFor={awaitingDirectionFor}
-        onDeleteSelected={handleDeleteSelected}
-        onDuplicateSelected={handleDuplicateSelected}
+      {/* Collapsible Sidebar Dock (Overlay) */}
+      <div
+        className={`fixed left-0 top-0 h-screen z-50 flex flex-col border-r border-border/50 bg-white transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-64' : 'w-12'
+          }`}
+      >
+        <div className="p-2 flex items-center justify-center border-b border-border/20">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-md hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700 transition-colors"
+            title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+          >
+            <PanelLeft className="w-5 h-5" />
+          </button>
+        </div>
 
-        canUndo={historyIndex > 0}
-        canRedo={historyIndex < history.length - 1}
-        onUndo={undo}
-        onRedo={redo}
-        onNameChange={handleNameChange}
-        user={user}
-        onLogout={onLogout}
-        configMenuOpen={configMenuOpen}
-        setConfigMenuOpen={setConfigMenuOpen}
-        canvasSize={canvasSize}
-        onCanvasSizeChange={setCanvasSize}
-        defaultPersonSize={defaultPersonSize}
-        defaultPersonColor={defaultPersonColor}
-        defaultShoulderColor={defaultShoulderColor}
-        onSizeChange={handleSizeChange}
-        onColorChange={handleColorChange}
-        stageReversed={stageReversed}
-        onToggleReverse={handleToggleReverse}
-        fileMenuOpen={fileMenuOpen}
-        setFileMenuOpen={setFileMenuOpen}
-        onSave={saveToLocalStorage}
-        onLoad={loadFromLocalStorage}
-        onExportJSON={exportAsJSON}
-        onImportJSON={importFromJSON}
-        onExportPNG={exportAsImage}
-        keyframeMode={keyframeMode}
-        onToggleKeyframeMode={toggleKeyframeMode}
-        keyframes={keyframes}
-        activeKeyframeIndex={activeKeyframeIndex}
-        isPlaying={isPlaying}
-        onSelectKeyframe={selectKeyframe}
-        onAddKeyframe={addKeyframe}
-        onDeleteKeyframe={deleteKeyframe}
-        onRenameKeyframe={renameKeyframe}
-        onPlay={startPlayback}
-        onStop={stopPlayback}
-        onPrev={goToPrevKeyframe}
-        onNext={goToNextKeyframe}
-        onUpdateCharVisible={handleUpdateCharVisible}
-      />
-      <div className="inline-block relative">
-        <StageCanvas
-          canvasRef={canvasRef}
-          canvasSize={canvasSize}
-          onClick={handleCanvasClick}
-          onMouseDown={onCanvasMouseDown}
-          onMouseMove={onCanvasMouseMove}
-          onDrop={handleCanvasDrop}
-          onDragOver={handleCanvasDragOver}
-        />
-        <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
-          <div className="text-sm text-muted-foreground">Offstage</div>
-          <div className="mt-2 flex flex-col gap-2 max-w-xs">
-            {(keyframes[activeKeyframeIndex]?.characters ?? []).filter(c => c.visible === false).map((c) => (
-              <div
-                key={c.id}
-                draggable
-                onDragStart={(ev) => {
-                  ev.dataTransfer.setData('text/plain', c.id)
-                  ev.dataTransfer.effectAllowed = 'move'
-                }}
-                className="flex items-center gap-2 rounded px-2 py-1 bg-transparent cursor-grab"
-                style={{ userSelect: 'none' }}
-              >
-                <svg width="36" height="36" viewBox="0 0 36 36" className="flex-shrink-0">
-                  {(() => {
-                    const s = c.size ?? defaultPersonSize
-                    const shoulderRx = 9 * s
-                    const shoulderRy = 5 * s
-                    const headRx = 6 * s
-                    const headRy = 5 * s
-                    return (
-                      <g>
-                        <ellipse cx="18" cy="24" rx={shoulderRx} ry={shoulderRy} fill={c.shoulderColor || '#ff6b6b'} />
-                        <ellipse cx="18" cy="18" rx={headRx} ry={headRy} fill={c.color || '#ffd93d'} stroke="#ccc" strokeWidth="1" />
-                      </g>
-                    )
-                  })()}
-                </svg>
-                <div className="text-sm text-foreground">{c.name}</div>
-              </div>
-            ))}
+        {/* Sidebar Content (Hidden when collapsed) */}
+        <div className={`flex-1 overflow-hidden transition-opacity duration-200 ${sidebarOpen ? 'opacity-100' : 'opacity-0 invisible'}`}>
+          <div className="p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Library</p>
+            {/* Future library content here */}
           </div>
         </div>
       </div>
-      <ToastContainer toast={toast} />
+
+      {/* Main Content Area (Full width, sidebar sits on top) */}
+      <div className="flex-1 flex flex-col min-w-0 relative pt-8 pl-12">
+        <Toolbar
+          addMode={addMode}
+          setAddMode={setAddMode}
+          selectedCharId={selectedCharId}
+          characters={characters}
+          awaitingDirectionFor={awaitingDirectionFor}
+          onDeleteSelected={handleDeleteSelected}
+          onDuplicateSelected={handleDuplicateSelected}
+
+          canUndo={historyIndex > 0}
+          canRedo={historyIndex < history.length - 1}
+          onUndo={undo}
+          onRedo={redo}
+          onNameChange={handleNameChange}
+          user={user}
+          onLogout={onLogout}
+          configMenuOpen={configMenuOpen}
+          setConfigMenuOpen={setConfigMenuOpen}
+          canvasSize={canvasSize}
+          onCanvasSizeChange={setCanvasSize}
+          defaultPersonSize={defaultPersonSize}
+          defaultPersonColor={defaultPersonColor}
+          defaultShoulderColor={defaultShoulderColor}
+          onSizeChange={handleSizeChange}
+          onColorChange={handleColorChange}
+          stageReversed={stageReversed}
+          onToggleReverse={handleToggleReverse}
+          fileMenuOpen={fileMenuOpen}
+          setFileMenuOpen={setFileMenuOpen}
+          onSave={saveToLocalStorage}
+          onLoad={loadFromLocalStorage}
+          onExportJSON={exportAsJSON}
+          onImportJSON={importFromJSON}
+          onExportPNG={exportAsImage}
+          keyframeMode={keyframeMode}
+          onToggleKeyframeMode={toggleKeyframeMode}
+          keyframes={keyframes}
+          activeKeyframeIndex={activeKeyframeIndex}
+          isPlaying={isPlaying}
+          onSelectKeyframe={selectKeyframe}
+          onAddKeyframe={addKeyframe}
+          onDeleteKeyframe={deleteKeyframe}
+          onRenameKeyframe={renameKeyframe}
+          onPlay={startPlayback}
+          onStop={stopPlayback}
+          onPrev={goToPrevKeyframe}
+          onNext={goToNextKeyframe}
+          onUpdateCharVisible={handleUpdateCharVisible}
+        />
+        <div className="inline-block relative">
+          <StageCanvas
+            canvasRef={canvasRef}
+            canvasSize={canvasSize}
+            onClick={handleCanvasClick}
+            onMouseDown={onCanvasMouseDown}
+            onMouseMove={onCanvasMouseMove}
+            onDrop={handleCanvasDrop}
+            onDragOver={handleCanvasDragOver}
+          />
+          <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
+            <div className="text-sm text-muted-foreground">Offstage</div>
+            <div className="mt-2 flex flex-col gap-2 max-w-xs">
+              {(keyframes[activeKeyframeIndex]?.characters ?? []).filter(c => c.visible === false).map((c) => (
+                <div
+                  key={c.id}
+                  draggable
+                  onDragStart={(ev) => {
+                    ev.dataTransfer.setData('text/plain', c.id)
+                    ev.dataTransfer.effectAllowed = 'move'
+                  }}
+                  className="flex items-center gap-2 rounded px-2 py-1 bg-transparent cursor-grab"
+                  style={{ userSelect: 'none' }}
+                >
+                  <svg width="36" height="36" viewBox="0 0 36 36" className="flex-shrink-0">
+                    {(() => {
+                      const s = c.size ?? defaultPersonSize
+                      const shoulderRx = 9 * s
+                      const shoulderRy = 5 * s
+                      const headRx = 6 * s
+                      const headRy = 5 * s
+                      return (
+                        <g>
+                          <ellipse cx="18" cy="24" rx={shoulderRx} ry={shoulderRy} fill={c.shoulderColor || '#ff6b6b'} />
+                          <ellipse cx="18" cy="18" rx={headRx} ry={headRy} fill={c.color || '#ffd93d'} stroke="#ccc" strokeWidth="1" />
+                        </g>
+                      )
+                    })()}
+                  </svg>
+                  <div className="text-sm text-foreground">{c.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <ToastContainer toast={toast} />
+      </div>
     </div>
   )
 }
