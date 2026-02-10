@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Character, Guide, User, Keyframe } from '../types'
 import { PanelLeft } from 'lucide-react'
 import Toolbar from './Toolbar'
+import OffstagePanel from './OffstagePanel'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
 
@@ -48,6 +49,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [fadeProgress, setFadeProgress] = useState<number | null>(null) // 0-1 faster fade for hide/show
   const animFrameRef = useRef<number | null>(null)
   const nextKfId = useRef(1)
+  const [offstageOpen, setOffstageOpen] = useState(false)
   const kfsRef = useRef<Keyframe[] | null>(null)
   const animPairRef = useRef(0)
 

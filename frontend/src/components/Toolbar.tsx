@@ -137,6 +137,32 @@ export default function Toolbar(props: ToolbarProps) {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNext} disabled={isPlaying || activeKeyframeIndex >= keyframes.length - 1} title="Next">
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="Shortcuts"
+                onMouseEnter={() => setShowShortcuts(true)}
+                onMouseLeave={() => setShowShortcuts(false)}
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+              {showShortcuts && (
+                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-56 rounded-md border border-border bg-white p-3 text-xs shadow-sm">
+                  <strong className="block text-sm mb-1">Shortcuts</strong>
+                  <div className="leading-tight">Space: Play / Stop</div>
+                  <div className="leading-tight">K: Toggle Keyframe Mode</div>
+                  <div className="leading-tight">A: Add</div>
+                  <div className="leading-tight">D: Delete selected</div>
+                  <div className="leading-tight">P: Duplicate selected</div>
+                  <div className="leading-tight">U: Undo, O: Redo</div>
+                  <div className="leading-tight">V: Toggle visibility (keyframe mode)</div>
+                  <div className="leading-tight">R: Reverse stage</div>
+                  <div className="leading-tight">Esc: Exit / Cancel</div>
+                </div>
+              )}
+            </div>
 
             <div className="relative">
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Shortcuts" onMouseEnter={() => setShowShortcuts(true)} onMouseLeave={() => setShowShortcuts(false)}>
