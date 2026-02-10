@@ -105,7 +105,7 @@ export default function Toolbar(props: ToolbarProps) {
   }, [selectedCharId])
 
   return (
-    <header className="toolbar-root">
+    <header className="toolbar-root toolbar">
       <div className="toolbar-row">
         {keyframeMode ? (
           <>

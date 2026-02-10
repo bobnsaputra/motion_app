@@ -101,7 +101,7 @@ body {
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  max-width: 100%;
+  max-width:  var(--app-max-width, 1600px);
   box-sizing: border-box;
   overflow: visible; /* allow absolute menus to render outside */
   border-radius: 8px;
@@ -115,6 +115,12 @@ body {
   align-items: center;
   gap: 10px;
   width: 100%;
+}
+
+/* Constrain toolbar visual width and hide overflow that was expanding layout */
+.toolbar {
+  max-width: var(--app-max-width, 1600px);
+  overflow: hidden;
 }
 
 /* Allow the visual blocker element to exist but not intercept stage clicks */
