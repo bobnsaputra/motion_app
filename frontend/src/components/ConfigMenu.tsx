@@ -136,6 +136,7 @@ export default function ConfigMenu({
           />
         </label>
       </div>
+      <div className="my-3 h-px bg-border" />
 
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"><u>R</u>everse Stage</span>

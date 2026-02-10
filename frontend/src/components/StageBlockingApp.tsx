@@ -902,7 +902,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const startIndex = Math.max(0, Math.min(activeKeyframeIndex, kfs.length - 1))
     kfsRef.current = kfs
     animPairRef.current = startIndex
-    setActiveKeyframeIndex(startIndex)
+    // Show the "to" frame index in the UI so the beginning appears as the second one
+    setActiveKeyframeIndex(Math.min(startIndex + 1, kfs.length - 1))
     setCharacters(JSON.parse(JSON.stringify(kfs[startIndex].characters)))
 
     function animate(timestamp: number) {
@@ -971,7 +972,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       })
 
       setCharacters(interpolated)
-      setActiveKeyframeIndex(currentKfPair)
+      // Display the target keyframe (current pair + 1) during interpolation
+      setActiveKeyframeIndex(Math.min(currentKfPair + 1, kfs.length - 1))
       animPairRef.current = currentKfPair
       setAnimationProgress(eased)
       setFadeProgress(fadeT)
