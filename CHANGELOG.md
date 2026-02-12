@@ -108,3 +108,15 @@ Entries format:
 - 16:xx — Added `Escape` key to cancel add-mode in `src/App.tsx`.
 - 16:xx — Removed hover-facing behavior from `src/App.tsx` so adding characters isn't interrupted.
 - 16:00 — Initial features: 2D canvas stage, add characters, draggable guides (move/handles), canvas resize controls, character labels and selection.
+
+## 2026-02-12
+### Fixes & Small UX Improvements
+- 09:10 — **Toolbar blocker**: Prevent toolbar overlay from intercepting canvas clicks by making `.toolbar-blocker` non-blocking; restores character clickability (`styles.css`, `Toolbar.tsx`).
+- 09:12 — **Type/props**: Fixed `keyframeSpeed`/`onKeyframeSpeedChange` prop usage in `Toolbar.tsx` to remove IDE/TS errors (`Toolbar.tsx`).
+- 09:20 — **Scrollbar**: Thinned keyframe horizontal scrollbar for a subtler appearance (`styles.css`).
+- 09:25 — **Fade timing**: Added `fadeSpeed` configuration (Config menu + state) and used it for independent fade timing during keyframe playback (`ConfigMenu.tsx`, `StageBlockingApp.tsx`).
+- 09:35 — **Playback UX**: Playback now displays the target keyframe during transitions (UI highlights the "to" frame so the beginning appears as the second frame) and starts animating from the selected keyframe (`StageBlockingApp.tsx`).
+- 09:40 — **Prev/Next buttons**: Reduced padding/size for the Prev/Next toolbar buttons to tighten spacing (`Toolbar.tsx`).
+- 09:45 — **Keyframe controls**: Removed per-keyframe hover icons; added global Rename/Delete controls next to Shortcuts and disabled them appropriately when no keyframe or only one keyframe exists (`Toolbar.tsx`).
+- 09:50 — **Toolbar layout**: Constrained toolbar width with a `.toolbar` rule and applied `overflow:hidden` so it no longer expands the page; menus remain absolute so they render above (`styles.css`, `Toolbar.tsx`).
+
