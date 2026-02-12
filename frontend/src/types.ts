@@ -29,4 +29,5 @@ export type Keyframe = {
   id: number
   label: string
   characters: Character[] // snapshot of all characters at this keyframe, with per-keyframe visibility
+  linkedTo?: number // optional index of another keyframe this one is linked to (follows that keyframe until edited)
 }
