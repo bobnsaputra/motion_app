@@ -8,8 +8,27 @@ import {
   Info,
   Plus, Play, Square, ChevronLeft, ChevronRight, Pencil
 } from 'lucide-react'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import ConfigMenu from './ConfigMenu'
 import FileMenu from './FileMenu'
+
+function SceneNameEditor({ sceneIndex, sceneName, onRename, disabled }: { sceneIndex: number; sceneName?: string; onRename?: (name: string) => void; disabled?: boolean }) {
+  const defaultName = `Scene ${sceneIndex + 1}`
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(sceneName ?? defaultName)
+  useEffect(() => {
+    setValue(sceneName ?? defaultName)
+  }, [sceneIndex, sceneName])
+  return (
+    <div>
+      {editing ? (
+        <input autoFocus className="w-24 text-sm rounded border px-1 py-0.5" value={value} onChange={(e) => setValue(e.target.value)} onBlur={() => { setEditing(false); if (value.trim() && onRename) onRename(value.trim()) }} onKeyDown={(e) => { if (e.key === 'Enter') { setEditing(false); if (value.trim() && onRename) onRename(value.trim()) } if (e.key === 'Escape') { setEditing(false); setValue(sceneName ?? defaultName) } }} disabled={disabled} />
+      ) : (
+        <button className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded" onClick={() => !disabled && setEditing(true)} title="Rename scene">{sceneName ?? defaultName}</button>
+      )}
+    </div>
+  )
+}
 
 interface ToolbarProps {
   addMode: boolean
@@ -58,6 +77,13 @@ interface ToolbarProps {
   onPrev: () => void
   onNext: () => void
   onUpdateCharVisible: (charId: string, visible: boolean) => void
+  sceneIndex?: number
+  sceneSize?: number
+  onPrevScene?: () => void
+  onNextScene?: () => void
+  sceneName?: string
+  onRenameScene?: (name: string) => void
+  onCreateScene?: () => void
   keyframeSpeed: number
   onKeyframeSpeedChange: (speed: number) => void
   fadeSpeed?: number
@@ -114,11 +140,7 @@ export default function Toolbar(props: ToolbarProps) {
               Keyframes (Esc)
             </Button>
 
-            <div className="mx-1 h-6 w-px bg-border" />
-
-            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onPrev} disabled={isPlaying || activeKeyframeIndex <= 0} title="Previous">
-              <ChevronLeft className="h-3 w-3" />
-            </Button>
+            <div className="h-6 w-px bg-border" />
 
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
               if (!selectedCharId) return
@@ -138,10 +160,6 @@ export default function Toolbar(props: ToolbarProps) {
               </Button>
             )}
 
-            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onNext} disabled={isPlaying || activeKeyframeIndex >= keyframes.length - 1} title="Next">
-              <ChevronRight className="h-3 w-3" />
-            </Button>
-
             <div className="relative">
               <Button
                 variant="ghost"
@@ -154,7 +172,7 @@ export default function Toolbar(props: ToolbarProps) {
                 <Info className="h-4 w-4" />
               </Button>
               {showShortcuts && (
-                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-56 rounded-md border border-border bg-white p-3 text-xs shadow-sm">
+                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-56 rounded-md border border-border bg-white text-xs shadow-sm">
                   <strong className="block text-sm mb-1">Shortcuts</strong>
                   <div className="leading-tight">Space: Play / Stop</div>
                   <div className="leading-tight">K: Toggle Keyframe Mode</div>
@@ -174,7 +192,7 @@ export default function Toolbar(props: ToolbarProps) {
             {/* Global keyframe actions (rename / delete) — placed near Shortcuts */}
             <div className="flex items-center gap-1">
               <button
-                className="rounded p-1 hover:bg-accent disabled:opacity-50"
+                className="rounded hover:bg-accent disabled:opacity-50"
                 onClick={() => {
                   if (!keyframes || keyframes.length === 0) return
                   const idx = Math.min(activeKeyframeIndex, keyframes.length - 1)
@@ -196,35 +214,75 @@ export default function Toolbar(props: ToolbarProps) {
               </button>
             </div>
 
-            <div className="mx-1 h-6 w-px bg-border flex-shrink-0" />
+            <div className="h-6 w-px bg-border flex-shrink-0" />
 
-            {/* Compact Horizontal Scroll Area for Keyframes */}
-            <div className="flex-1 min-w-0 flex items-center gap-1 kf-scrollbar py-1 px-1">
-              {keyframes.map((kf, i) => (
-                <div key={kf.id} className="flex items-center flex-shrink-0">
-                  {i > 0 && <div className="h-px w-3 bg-border" />}
-                  <div className={`group relative flex items-center rounded border px-2 py-0.5 text-xs cursor-pointer transition-colors ${i === activeKeyframeIndex ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-background text-muted-foreground hover:bg-accent'}`} onClick={() => !isPlaying && onSelectKeyframe(i)}>
-                    {editingKfIndex === i ? (
-                      <input autoFocus className="w-16 bg-transparent text-xs outline-none" value={editKfValue} onChange={(e) => setEditKfValue(e.target.value)} onBlur={() => { if (editKfValue.trim()) onRenameKeyframe(i, editKfValue.trim()); setEditingKfIndex(null) }} onKeyDown={(e) => { if (e.key === 'Enter') { if (editKfValue.trim()) onRenameKeyframe(i, editKfValue.trim()); setEditingKfIndex(null) } if (e.key === 'Escape') setEditingKfIndex(null) }} onClick={(e) => e.stopPropagation()} />
-                    ) : (
-                      <>
-                        <span>{kf.label}</span>
-                        {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
-                          <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">{kf.characters.filter(c => c.visible === false).length}</span>
-                        )}
-                        {/* icons moved to global controls */}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+            {/* Up then Left controls adjacent to keyframe chips */}
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onPrevScene && props.onPrevScene()} disabled={typeof props.sceneIndex === 'undefined' || props.sceneIndex <= 0 || isPlaying} title="Previous Scene">
+                <ChevronUp className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onPrev && onPrev()} disabled={isPlaying || activeKeyframeIndex <= 0} title="Previous">
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
             </div>
 
-            <Button variant="outline" size="icon" className="h-6 w-6 ml-1 flex-shrink-0" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)">
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
+            {/* Scene name (inline editable) - condensed */}
+            <div className="flex items-center gap-0.5">
+              <SceneNameEditor sceneIndex={props.sceneIndex ?? 0} sceneName={props.sceneName} onRename={(name: string) => props.onRenameScene && props.onRenameScene(name)} disabled={isPlaying} />
+            </div>
 
-            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            {/* Compact Horizontal Scroll Area for Keyframes (only show current scene/page) */}
+            <div className="flex-1 min-w-0 flex items-center gap-1 kf-scrollbar py-1 px-1">
+              {(() => {
+                const sIndex = props.sceneIndex ?? 0
+                const sSize = props.sceneSize ?? 10
+                const start = sIndex * sSize
+                const visible = keyframes.slice(start, start + sSize)
+                return visible.map((kf, i) => {
+                  const globalIdx = start + i
+                  return (
+                    <div key={kf.id} className="flex items-center flex-shrink-0">
+                      {i > 0 && <div className="h-px w-3 bg-border" />}
+                      <div className={`group relative flex items-center rounded border px-2 py-0.5 text-xs cursor-pointer transition-colors ${globalIdx === activeKeyframeIndex ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-background text-muted-foreground hover:bg-accent'}`} onClick={() => !isPlaying && onSelectKeyframe(globalIdx)}>
+                        {editingKfIndex === globalIdx ? (
+                          <input autoFocus className="w-16 bg-transparent text-xs outline-none" value={editKfValue} onChange={(e) => setEditKfValue(e.target.value)} onBlur={() => { if (editKfValue.trim()) onRenameKeyframe(globalIdx, editKfValue.trim()); setEditingKfIndex(null) }} onKeyDown={(e) => { if (e.key === 'Enter') { if (editKfValue.trim()) onRenameKeyframe(globalIdx, editKfValue.trim()); setEditingKfIndex(null) } if (e.key === 'Escape') setEditingKfIndex(null) }} onClick={(e) => e.stopPropagation()} />
+                        ) : (
+                          <>
+                            <span>{kf.label}</span>
+                            {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
+                              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">{kf.characters.filter(c => c.visible === false).length}</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+                })()}
+
+              {/* Add button immediately after last visible keyframe (inside scroll area) */}
+              <div className="flex items-center flex-shrink-0">
+                <button className="rounded p-1 hover:bg-accent/10" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)" aria-label="Add keyframe">
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+            </div>
+
+            {/* Right controls adjacent to keyframe chips */}
+            <div className="flex items-center gap-1 ml-2">
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onNext && onNext()} disabled={isPlaying || activeKeyframeIndex >= keyframes.length - 1} title="Next">
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onNextScene && props.onNextScene()} disabled={typeof props.sceneIndex === 'undefined' || typeof props.sceneSize === 'undefined' || (props.sceneIndex >= Math.floor((keyframes.length - 1) / props.sceneSize))} title="Next Scene">
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+              {/* New Scene button placed at the far-right; shows hover title */}
+              <button title="Create new scene" onClick={() => props.onCreateScene && props.onCreateScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-accent/10 ml-1">
+                <Plus className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-[10px] text-muted-foreground tabular-nums">{activeKeyframeIndex + 1}/{keyframes.length}</span>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canRedo} onClick={onRedo} title="Redo (O)"><Redo2 className="h-4 w-4" /></Button>

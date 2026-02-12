@@ -45,6 +45,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [keyframeMode, setKeyframeMode] = useState(false)
   const [keyframes, setKeyframes] = useState<Keyframe[]>([])
   const [activeKeyframeIndex, setActiveKeyframeIndex] = useState(0)
+  const [sceneIndex, setSceneIndex] = useState(0)
+  const [sceneSize, setSceneSize] = useState(10)
+  const [sceneNames, setSceneNames] = useState<string[]>([]) // per-scene optional names
   const [isPlaying, setIsPlaying] = useState(false)
   const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback (movement easing)
   const [fadeProgress, setFadeProgress] = useState<number | null>(null) // 0-1 faster fade for hide/show
@@ -333,6 +336,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if (e.key === ' ' && keyframeMode) {
         e.preventDefault()
         if (isPlaying) { stopPlayback() } else { startPlayback() }
+      }
+      if ((e.key === 'ArrowDown') && keyframeMode) {
+        e.preventDefault()
+        nextScene()
+      }
+      if ((e.key === 'ArrowUp') && keyframeMode) {
+        e.preventDefault()
+        prevScene()
       }
       // 'b' shortcut for offstage removed (offstage panel replaced by label)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
@@ -827,6 +838,51 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       saveToHistory(characters, committed, activeKeyframeIndex)
       setKeyframeMode(false)
     }
+  }
+
+  // Scene navigation helpers
+  const totalScenes = Math.max(1, Math.ceil(keyframes.length / Math.max(1, sceneSize)))
+  function prevScene() {
+    setSceneIndex((s) => Math.max(0, s - 1))
+  }
+  function nextScene() {
+    setSceneIndex((s) => Math.min(totalScenes - 1, s + 1))
+  }
+  function renameScene(idx: number, name: string) {
+    setSceneNames((prev) => {
+      const copy = prev.slice()
+      copy[idx] = name
+      return copy
+    })
+  }
+
+  function createNewScene() {
+    // Commit current state to history
+    saveToHistory(characters, keyframes, activeKeyframeIndex)
+
+    // Create a new scene containing a single keyframe where every character is offstage
+    const offstage = characters.map(c => ({ ...c, visible: false }))
+    const newKf = { id: nextKfId.current++, label: '1', characters: JSON.parse(JSON.stringify(offstage)) }
+    const next = [...keyframes, newKf]
+    setKeyframes(next)
+
+    // Open the new scene: show only the new keyframe snapshot (characters offstage)
+    setCharacters(JSON.parse(JSON.stringify(offstage)))
+    const newIndex = next.length - 1
+    setActiveKeyframeIndex(newIndex)
+
+    const newTotal = Math.max(1, Math.ceil(next.length / Math.max(1, sceneSize)))
+    setSceneIndex(newTotal - 1)
+
+    // Ensure the scene has a default name like "Scene N"
+    setSceneNames(prev => {
+      const copy = prev.slice()
+      copy[newTotal - 1] = copy[newTotal - 1] || `Scene ${newTotal}`
+      return copy
+    })
+
+    // Save the new, cleared scene to history
+    saveToHistory(offstage, next, newIndex)
   }
 
 
@@ -1509,6 +1565,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onToggleKeyframeMode={toggleKeyframeMode}
           keyframes={keyframes}
           activeKeyframeIndex={activeKeyframeIndex}
+          sceneIndex={sceneIndex}
+          sceneSize={sceneSize}
+          onPrevScene={prevScene}
+          onNextScene={nextScene}
+          sceneName={sceneNames[sceneIndex]}
+          onRenameScene={(name) => renameScene(sceneIndex, name)}
+          onCreateScene={createNewScene}
           isPlaying={isPlaying}
           onSelectKeyframe={selectKeyframe}
           onAddKeyframe={addKeyframe}
