@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
+## 2026-02-13
+### Scenes, Persistence & UX
+- 10:10 — **Scenes**: Added scene model with `sceneBoundaries`, `sceneNames`, and `sceneIndex`. `New Scene` now saves prior scenes and starts a new scene with a first offstage keyframe and a second keyframe that is initially linked-to the first. (`StageBlockingApp.tsx`, `types.ts`)
+- 10:15 — **Persistence**: Save/Load/Export/Import now persist scene metadata while remaining backward-compatible with legacy flat saves. (`StageBlockingApp.tsx`)
+- 10:20 — **Playback**: Scene playback is isolated — animations and interpolation run only within the active scene and start at the scene's first keyframe (no cross-scene interpolation). (`StageBlockingApp.tsx`)
+- 10:25 — **Drawing & Paths**: Movement connectors and path drawing are constrained to scene boundaries; connectors won't draw across scenes. (`StageBlockingApp.tsx`)
+- 10:30 — **Linked keyframes**: The second keyframe in a new scene follows the first until edited; selecting a linked keyframe unlinks it to allow independent edits. (`types.ts`, `StageBlockingApp.tsx`)
+- 10:35 — **Toolbar UX**: Added the Add (+) button inside the keyframe strip, enabled inline keyframe rename by clicking a chip, inline scene rename, and a delete-scene button (with guard preventing deletion of Scene 1). Prev/Next navigation now wraps within the current scene. (`Toolbar.tsx`, `StageBlockingApp.tsx`, `styles.css`)
+- 10:40 — **Misc fixes**: Fixed popover clipping by making toolbar overflow visible so menus render properly. (`styles.css`, `FileMenu.tsx`, `ConfigMenu.tsx`)
+
 ## 2026-02-10
 ### Layout & Styling
 - 13:45 — **Sidebar Dock**: Added collapsible left sidebar as an overlay (`fixed z-50`) with **yellow-to-white gradient** background and shadow-xl (`StageBlockingApp.tsx`).

@@ -79,11 +79,14 @@ interface ToolbarProps {
   onUpdateCharVisible: (charId: string, visible: boolean) => void
   sceneIndex?: number
   sceneSize?: number
+  sceneStart?: number
+  sceneLength?: number
   onPrevScene?: () => void
   onNextScene?: () => void
   sceneName?: string
   onRenameScene?: (name: string) => void
   onCreateScene?: () => void
+  onDeleteScene?: () => void
   keyframeSpeed: number
   onKeyframeSpeedChange: (speed: number) => void
   fadeSpeed?: number
@@ -192,19 +195,6 @@ export default function Toolbar(props: ToolbarProps) {
             {/* Global keyframe actions (rename / delete) — placed near Shortcuts */}
             <div className="flex items-center gap-1">
               <button
-                className="rounded hover:bg-accent disabled:opacity-50"
-                onClick={() => {
-                  if (!keyframes || keyframes.length === 0) return
-                  const idx = Math.min(activeKeyframeIndex, keyframes.length - 1)
-                  setEditingKfIndex(idx)
-                  setEditKfValue(keyframes[idx].label)
-                }}
-                disabled={keyframes.length === 0}
-                title="Rename selected keyframe"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-              <button
                 className="rounded p-1 hover:bg-destructive/10 text-destructive disabled:opacity-50"
                 onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
                 disabled={keyframes.length <= 1}
@@ -218,10 +208,10 @@ export default function Toolbar(props: ToolbarProps) {
 
             {/* Up then Left controls adjacent to keyframe chips */}
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onPrevScene && props.onPrevScene()} disabled={typeof props.sceneIndex === 'undefined' || props.sceneIndex <= 0 || isPlaying} title="Previous Scene">
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onPrevScene && props.onPrevScene()} disabled={typeof props.sceneIndex === 'undefined' || isPlaying} title="Previous Scene">
                 <ChevronUp className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onPrev && onPrev()} disabled={isPlaying || activeKeyframeIndex <= 0} title="Previous">
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onPrev && onPrev()} disabled={isPlaying || (props.sceneLength ?? keyframes.length) <= 1} title="Previous">
                 <ChevronLeft className="h-3 w-3" />
               </Button>
             </div>
@@ -236,19 +226,20 @@ export default function Toolbar(props: ToolbarProps) {
               {(() => {
                 const sIndex = props.sceneIndex ?? 0
                 const sSize = props.sceneSize ?? 10
-                const start = sIndex * sSize
-                const visible = keyframes.slice(start, start + sSize)
+                const start = props.sceneStart ?? (sIndex * sSize)
+                const length = props.sceneLength ?? sSize
+                const visible = keyframes.slice(start, start + length)
                 return visible.map((kf, i) => {
                   const globalIdx = start + i
                   return (
                     <div key={kf.id} className="flex items-center flex-shrink-0">
                       {i > 0 && <div className="h-px w-3 bg-border" />}
                       <div className={`group relative flex items-center rounded border px-2 py-0.5 text-xs cursor-pointer transition-colors ${globalIdx === activeKeyframeIndex ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-background text-muted-foreground hover:bg-accent'}`} onClick={() => !isPlaying && onSelectKeyframe(globalIdx)}>
-                        {editingKfIndex === globalIdx ? (
+                          {editingKfIndex === globalIdx ? (
                           <input autoFocus className="w-16 bg-transparent text-xs outline-none" value={editKfValue} onChange={(e) => setEditKfValue(e.target.value)} onBlur={() => { if (editKfValue.trim()) onRenameKeyframe(globalIdx, editKfValue.trim()); setEditingKfIndex(null) }} onKeyDown={(e) => { if (e.key === 'Enter') { if (editKfValue.trim()) onRenameKeyframe(globalIdx, editKfValue.trim()); setEditingKfIndex(null) } if (e.key === 'Escape') setEditingKfIndex(null) }} onClick={(e) => e.stopPropagation()} />
                         ) : (
                           <>
-                            <span>{kf.label}</span>
+                            <button className="text-left" onClick={(e) => { e.stopPropagation(); setEditingKfIndex(globalIdx); setEditKfValue(kf.label) }}>{kf.label}</button>
                             {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
                               <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">{kf.characters.filter(c => c.visible === false).length}</span>
                             )}
@@ -271,19 +262,28 @@ export default function Toolbar(props: ToolbarProps) {
 
             {/* Right controls adjacent to keyframe chips */}
             <div className="flex items-center gap-1 ml-2">
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onNext && onNext()} disabled={isPlaying || activeKeyframeIndex >= keyframes.length - 1} title="Next">
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onNext && onNext()} disabled={isPlaying || (props.sceneLength ?? keyframes.length) <= 1} title="Next">
                 <ChevronRight className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onNextScene && props.onNextScene()} disabled={typeof props.sceneIndex === 'undefined' || typeof props.sceneSize === 'undefined' || (props.sceneIndex >= Math.floor((keyframes.length - 1) / props.sceneSize))} title="Next Scene">
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onNextScene && props.onNextScene()} disabled={typeof props.sceneIndex === 'undefined' || isPlaying} title="Next Scene">
                 <ChevronDown className="h-3 w-3" />
               </Button>
               {/* New Scene button placed at the far-right; shows hover title */}
               <button title="Create new scene" onClick={() => props.onCreateScene && props.onCreateScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-accent/10 ml-1">
                 <Plus className="h-3 w-3 text-muted-foreground" />
               </button>
+              <button title="Delete current scene" onClick={() => props.onDeleteScene && props.onDeleteScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-destructive/10 ml-1 text-destructive">
+                <Trash2 className="h-3 w-3" />
+              </button>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[10px] text-muted-foreground tabular-nums">{activeKeyframeIndex + 1}/{keyframes.length}</span>
+              {(() => {
+                const start = props.sceneStart ?? 0
+                const length = props.sceneLength ?? keyframes.length
+                const activeInScene = Math.max(1, Math.min(length, activeKeyframeIndex - start + 1))
+                const totalInScene = Math.max(1, Math.min(length, keyframes.length - start))
+                return <span className="text-[10px] text-muted-foreground tabular-nums">{activeInScene}/{totalInScene}</span>
+              })()}
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canRedo} onClick={onRedo} title="Redo (O)"><Redo2 className="h-4 w-4" /></Button>
             </div>

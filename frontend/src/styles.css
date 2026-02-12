@@ -117,10 +117,10 @@ body {
   width: 100%;
 }
 
-/* Constrain toolbar visual width and hide overflow that was expanding layout */
+/* Constrain toolbar visual width; allow overflow so popovers are visible */
 .toolbar {
   max-width: var(--app-max-width, 1600px);
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Allow the visual blocker element to exist but not intercept stage clicks */
