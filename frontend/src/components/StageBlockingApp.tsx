@@ -1711,8 +1711,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
 
       {/* Main Content Area (Full width, sidebar sits on top) */}
-      <div className="flex-1 flex flex-col min-w-0 relative pt-8 pl-12">
-        <Toolbar
+      <div className="flex-1 flex flex-col min-w-0 relative pt-8 pl-12 justify-between items-center">
+        <div style={{ width: '100%', maxWidth: canvasSize.width + 'px', margin: '0 auto' }}>
+          <Toolbar
           addMode={addMode}
           setAddMode={setAddMode}
           selectedCharId={selectedCharId}
@@ -1774,8 +1775,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onKeyframeSpeedChange={setKeyframeSpeed}
           fadeSpeed={fadeSpeed}
           onFadeSpeedChange={setFadeSpeed}
-        />
-        <div className="inline-block relative" style={{ width: canvasSize.width + 'px' }}>
+          />
+        </div>
+        <div className="inline-block relative" style={{ width: '100%', maxWidth: canvasSize.width + 'px', marginBottom: 24 }}>
           <StageCanvas
             canvasRef={canvasRef}
             canvasSize={canvasSize}

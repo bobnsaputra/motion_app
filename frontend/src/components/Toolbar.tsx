@@ -357,7 +357,7 @@ export default function Toolbar(props: ToolbarProps) {
 
             <p className="mx-2 text-sm text-muted-foreground truncate flex-1 min-w-0">{awaitingDirectionFor ? `Set gaze: ${awaitingChar?.name ?? awaitingDirectionFor}` : selectedCharId ? `${selectedChar?.name ?? selectedCharId} selected` : 'Click to select · drag to move'}</p>
 
-            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            <div className="ml-auto flex items-center gap-2 flex-shrink-0 ">
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canRedo} onClick={onRedo} title="Redo (O)"><Redo2 className="h-4 w-4" /></Button>
 

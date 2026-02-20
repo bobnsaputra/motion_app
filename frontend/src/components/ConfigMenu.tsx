@@ -56,6 +56,40 @@ export default function ConfigMenu({
   const [widthError, setWidthError] = useState<string | null>(null)
   const [heightError, setHeightError] = useState<string | null>(null)
   const autoApplyTimer = useRef<number | null>(null)
+  const maxToastTimer = useRef<number | null>(null)
+  const MAX_WIDTH = 2000
+  const MAX_HEIGHT = 900
+  const MIN_DIM = 100
+  const [showMaxWidthToast, setShowMaxWidthToast] = useState(false)
+  const [showMaxHeightToast, setShowMaxHeightToast] = useState(false)
+
+  function applyWidthVal(n: number) {
+    if (autoApplyTimer.current) { window.clearTimeout(autoApplyTimer.current); autoApplyTimer.current = null }
+    const clamped = Math.min(MAX_WIDTH, Math.max(MIN_DIM, Math.round(n)))
+    if (clamped === MAX_WIDTH && n > MAX_WIDTH) {
+      setShowMaxWidthToast(true)
+      if (maxToastTimer.current) { window.clearTimeout(maxToastTimer.current); maxToastTimer.current = null }
+      maxToastTimer.current = window.setTimeout(() => setShowMaxWidthToast(false), 2000)
+    }
+    const h = Number(localHeightStr)
+    onCanvasSizeChange({ width: clamped, height: (Number.isFinite(h) ? h : canvasSize.height) })
+    setLocalWidthStr(String(clamped))
+    setWidthError(null)
+  }
+
+  function applyHeightVal(n: number) {
+    if (autoApplyTimer.current) { window.clearTimeout(autoApplyTimer.current); autoApplyTimer.current = null }
+    const clamped = Math.min(MAX_HEIGHT, Math.max(MIN_DIM, Math.round(n)))
+    if (clamped === MAX_HEIGHT && n > MAX_HEIGHT) {
+      setShowMaxHeightToast(true)
+      if (maxToastTimer.current) { window.clearTimeout(maxToastTimer.current); maxToastTimer.current = null }
+      maxToastTimer.current = window.setTimeout(() => setShowMaxHeightToast(false), 2000)
+    }
+    const w = Number(localWidthStr)
+    onCanvasSizeChange({ width: (Number.isFinite(w) ? w : canvasSize.width), height: clamped })
+    setLocalHeightStr(String(clamped))
+    setHeightError(null)
+  }
 
   useEffect(() => {
     // sync string inputs when menu opens or external canvasSize changes
@@ -74,6 +108,13 @@ export default function ConfigMenu({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isOpen, onClose])
 
+  useEffect(() => {
+    return () => {
+      if (autoApplyTimer.current) window.clearTimeout(autoApplyTimer.current)
+      if (maxToastTimer.current) window.clearTimeout(maxToastTimer.current)
+    }
+  }, [])
+
   if (!isOpen) return null
 
   const selectedChar = selectedCharId ? characters.find((c) => c.id === selectedCharId) : null
@@ -86,12 +127,33 @@ export default function ConfigMenu({
       ref={menuRef}
       className="absolute right-0 top-full z-50 mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg"
     >
+      
+
+      <div className="my-3 h-px bg-border" />
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Stage Size
       </h3>
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs text-muted-foreground">
-          Width
+          <div className="flex items-center justify-between">
+            <span>Width</span>
+            <span className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); applyWidthVal(Number(localWidthStr || canvasSize.width) - 100) }}
+                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                title="-100"
+              >
+                −
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); applyWidthVal(Number(localWidthStr || canvasSize.width) + 100) }}
+                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                title="+100"
+              >
+                +
+              </button>
+            </span>
+          </div>
           <div className="mt-1">
             <input
               type="text"
@@ -110,7 +172,7 @@ export default function ConfigMenu({
                     autoApplyTimer.current = null
                     return
                   }
-                  const clamped = Math.min(3000, Math.max(100, Math.round(n)))
+                  const clamped = Math.min(MAX_WIDTH, Math.max(MIN_DIM, Math.round(n)))
                   const h = Number(localHeightStr)
                   onCanvasSizeChange({ width: clamped, height: (Number.isFinite(h) ? h : canvasSize.height) })
                   setLocalWidthStr(String(clamped))
@@ -121,10 +183,29 @@ export default function ConfigMenu({
               className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {widthError && <div className="text-[11px] text-destructive mt-1">{widthError}</div>}
+            {showMaxWidthToast && <div className="text-[11px] text-yellow-800 bg-yellow-100 rounded px-2 py-1 mt-1">Max width is 2000</div>}
           </div>
         </label>
         <label className="text-xs text-muted-foreground">
-          Height
+          <div className="flex items-center justify-between">
+            <span>Height</span>
+            <span className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); applyHeightVal(Number(localHeightStr || canvasSize.height) - 100) }}
+                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                title="-100"
+              >
+                −
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); applyHeightVal(Number(localHeightStr || canvasSize.height) + 100) }}
+                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                title="+100"
+              >
+                +
+              </button>
+            </span>
+          </div>
           <div className="mt-1">
             <input
               type="text"
@@ -143,7 +224,7 @@ export default function ConfigMenu({
                     autoApplyTimer.current = null
                     return
                   }
-                  const clamped = Math.min(3000, Math.max(100, Math.round(n)))
+                  const clamped = Math.min(MAX_HEIGHT, Math.max(MIN_DIM, Math.round(n)))
                   const w = Number(localWidthStr)
                   onCanvasSizeChange({ width: (Number.isFinite(w) ? w : canvasSize.width), height: clamped })
                   setLocalHeightStr(String(clamped))
@@ -154,11 +235,10 @@ export default function ConfigMenu({
               className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {heightError && <div className="text-[11px] text-destructive mt-1">{heightError}</div>}
+            {showMaxHeightToast && <div className="text-[11px] text-yellow-800 bg-yellow-100 rounded px-2 py-1 mt-1">Max height is 900</div>}
           </div>
         </label>
       </div>
-
-      <div className="my-3 h-px bg-border" />
 
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Keyframe Timing
@@ -169,7 +249,7 @@ export default function ConfigMenu({
           <input
             type="number"
             min={100}
-            max={5000}
+            max={1600}
             value={keyframeSpeed ?? 1200}
             onChange={(e) => onKeyframeSpeedChange && onKeyframeSpeedChange(Math.max(100, Number(e.target.value) || 1200))}
             className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"

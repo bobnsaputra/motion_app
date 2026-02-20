@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
+## 2026-02-21
+### UI, Config & Login polish
+- 11:05 — **ConfigMenu**: Moved the "Stage Size" section to the bottom of the menu and added small ±100 quick-apply buttons beside the Width/Height labels (buttons apply immediately). Inputs remain free-text with a 2s debounce auto-apply. Added clamped limits and ephemeral toasts when exceeding maxima. (`src/components/ConfigMenu.tsx`)
+- 11:10 — **Size limits**: Increased stage max width to `2000` and set max height to `900`; clamped minimum 100. (`src/components/ConfigMenu.tsx`)
+- 11:15 — **Buttons**: Removed borders from the ± buttons for a cleaner, inline appearance. (`src/components/ConfigMenu.tsx`)
+- 11:20 — **Toolbar sizing**: Made the toolbar default responsive to the stage by wrapping it in a container set to the stage `canvasSize` (toolbar now matches the stage width and shrinks on small viewports). (`src/components/StageBlockingApp.tsx`, `src/styles.css`, `src/components/Toolbar.tsx`)
+- 11:25 — **Layout**: Adjusted layout so the stage is visually anchored toward the bottom of the main column while the toolbar sits above and is centered to the stage width. (`src/components/StageBlockingApp.tsx`, `src/styles.css`)
+- 11:30 — **Login UI**: Reworked login page glassmorphism to a light yellow/white palette, improved card contrast and input readability, updated title gradient to dark→yellow, and added a new SVG logo asset. (`src/components/Login.css`, `src/components/Login.tsx`, `src/assets/stage-logo.svg`)
+- 11:35 — **Cleanup**: Added timer cleanup for toast/debounce timers and minor UX polish across menus. (`src/components/ConfigMenu.tsx`)
+
 ## 2026-02-13
 ### Scenes, Persistence & UX
 - 10:10 — **Scenes**: Added scene model with `sceneBoundaries`, `sceneNames`, and `sceneIndex`. `New Scene` now saves prior scenes and starts a new scene with a first offstage keyframe and a second keyframe that is initially linked-to the first. (`StageBlockingApp.tsx`, `types.ts`)

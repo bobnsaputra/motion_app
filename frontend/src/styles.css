@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
+  --app-max-width: 1600px;
+  --app-max-height: 900px;
   --color-background: oklch(1 0 0);
   --color-foreground: oklch(0.145 0 0);
   --color-card: oklch(1 0 0);
@@ -54,6 +56,8 @@ body {
   align-items: flex-start;
   padding: 24px;
   overflow: auto;
+  max-width: var(--app-max-width);
+  max-height: var(--app-max-height);
 }
 
 .stage {
@@ -100,8 +104,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
-  max-width:  var(--app-max-width, 1600px);
+  width: auto;
+  max-width: var(--app-max-width, 1600px);
+  margin: 0 auto;
   box-sizing: border-box;
   overflow: visible; /* allow absolute menus to render outside */
   border-radius: 8px;

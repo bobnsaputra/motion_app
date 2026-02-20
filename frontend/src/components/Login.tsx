@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import './Login.css';
+import StageLogo from '../assets/stage-logo.jpg';
 
 interface LoginProps {
     onLoginSuccess: (user: any) => void;
@@ -119,6 +120,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
             <div className="login-card">
                 <div className="login-header">
+                    <img src={StageLogo} alt="Stage Motion logo" className="login-logo" />
                     <h1 className="login-title">Stage Motion</h1>
                     <p className="login-subtitle">
                         {isLogin ? 'Welcome back!' : 'Create your account'}
