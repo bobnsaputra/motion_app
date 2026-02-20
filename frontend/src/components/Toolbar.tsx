@@ -369,7 +369,7 @@ export default function Toolbar(props: ToolbarProps) {
 
               <div className="relative">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setConfigMenuOpen(!configMenuOpen)} title="Configuration"><Settings className="h-4 w-4" /></Button>
-                <ConfigMenu isOpen={configMenuOpen} canvasSize={canvasSize} onCanvasSizeChange={onCanvasSizeChange} selectedCharId={selectedCharId} characters={characters} defaultPersonSize={defaultPersonSize} defaultPersonColor={defaultPersonColor} defaultShoulderColor={defaultShoulderColor} onSizeChange={onSizeChange} onColorChange={onColorChange} stageReversed={stageReversed} onToggleReverse={onToggleReverse} keyframeSpeed={keyframeSpeed} onKeyframeSpeedChange={onKeyframeSpeedChange} fadeSpeed={fadeSpeed} onFadeSpeedChange={onFadeSpeedChange} />
+                <ConfigMenu isOpen={configMenuOpen} canvasSize={canvasSize} onCanvasSizeChange={onCanvasSizeChange} onClose={() => setConfigMenuOpen(false)} selectedCharId={selectedCharId} characters={characters} defaultPersonSize={defaultPersonSize} defaultPersonColor={defaultPersonColor} defaultShoulderColor={defaultShoulderColor} onSizeChange={onSizeChange} onColorChange={onColorChange} stageReversed={stageReversed} onToggleReverse={onToggleReverse} keyframeSpeed={keyframeSpeed} onKeyframeSpeedChange={onKeyframeSpeedChange} fadeSpeed={fadeSpeed} onFadeSpeedChange={onFadeSpeedChange} />
               </div>
 
               <div className="relative">

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Character } from '../types'
 
 const COLOR_PAIRS = [
@@ -18,6 +18,7 @@ interface ConfigMenuProps {
   isOpen: boolean
   canvasSize: { width: number; height: number }
   onCanvasSizeChange: (size: { width: number; height: number }) => void
+  onClose?: () => void
   selectedCharId: string | null
   characters: Character[]
   defaultPersonSize: number
@@ -37,6 +38,7 @@ export default function ConfigMenu({
   isOpen,
   canvasSize,
   onCanvasSizeChange,
+  onClose,
   selectedCharId,
   characters,
   defaultPersonSize,
@@ -49,17 +51,28 @@ export default function ConfigMenu({
   , keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const [localWidthStr, setLocalWidthStr] = useState<string>(String(canvasSize.width))
+  const [localHeightStr, setLocalHeightStr] = useState<string>(String(canvasSize.height))
+  const [widthError, setWidthError] = useState<string | null>(null)
+  const [heightError, setHeightError] = useState<string | null>(null)
+  const autoApplyTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    // sync string inputs when menu opens or external canvasSize changes
+    setLocalWidthStr(String(canvasSize.width))
+    setLocalHeightStr(String(canvasSize.height))
+  }, [canvasSize.width, canvasSize.height, isOpen])
 
   useEffect(() => {
     if (!isOpen) return
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        // Let the toggle button handle its own click
+        if (onClose) onClose()
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
+  }, [isOpen, onClose])
 
   if (!isOpen) return null
 
@@ -79,31 +92,69 @@ export default function ConfigMenu({
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs text-muted-foreground">
           Width
-          <input
-            type="number"
-            min={100}
-            max={3000}
-            value={canvasSize.width}
-            onChange={(e) => {
-              const v = Math.min(3000, Math.max(100, Number(e.target.value) || 0))
-              onCanvasSizeChange({ ...canvasSize, width: v })
-            }}
-            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+          <div className="mt-1">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={localWidthStr}
+              onChange={(e) => {
+                const s = e.target.value
+                setLocalWidthStr(s)
+                setWidthError(null)
+                if (autoApplyTimer.current) window.clearTimeout(autoApplyTimer.current)
+                autoApplyTimer.current = window.setTimeout(() => {
+                  const n = Number(s)
+                  if (!Number.isFinite(n) || String(s).trim() === '' || isNaN(n)) {
+                    setWidthError('Enter a valid number')
+                    autoApplyTimer.current = null
+                    return
+                  }
+                  const clamped = Math.min(3000, Math.max(100, Math.round(n)))
+                  const h = Number(localHeightStr)
+                  onCanvasSizeChange({ width: clamped, height: (Number.isFinite(h) ? h : canvasSize.height) })
+                  setLocalWidthStr(String(clamped))
+                  setWidthError(null)
+                  autoApplyTimer.current = null
+                }, 2000)
+              }}
+              className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            {widthError && <div className="text-[11px] text-destructive mt-1">{widthError}</div>}
+          </div>
         </label>
         <label className="text-xs text-muted-foreground">
           Height
-          <input
-            type="number"
-            min={100}
-            max={3000}
-            value={canvasSize.height}
-            onChange={(e) => {
-              const v = Math.min(3000, Math.max(100, Number(e.target.value) || 0))
-              onCanvasSizeChange({ ...canvasSize, height: v })
-            }}
-            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+          <div className="mt-1">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={localHeightStr}
+              onChange={(e) => {
+                const s = e.target.value
+                setLocalHeightStr(s)
+                setHeightError(null)
+                if (autoApplyTimer.current) window.clearTimeout(autoApplyTimer.current)
+                autoApplyTimer.current = window.setTimeout(() => {
+                  const n = Number(s)
+                  if (!Number.isFinite(n) || String(s).trim() === '' || isNaN(n)) {
+                    setHeightError('Enter a valid number')
+                    autoApplyTimer.current = null
+                    return
+                  }
+                  const clamped = Math.min(3000, Math.max(100, Math.round(n)))
+                  const w = Number(localWidthStr)
+                  onCanvasSizeChange({ width: (Number.isFinite(w) ? w : canvasSize.width), height: clamped })
+                  setLocalHeightStr(String(clamped))
+                  setHeightError(null)
+                  autoApplyTimer.current = null
+                }, 2000)
+              }}
+              className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            {heightError && <div className="text-[11px] text-destructive mt-1">{heightError}</div>}
+          </div>
         </label>
       </div>
 
