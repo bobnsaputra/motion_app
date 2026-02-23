@@ -186,6 +186,7 @@ export default function Toolbar(props: ToolbarProps) {
                   <div className="leading-tight">P: Duplicate selected</div>
                   <div className="leading-tight">U: Undo, O: Redo</div>
                   <div className="leading-tight">S: Save</div>
+                      <div className="leading-tight">X: Export JSON</div>
                   <div className="leading-tight">+: Add keyframe</div>
                   <div className="leading-tight">V: Toggle visibility</div>
                   <div className="leading-tight">R: Reverse stage</div>
@@ -351,6 +352,7 @@ export default function Toolbar(props: ToolbarProps) {
                   <div className="leading-tight">P: Duplicate selected</div>
                   <div className="leading-tight">U: Undo, O: Redo</div>
                   <div className="leading-tight">S: Save</div>
+                  <div className="leading-tight">X: Export JSON</div>
                   <div className="leading-tight">R: Reverse stage</div>
                   <div className="leading-tight">Esc: Exit / Cancel</div>
                 </div>

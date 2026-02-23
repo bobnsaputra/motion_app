@@ -320,6 +320,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         e.preventDefault()
         loadFromLocalStorage()
       }
+      if ((e.key === 'x' || e.key === 'X')) {
+        e.preventDefault()
+        exportAsJSON()
+      }
       if ((e.key === 'v' || e.key === 'V') && keyframeMode && selectedCharId) {
         e.preventDefault()
         const sel = characters.find(c => c.id === selectedCharId)
@@ -1711,6 +1715,31 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       showToast('Stage size is locked', 'info')
       return
     }
+    // Shift all characters so they maintain their position relative to the stage center
+    const oldW = canvasSize.width
+    const oldH = canvasSize.height
+    const oldCx = oldW / 2
+    const oldCy = oldH / 2
+    const newCx = size.width / 2
+    const newCy = size.height / 2
+    const deltaX = newCx - oldCx
+    const deltaY = newCy - oldCy
+
+    const shiftedChars = characters.map(c => ({ ...c, x: c.x + deltaX, y: c.y + deltaY }))
+    setCharacters(shiftedChars)
+
+    if (keyframes && keyframes.length > 0) {
+      const shiftedKfs = keyframes.map(kf => ({
+        ...kf,
+        characters: kf.characters.map(c => ({ ...c, x: c.x + deltaX, y: c.y + deltaY }))
+      }))
+      setKeyframes(shiftedKfs)
+      // save history with keyframes updated
+      saveToHistory(shiftedChars, shiftedKfs, activeKeyframeIndex)
+    } else {
+      saveToHistory(shiftedChars)
+    }
+
     setCanvasSize(size)
   }
 

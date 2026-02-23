@@ -61,13 +61,14 @@ export default function ConfigMenu({
   const maxToastTimer = useRef<number | null>(null)
   const MAX_WIDTH = 2000
   const MAX_HEIGHT = 900
-  const MIN_DIM = 100
+  const MIN_WIDTH = 800
+  const MIN_HEIGHT = 200
   const [showMaxWidthToast, setShowMaxWidthToast] = useState(false)
   const [showMaxHeightToast, setShowMaxHeightToast] = useState(false)
 
   function applyWidthVal(n: number) {
     if (autoApplyTimer.current) { window.clearTimeout(autoApplyTimer.current); autoApplyTimer.current = null }
-    const clamped = Math.min(MAX_WIDTH, Math.max(MIN_DIM, Math.round(n)))
+    const clamped = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(n)))
     if (clamped === MAX_WIDTH && n > MAX_WIDTH) {
       setShowMaxWidthToast(true)
       if (maxToastTimer.current) { window.clearTimeout(maxToastTimer.current); maxToastTimer.current = null }
@@ -81,7 +82,7 @@ export default function ConfigMenu({
 
   function applyHeightVal(n: number) {
     if (autoApplyTimer.current) { window.clearTimeout(autoApplyTimer.current); autoApplyTimer.current = null }
-    const clamped = Math.min(MAX_HEIGHT, Math.max(MIN_DIM, Math.round(n)))
+    const clamped = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(n)))
     if (clamped === MAX_HEIGHT && n > MAX_HEIGHT) {
       setShowMaxHeightToast(true)
       if (maxToastTimer.current) { window.clearTimeout(maxToastTimer.current); maxToastTimer.current = null }
@@ -183,7 +184,7 @@ export default function ConfigMenu({
                     autoApplyTimer.current = null
                     return
                   }
-                  const clamped = Math.min(MAX_WIDTH, Math.max(MIN_DIM, Math.round(n)))
+                  const clamped = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(n)))
                   const h = Number(localHeightStr)
                   onCanvasSizeChange({ width: clamped, height: (Number.isFinite(h) ? h : canvasSize.height) })
                   setLocalWidthStr(String(clamped))
@@ -238,7 +239,7 @@ export default function ConfigMenu({
                     autoApplyTimer.current = null
                     return
                   }
-                  const clamped = Math.min(MAX_HEIGHT, Math.max(MIN_DIM, Math.round(n)))
+                  const clamped = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(n)))
                   const w = Number(localWidthStr)
                   onCanvasSizeChange({ width: (Number.isFinite(w) ? w : canvasSize.width), height: clamped })
                   setLocalHeightStr(String(clamped))
