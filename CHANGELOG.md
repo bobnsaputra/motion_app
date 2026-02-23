@@ -15,6 +15,10 @@ Entries format:
 - 11:30 — **Login UI**: Reworked login page glassmorphism to a light yellow/white palette, improved card contrast and input readability, updated title gradient to dark→yellow, and added a new SVG logo asset. (`src/components/Login.css`, `src/components/Login.tsx`, `src/assets/stage-logo.svg`)
 - 11:35 — **Cleanup**: Added timer cleanup for toast/debounce timers and minor UX polish across menus. (`src/components/ConfigMenu.tsx`)
 
+## 2026-02-23
+### Lock Stage Size UX
+- 09:10 — **ConfigMenu / Stage**: Added `Lock Stage Size` checkbox (default: enabled). When enabled, the Width/Height text inputs and the ±100 quick-apply buttons are disabled and visually subdued; attempts to change the canvas size are blocked and show an ephemeral toast. (`src/components/ConfigMenu.tsx`, `src/components/StageBlockingApp.tsx`)
+
 ## 2026-02-13
 ### Scenes, Persistence & UX
 - 10:10 — **Scenes**: Added scene model with `sceneBoundaries`, `sceneNames`, and `sceneIndex`. `New Scene` now saves prior scenes and starts a new scene with a first offstage keyframe and a second keyframe that is initially linked-to the first. (`StageBlockingApp.tsx`, `types.ts`)

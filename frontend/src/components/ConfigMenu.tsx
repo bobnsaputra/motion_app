@@ -32,6 +32,8 @@ interface ConfigMenuProps {
   onKeyframeSpeedChange?: (speed: number) => void
   fadeSpeed?: number
   onFadeSpeedChange?: (speed: number) => void
+  lockStageSize?: boolean
+  setLockStageSize?: (v: boolean) => void
 }
 
 export default function ConfigMenu({
@@ -48,7 +50,7 @@ export default function ConfigMenu({
   onColorChange,
   stageReversed,
   onToggleReverse
-  , keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
+  , keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange, lockStageSize, setLockStageSize
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [localWidthStr, setLocalWidthStr] = useState<string>(String(canvasSize.width))
@@ -127,6 +129,13 @@ export default function ConfigMenu({
       ref={menuRef}
       className="absolute right-0 top-full z-50 mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg"
     >
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Options</span>
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={!!lockStageSize} onChange={(e) => setLockStageSize && setLockStageSize(e.target.checked)} />
+          <span className="text-[12px] text-muted-foreground">Lock Stage Size</span>
+        </label>
+      </div>
       
 
       <div className="my-3 h-px bg-border" />
@@ -140,14 +149,16 @@ export default function ConfigMenu({
             <span className="flex gap-1">
               <button
                 onClick={(e) => { e.stopPropagation(); applyWidthVal(Number(localWidthStr || canvasSize.width) - 100) }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                disabled={!!lockStageSize}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="-100"
               >
                 −
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); applyWidthVal(Number(localWidthStr || canvasSize.width) + 100) }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                disabled={!!lockStageSize}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="+100"
               >
                 +
@@ -180,7 +191,8 @@ export default function ConfigMenu({
                   autoApplyTimer.current = null
                 }, 2000)
               }}
-              className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              disabled={!!lockStageSize}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             {widthError && <div className="text-[11px] text-destructive mt-1">{widthError}</div>}
             {showMaxWidthToast && <div className="text-[11px] text-yellow-800 bg-yellow-100 rounded px-2 py-1 mt-1">Max width is 2000</div>}
@@ -192,14 +204,16 @@ export default function ConfigMenu({
             <span className="flex gap-1">
               <button
                 onClick={(e) => { e.stopPropagation(); applyHeightVal(Number(localHeightStr || canvasSize.height) - 100) }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                disabled={!!lockStageSize}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="-100"
               >
                 −
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); applyHeightVal(Number(localHeightStr || canvasSize.height) + 100) }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm"
+                disabled={!!lockStageSize}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="+100"
               >
                 +
@@ -232,17 +246,20 @@ export default function ConfigMenu({
                   autoApplyTimer.current = null
                 }, 2000)
               }}
-              className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              disabled={!!lockStageSize}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             {heightError && <div className="text-[11px] text-destructive mt-1">{heightError}</div>}
             {showMaxHeightToast && <div className="text-[11px] text-yellow-800 bg-yellow-100 rounded px-2 py-1 mt-1">Max height is 900</div>}
           </div>
         </label>
       </div>
+      <div className="my-3 h-px bg-border" />
 
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Keyframe Timing
       </h3>
+      
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs text-muted-foreground">
           Move ms

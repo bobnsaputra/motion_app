@@ -26,6 +26,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [defaultShoulderColor, setDefaultShoulderColor] = useState('#ff6b6b')
   const [fileMenuOpen, setFileMenuOpen] = useState(false)
   const [configMenuOpen, setConfigMenuOpen] = useState(false)
+  const [lockStageSize, setLockStageSize] = useState(true)
   const [stageReversed, setStageReversed] = useState(false)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
   const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
@@ -1705,6 +1706,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   // Offstage panel removed — a simple right-side label is rendered instead.
 
+  function handleCanvasSizeChange(size: { width: number; height: number }) {
+    if (lockStageSize) {
+      showToast('Stage size is locked', 'info')
+      return
+    }
+    setCanvasSize(size)
+  }
+
   return (
     <div className="app">
       {/* Collapsible Sidebar Dock (Overlay) */}
@@ -1732,7 +1741,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           configMenuOpen={configMenuOpen}
           setConfigMenuOpen={setConfigMenuOpen}
           canvasSize={canvasSize}
-          onCanvasSizeChange={setCanvasSize}
+          onCanvasSizeChange={handleCanvasSizeChange}
+          lockStageSize={lockStageSize}
+          setLockStageSize={setLockStageSize}
           defaultPersonSize={defaultPersonSize}
           defaultPersonColor={defaultPersonColor}
           defaultShoulderColor={defaultShoulderColor}
