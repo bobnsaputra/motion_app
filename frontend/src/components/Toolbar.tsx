@@ -95,6 +95,10 @@ interface ToolbarProps {
   setLockStageSize?: (v: boolean) => void
   lockKeyframeTiming?: boolean
   setLockKeyframeTiming?: (v: boolean) => void
+  projectTitle?: string
+  onProjectTitleChange?: (t: string) => void
+  sceneNotes?: Record<number, string>
+  keyframeNotes?: Record<string, string>
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -109,6 +113,10 @@ export default function Toolbar(props: ToolbarProps) {
     onSelectKeyframe, onAddKeyframe, onDeleteKeyframe, onRenameKeyframe, onPlay, onStop, onPrev, onNext,
     onUpdateCharVisible, keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
   } = props
+
+  const [titleEditing, setTitleEditing] = useState(false)
+  const [titleValue, setTitleValue] = useState(props.projectTitle || 'Untitled')
+  useEffect(() => { setTitleValue(props.projectTitle || 'Untitled') }, [props.projectTitle])
 
   const selectedChar = selectedCharId ? characters.find(c => c.id === selectedCharId) : null
   const awaitingChar = awaitingDirectionFor ? characters.find(c => c.id === awaitingDirectionFor) : null
@@ -226,6 +234,9 @@ export default function Toolbar(props: ToolbarProps) {
             {/* Scene name (inline editable) - condensed */}
             <div className="flex items-center gap-0.5">
               <SceneNameEditor sceneIndex={props.sceneIndex ?? 0} sceneName={props.sceneName} onRename={(name: string) => props.onRenameScene && props.onRenameScene(name)} disabled={isPlaying} />
+              {props.sceneNotes && typeof props.sceneIndex === 'number' && props.sceneNotes[props.sceneIndex] && (
+                <span className="ml-1 inline-block w-2 h-2 bg-amber-500 rounded-full" title="Scene note" />
+              )}
               <button title="Create new scene" onClick={() => props.onCreateScene && props.onCreateScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-accent/10 ml-1">
                 <Plus className="h-3 w-3 text-muted-foreground" />
               </button>
@@ -252,6 +263,9 @@ export default function Toolbar(props: ToolbarProps) {
                             <button className="text-left" onClick={(e) => { e.stopPropagation(); setEditingKfIndex(globalIdx); setEditKfValue(kf.label) }}>{kf.label}</button>
                             {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
                               <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">{kf.characters.filter(c => c.visible === false).length}</span>
+                            )}
+                            {props.keyframeNotes && props.keyframeNotes[String(kf.id)] && (
+                              <span className="ml-1 inline-block w-2 h-2 bg-amber-500 rounded-full" title="Keyframe note" />
                             )}
                           </>
                         )}
@@ -362,7 +376,20 @@ export default function Toolbar(props: ToolbarProps) {
               )}
             </div>
 
-            <p className="mx-2 text-sm text-muted-foreground truncate flex-1 min-w-0">{awaitingDirectionFor ? `Set gaze: ${awaitingChar?.name ?? awaitingDirectionFor}` : selectedCharId ? `${selectedChar?.name ?? selectedCharId} selected` : 'Click to select · drag to move'}</p>
+            <div className="mx-2 flex-1 flex items-center justify-center min-w-0">
+              {titleEditing ? (
+                <input
+                  autoFocus
+                  className="w-64 text-sm font-semibold rounded border px-2 py-1 text-center"
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  onBlur={() => { setTitleEditing(false); props.onProjectTitleChange && props.onProjectTitleChange(titleValue.trim() || 'Untitled') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { setTitleEditing(false); props.onProjectTitleChange && props.onProjectTitleChange(titleValue.trim() || 'Untitled') } if (e.key === 'Escape') { setTitleEditing(false); setTitleValue(props.projectTitle || 'Untitled') } }}
+                />
+              ) : (
+                <button className="text-sm font-semibold truncate" onClick={() => setTitleEditing(true)}>{props.projectTitle || 'Untitled'}</button>
+              )}
+            </div>
 
             <div className="ml-auto flex items-center gap-2 flex-shrink-0 ">
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>

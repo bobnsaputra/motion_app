@@ -41,7 +41,7 @@ export default function FileMenu({
       <button onClick={() => handleClick(onSave)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>S</u>ave</span></button>
       <button onClick={() => handleClick(onLoad)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>L</u>oad</span></button>
       <button onClick={() => handleClick(onExportJSON)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span>E<u>x</u>port JSON</span></button>
-      <button onClick={() => handleClick(onImportJSON)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>M</u>port JSON</span></button>
+      <button onClick={() => handleClick(onImportJSON)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span>I<u>m</u>port JSON</span></button>
       <button onClick={() => handleClick(onExportPNG)} className="w-full text-left px-3 py-2 hover:bg-accent/10">Export PNG</button>
     </div>
   )

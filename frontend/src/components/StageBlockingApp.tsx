@@ -50,6 +50,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [sceneIndex, setSceneIndex] = useState(0)
   const [sceneSize, setSceneSize] = useState(10)
   const [sceneNames, setSceneNames] = useState<string[]>([]) // per-scene optional names
+  const [projectTitle, setProjectTitle] = useState<string>(() => {
+    try {
+      return localStorage.getItem('stageProjectTitle') || 'Untitled'
+    } catch (e) {
+      return 'Untitled'
+    }
+  })
+  const [sceneNotes, setSceneNotes] = useState<Record<number, string>>({})
+  const [keyframeNotes, setKeyframeNotes] = useState<Record<string, string>>({})
   const [sceneBoundaries, setSceneBoundaries] = useState<number[]>([0]) // start indices for each scene
   const [isPlaying, setIsPlaying] = useState(false)
   const [animationProgress, setAnimationProgress] = useState<number | null>(null) // 0-1 during playback (movement easing)
@@ -1360,6 +1369,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       sceneBoundaries: sceneBoundaries || [0],
       sceneNames: sceneNames || [],
       sceneIndex,
+      projectTitle,
+      sceneNotes,
+      keyframeNotes,
       keyframeMode,
       activeKeyframeIndex,
       keyframeSpeed
@@ -1426,6 +1438,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
           setSceneNames(state.sceneNames && Array.isArray(state.sceneNames) ? state.sceneNames : ['Scene 1'])
           setSceneIndex(typeof state.sceneIndex === 'number' ? state.sceneIndex : 0)
+          setProjectTitle(state.projectTitle || 'Untitled')
+          setSceneNotes(state.sceneNotes || {})
+          setKeyframeNotes(state.keyframeNotes || {})
 
           // If saved in keyframe mode, restore characters from the active keyframe
           if (state.keyframeMode) {
@@ -1469,13 +1484,31 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       sceneNames: sceneNames || [],
       sceneIndex,
       keyframeMode,
-      keyframeSpeed
+      keyframeSpeed,
+      projectTitle,
+      sceneNotes,
+      keyframeNotes
     }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'stage-layout.json'
+    // filename: projectTitle + timestamp (to minute), formatted: "24 February 2026 20:16"
+    const now = new Date()
+    const day = String(now.getDate()).padStart(2, '0')
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    const month = monthNames[now.getMonth()]
+    const year = now.getFullYear()
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    const timestamp = `${day} ${month} ${year} ${hh}:${mm}`
+    // Prefer the persisted title if available (in case toolbar change hasn't propagated)
+    let titleForFile = projectTitle
+    try { const persisted = localStorage.getItem('stageProjectTitle'); if (persisted) titleForFile = persisted } catch (e) {}
+    const safeTitle = (titleForFile || 'Untitled').replace(/[\\/:*?"<>|]/g, ' -')
+    // Windows forbids ':' in filenames — show colon in UI but replace it with '.' in the filename
+    const safeTimestampForFile = timestamp.replace(':', '.')
+    a.download = `${safeTitle} - ${safeTimestampForFile}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -1530,6 +1563,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
               setCharacters(state.characters || [])
               nextKfId.current = 1
             }
+
+            // restore title and notes if present
+            setProjectTitle(state.projectTitle || 'Untitled')
+            setSceneNotes(state.sceneNotes || {})
+            setKeyframeNotes(state.keyframeNotes || {})
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
             showToast('Layout imported')
@@ -1856,6 +1894,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             if (lockKeyframeTiming) { showToast('Keyframe timing is locked', 'info'); return }
             setFadeSpeed(s)
           }}
+          projectTitle={projectTitle}
+          onProjectTitleChange={(t: string) => { setProjectTitle(t); try { localStorage.setItem('stageProjectTitle', t) } catch (e) {} }}
+          sceneNotes={sceneNotes}
+          keyframeNotes={keyframeNotes}
           />
         </div>
         <div className="inline-block relative" style={{ width: '100%', maxWidth: canvasSize.width + 'px', marginBottom: 24 }}>
@@ -1869,7 +1911,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             onDragOver={handleCanvasDragOver}
           />
           <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
-            <div className="text-sm text-muted-foreground">Offstage</div>
+            <div className="text-xs text-muted-foreground">Offstage</div>
             <div className="mt-2 flex flex-col gap-2 max-w-xs">
               {(keyframes[activeKeyframeIndex]?.characters ?? []).filter(c => c.visible === false).map((c) => (
                 <div
