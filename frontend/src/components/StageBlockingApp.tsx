@@ -27,6 +27,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [fileMenuOpen, setFileMenuOpen] = useState(false)
   const [configMenuOpen, setConfigMenuOpen] = useState(false)
   const [lockStageSize, setLockStageSize] = useState(true)
+  const [lockKeyframeTiming, setLockKeyframeTiming] = useState(false)
   const [stageReversed, setStageReversed] = useState(false)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
   const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
@@ -1569,9 +1570,30 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function handleDuplicateSelected() {
     const char = characters.find((c) => c.id === selectedCharId)
     if (char) {
+      // generate a new short id for the duplicate
       const id = String.fromCharCode(65 + (counter % 26))
       setCounter((c) => c + 1)
-      const duplicate = { ...char, id, name: id, x: char.x + 30, y: char.y + 30 }
+
+      // Determine a sensible duplicate name: "Original 2", "Original 3", ...
+      const originalName = char.name || id
+      // If originalName ends with a numeric suffix, strip it to find the root
+      const trailingMatch = originalName.match(/^(.*?)(?:\s(\d+))?$/)
+      const root = (trailingMatch && trailingMatch[1]) || originalName
+
+      // collect existing suffix numbers for the same root
+      const existingNums: number[] = []
+      characters.forEach(c => {
+        const m = c.name && c.name.match(new RegExp('^' + root.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&') + '(?:\\s(\\d+))?$'))
+        if (m) {
+          if (m[1]) existingNums.push(Number(m[1]))
+          else existingNums.push(1)
+        }
+      })
+      const maxNum = existingNums.length ? Math.max(...existingNums) : 1
+      const nextNum = maxNum + 1
+      const newName = `${root} ${nextNum}`
+
+      const duplicate = { ...char, id, name: newName, x: char.x + 30, y: char.y + 30 }
       const updated = [...characters, duplicate]
       setCharacters(updated)
       saveToHistory(updated)
@@ -1724,9 +1746,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       showToast('Stage size is locked', 'info')
       return
     }
-    // Shift all characters so they maintain their position relative to the stage center
-    const oldW = canvasSize.width
-    const oldH = canvasSize.height
+    // Use the real canvas element size when available (more reliable than state),
+    // then shift all characters so they maintain their position relative to the stage center
+    const canvasEl = canvasRef.current
+    const oldW = canvasEl ? canvasEl.width : canvasSize.width
+    const oldH = canvasEl ? canvasEl.height : canvasSize.height
     const oldCx = oldW / 2
     const oldCy = oldH / 2
     const newCx = size.width / 2
@@ -1782,6 +1806,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onCanvasSizeChange={handleCanvasSizeChange}
           lockStageSize={lockStageSize}
           setLockStageSize={setLockStageSize}
+          lockKeyframeTiming={lockKeyframeTiming}
+          setLockKeyframeTiming={setLockKeyframeTiming}
           defaultPersonSize={defaultPersonSize}
           defaultPersonColor={defaultPersonColor}
           defaultShoulderColor={defaultShoulderColor}
@@ -1821,9 +1847,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onNext={goToNextKeyframe}
           onUpdateCharVisible={handleUpdateCharVisible}
           keyframeSpeed={keyframeSpeed}
-          onKeyframeSpeedChange={setKeyframeSpeed}
+          onKeyframeSpeedChange={(s: number) => {
+            if (lockKeyframeTiming) { showToast('Keyframe timing is locked', 'info'); return }
+            setKeyframeSpeed(s)
+          }}
           fadeSpeed={fadeSpeed}
-          onFadeSpeedChange={setFadeSpeed}
+          onFadeSpeedChange={(s: number) => {
+            if (lockKeyframeTiming) { showToast('Keyframe timing is locked', 'info'); return }
+            setFadeSpeed(s)
+          }}
           />
         </div>
         <div className="inline-block relative" style={{ width: '100%', maxWidth: canvasSize.width + 'px', marginBottom: 24 }}>

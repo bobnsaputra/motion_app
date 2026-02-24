@@ -93,6 +93,8 @@ interface ToolbarProps {
   onFadeSpeedChange?: (speed: number) => void
   lockStageSize?: boolean
   setLockStageSize?: (v: boolean) => void
+  lockKeyframeTiming?: boolean
+  setLockKeyframeTiming?: (v: boolean) => void
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -224,6 +226,9 @@ export default function Toolbar(props: ToolbarProps) {
             {/* Scene name (inline editable) - condensed */}
             <div className="flex items-center gap-0.5">
               <SceneNameEditor sceneIndex={props.sceneIndex ?? 0} sceneName={props.sceneName} onRename={(name: string) => props.onRenameScene && props.onRenameScene(name)} disabled={isPlaying} />
+              <button title="Create new scene" onClick={() => props.onCreateScene && props.onCreateScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-accent/10 ml-1">
+                <Plus className="h-3 w-3 text-muted-foreground" />
+              </button>
             </div>
 
             {/* Compact Horizontal Scroll Area for Keyframes (only show current scene/page) */}
@@ -273,10 +278,6 @@ export default function Toolbar(props: ToolbarProps) {
               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onNextScene && props.onNextScene()} disabled={typeof props.sceneIndex === 'undefined' || isPlaying} title="Next Scene">
                 <ChevronDown className="h-3 w-3" />
               </Button>
-              {/* New Scene button placed at the far-right; shows hover title */}
-              <button title="Create new scene" onClick={() => props.onCreateScene && props.onCreateScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-accent/10 ml-1">
-                <Plus className="h-3 w-3 text-muted-foreground" />
-              </button>
               <button title="Delete current scene" onClick={() => props.onDeleteScene && props.onDeleteScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-destructive/10 ml-1 text-destructive">
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -395,6 +396,8 @@ export default function Toolbar(props: ToolbarProps) {
                       onFadeSpeedChange={onFadeSpeedChange}
                       lockStageSize={props.lockStageSize}
                       setLockStageSize={props.setLockStageSize}
+                      lockKeyframeTiming={props.lockKeyframeTiming}
+                      setLockKeyframeTiming={props.setLockKeyframeTiming}
                     />
                   </div>
 

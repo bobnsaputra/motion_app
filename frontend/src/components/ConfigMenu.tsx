@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Lock, Unlock } from 'lucide-react'
 import { Character } from '../types'
 
 const COLOR_PAIRS = [
@@ -34,6 +35,8 @@ interface ConfigMenuProps {
   onFadeSpeedChange?: (speed: number) => void
   lockStageSize?: boolean
   setLockStageSize?: (v: boolean) => void
+  lockKeyframeTiming?: boolean
+  setLockKeyframeTiming?: (v: boolean) => void
 }
 
 export default function ConfigMenu({
@@ -51,6 +54,7 @@ export default function ConfigMenu({
   stageReversed,
   onToggleReverse
   , keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange, lockStageSize, setLockStageSize
+  , lockKeyframeTiming, setLockKeyframeTiming
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [localWidthStr, setLocalWidthStr] = useState<string>(String(canvasSize.width))
@@ -65,6 +69,14 @@ export default function ConfigMenu({
   const MIN_HEIGHT = 200
   const [showMaxWidthToast, setShowMaxWidthToast] = useState(false)
   const [showMaxHeightToast, setShowMaxHeightToast] = useState(false)
+  const [localKeyframeSpeedStr, setLocalKeyframeSpeedStr] = useState<string>(String((keyframeSpeed ?? 1200) / 1000))
+  const [localFadeSpeedStr, setLocalFadeSpeedStr] = useState<string>(String((fadeSpeed ?? 300) / 1000))
+  const [keyframeSpeedError, setKeyframeSpeedError] = useState<string | null>(null)
+  const [fadeSpeedError, setFadeSpeedError] = useState<string | null>(null)
+  const MIN_MOVE_MS = 100
+  const MAX_MOVE_MS = 1600
+  const MIN_FADE_MS = 50
+  const MAX_FADE_MS = 3000
 
   function applyWidthVal(n: number) {
     if (autoApplyTimer.current) { window.clearTimeout(autoApplyTimer.current); autoApplyTimer.current = null }
@@ -94,10 +106,28 @@ export default function ConfigMenu({
     setHeightError(null)
   }
 
+  function applyKeyframeSpeedVal(n: number) {
+    if (autoApplyTimer.current) { window.clearTimeout(autoApplyTimer.current); autoApplyTimer.current = null }
+    const clamped = Math.min(MAX_MOVE_MS, Math.max(MIN_MOVE_MS, Math.round(n)))
+    if (onKeyframeSpeedChange) onKeyframeSpeedChange(clamped)
+    setLocalKeyframeSpeedStr(String((clamped / 1000)))
+    setKeyframeSpeedError(null)
+  }
+
+  function applyFadeVal(n: number) {
+    if (autoApplyTimer.current) { window.clearTimeout(autoApplyTimer.current); autoApplyTimer.current = null }
+    const clamped = Math.min(MAX_FADE_MS, Math.max(MIN_FADE_MS, Math.round(n)))
+    if (onFadeSpeedChange) onFadeSpeedChange(clamped)
+    setLocalFadeSpeedStr(String((clamped / 1000)))
+    setFadeSpeedError(null)
+  }
+
   useEffect(() => {
     // sync string inputs when menu opens or external canvasSize changes
     setLocalWidthStr(String(canvasSize.width))
     setLocalHeightStr(String(canvasSize.height))
+    setLocalKeyframeSpeedStr(String((keyframeSpeed ?? 1200) / 1000))
+    setLocalFadeSpeedStr(String((fadeSpeed ?? 300) / 1000))
   }, [canvasSize.width, canvasSize.height, isOpen])
 
   useEffect(() => {
@@ -130,19 +160,20 @@ export default function ConfigMenu({
       ref={menuRef}
       className="absolute right-0 top-full z-50 mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg"
     >
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Options</span>
-        <label className="flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={!!lockStageSize} onChange={(e) => setLockStageSize && setLockStageSize(e.target.checked)} />
-          <span className="text-[12px] text-muted-foreground">Lock Stage Size</span>
-        </label>
-      </div>
+      
       
 
       <div className="my-3 h-px bg-border" />
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Stage Size
-      </h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stage Size</h3>
+        <button
+          onClick={(e) => { e.stopPropagation(); setLockStageSize && setLockStageSize(!lockStageSize) }}
+          className="p-1 rounded hover:bg-accent/10"
+          title={lockStageSize ? 'Unlock stage size' : 'Lock stage size'}
+        >
+          {lockStageSize ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs text-muted-foreground">
           <div className="flex items-center justify-between">
@@ -257,32 +288,125 @@ export default function ConfigMenu({
       </div>
       <div className="my-3 h-px bg-border" />
 
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Keyframe Timing
-      </h3>
-      
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Keyframe Timing (s)</h3>
+        <button
+          onClick={(e) => { e.stopPropagation(); setLockKeyframeTiming && setLockKeyframeTiming(!lockKeyframeTiming) }}
+          className="p-1 rounded hover:bg-accent/10"
+          title={lockKeyframeTiming ? 'Unlock keyframe timing' : 'Lock keyframe timing'}
+        >
+          {lockKeyframeTiming ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs text-muted-foreground">
-          Move ms
-          <input
-            type="number"
-            min={100}
-            max={1600}
-            value={keyframeSpeed ?? 1200}
-            onChange={(e) => onKeyframeSpeedChange && onKeyframeSpeedChange(Math.max(100, Number(e.target.value) || 1200))}
-            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+          <div className="flex items-center justify-between">
+            <span>Move</span>
+            <span className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localKeyframeSpeedStr) || (keyframeSpeed ?? 1200) / 1000) * 1000); applyKeyframeSpeedVal(curMs - 100) }}
+                disabled={!!lockKeyframeTiming}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="-100 ms"
+              >
+                −
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localKeyframeSpeedStr) || (keyframeSpeed ?? 1200) / 1000) * 1000); applyKeyframeSpeedVal(curMs + 100) }}
+                disabled={!!lockKeyframeTiming}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="+100 ms"
+              >
+                +
+              </button>
+            </span>
+          </div>
+          <div className="mt-1">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*\.?[0-9]*"
+              value={localKeyframeSpeedStr}
+              onChange={(e) => {
+                const s = e.target.value
+                setLocalKeyframeSpeedStr(s)
+                setKeyframeSpeedError(null)
+                if (autoApplyTimer.current) window.clearTimeout(autoApplyTimer.current)
+                autoApplyTimer.current = window.setTimeout(() => {
+                  const n = Number(s)
+                  if (!Number.isFinite(n) || String(s).trim() === '' || isNaN(n)) {
+                    setKeyframeSpeedError('Enter a valid number')
+                    autoApplyTimer.current = null
+                    return
+                  }
+                  const ms = Math.round(n * 1000)
+                  const clamped = Math.min(MAX_MOVE_MS, Math.max(MIN_MOVE_MS, ms))
+                  if (onKeyframeSpeedChange) onKeyframeSpeedChange(clamped)
+                  setLocalKeyframeSpeedStr(String((clamped / 1000)))
+                  setKeyframeSpeedError(null)
+                  autoApplyTimer.current = null
+                }, 2000)
+              }}
+              disabled={!!lockKeyframeTiming}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
+            />
+          </div>
+          {keyframeSpeedError && <div className="text-[11px] text-destructive mt-1">{keyframeSpeedError}</div>}
         </label>
         <label className="text-xs text-muted-foreground">
-          Fade ms
-          <input
-            type="number"
-            min={50}
-            max={3000}
-            value={fadeSpeed ?? 300}
-            onChange={(e) => onFadeSpeedChange && onFadeSpeedChange(Math.max(50, Number(e.target.value) || 300))}
-            className="mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+          <div className="flex items-center justify-between">
+            <span>Fade</span>
+            <span className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localFadeSpeedStr) || (fadeSpeed ?? 300) / 1000) * 1000); applyFadeVal(curMs - 100) }}
+                disabled={!!lockKeyframeTiming}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="-100 ms"
+              >
+                −
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localFadeSpeedStr) || (fadeSpeed ?? 300) / 1000) * 1000); applyFadeVal(curMs + 100) }}
+                disabled={!!lockKeyframeTiming}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="+100 ms"
+              >
+                +
+              </button>
+            </span>
+          </div>
+          <div className="mt-1">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*\.?[0-9]*"
+              value={localFadeSpeedStr}
+              onChange={(e) => {
+                const s = e.target.value
+                setLocalFadeSpeedStr(s)
+                setFadeSpeedError(null)
+                if (autoApplyTimer.current) window.clearTimeout(autoApplyTimer.current)
+                autoApplyTimer.current = window.setTimeout(() => {
+                  const n = Number(s)
+                  if (!Number.isFinite(n) || String(s).trim() === '' || isNaN(n)) {
+                    setFadeSpeedError('Enter a valid number')
+                    autoApplyTimer.current = null
+                    return
+                  }
+                  const ms = Math.round(n * 1000)
+                  const clamped = Math.min(MAX_FADE_MS, Math.max(MIN_FADE_MS, ms))
+                  if (onFadeSpeedChange) onFadeSpeedChange(clamped)
+                  setLocalFadeSpeedStr(String((clamped / 1000)))
+                  setFadeSpeedError(null)
+                  autoApplyTimer.current = null
+                }, 2000)
+              }}
+              disabled={!!lockKeyframeTiming}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
+            />
+          </div>
+          {fadeSpeedError && <div className="text-[11px] text-destructive mt-1">{fadeSpeedError}</div>}
         </label>
       </div>
       <div className="my-3 h-px bg-border" />

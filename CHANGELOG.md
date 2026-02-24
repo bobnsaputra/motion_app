@@ -19,6 +19,13 @@ Entries format:
 ### Lock Stage Size UX
 - 09:10 — **ConfigMenu / Stage**: Added `Lock Stage Size` checkbox (default: enabled). When enabled, the Width/Height text inputs and the ±100 quick-apply buttons are disabled and visually subdued; attempts to change the canvas size are blocked and show an ephemeral toast. (`src/components/ConfigMenu.tsx`, `src/components/StageBlockingApp.tsx`)
 
+## 2026-02-24
+### ConfigMenu: Keyframe Timing polish
+- 10:15 — **Keyframe Timing**: `Move` and `Fade` inputs now display seconds (s) instead of milliseconds and remain editable with a 2s debounce before applying. (`src/components/ConfigMenu.tsx`)
+- 10:20 — **Quick-adjust**: Added ±100ms quick-apply buttons for both `Move` and `Fade` (buttons apply immediately and respect configured min/max clamps). (`src/components/ConfigMenu.tsx`)
+- 10:25 — **Locking**: Wired `lockKeyframeTiming` through the toolbar/config stack; when enabled the Move/Fade inputs and ± buttons are disabled and visually subdued, mirroring the Stage Size lock behavior. (`src/components/ConfigMenu.tsx`, `src/components/Toolbar.tsx`, `src/components/StageBlockingApp.tsx`)
+- 10:30 — **Layout**: Cleaned up the Move/Fade input layout to match Width/Height controls and moved the `(s)` unit to the `Keyframe Timing` header for clarity. (`src/components/ConfigMenu.tsx`)
+
 ## 2026-02-13
 ### Scenes, Persistence & UX
 - 10:10 — **Scenes**: Added scene model with `sceneBoundaries`, `sceneNames`, and `sceneIndex`. `New Scene` now saves prior scenes and starts a new scene with a first offstage keyframe and a second keyframe that is initially linked-to the first. (`StageBlockingApp.tsx`, `types.ts`)
