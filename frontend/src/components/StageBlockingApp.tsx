@@ -320,6 +320,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         e.preventDefault()
         loadFromLocalStorage()
       }
+      if ((e.key === 'm' || e.key === 'M')) {
+        e.preventDefault()
+        importFromJSON()
+      }
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && keyframeMode) {
+        e.preventDefault()
+        if (e.key === 'ArrowLeft') goToPrevKeyframe()
+        else goToNextKeyframe()
+      }
       if ((e.key === 'x' || e.key === 'X')) {
         e.preventDefault()
         exportAsJSON()

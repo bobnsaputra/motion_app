@@ -187,6 +187,8 @@ export default function Toolbar(props: ToolbarProps) {
                   <div className="leading-tight">U: Undo, O: Redo</div>
                   <div className="leading-tight">S: Save</div>
                       <div className="leading-tight">X: Export JSON</div>
+                    <div className="leading-tight">← / → : Previous / Next keyframe</div>
+                    <div className="leading-tight">↑ / ↓ : Previous / Next scene</div>
                   <div className="leading-tight">+: Add keyframe</div>
                   <div className="leading-tight">V: Toggle visibility</div>
                   <div className="leading-tight">R: Reverse stage</div>
@@ -372,7 +374,7 @@ export default function Toolbar(props: ToolbarProps) {
               <div className="mx-1 h-6 w-px bg-border" />
 
                   <div className="relative">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setConfigMenuOpen(!configMenuOpen)} title="Configuration"><Settings className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setConfigMenuOpen(!configMenuOpen); setFileMenuOpen(false); }} title="Configuration"><Settings className="h-4 w-4" /></Button>
                     <ConfigMenu
                       isOpen={configMenuOpen}
                       canvasSize={canvasSize}
@@ -397,7 +399,7 @@ export default function Toolbar(props: ToolbarProps) {
                   </div>
 
               <div className="relative">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFileMenuOpen(!fileMenuOpen)} title="File operations"><Save className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setFileMenuOpen(!fileMenuOpen); setConfigMenuOpen(false); }} title="File operations"><Save className="h-4 w-4" /></Button>
                 <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onClose={() => setFileMenuOpen(false)} />
               </div>
 

@@ -21,31 +21,28 @@ export default function FileMenu({
 }: FileMenuProps) {
   if (!isOpen) return null
 
+  const menuRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
   const handleClick = (action: () => void) => {
     action()
     onClose()
   }
 
   return (
-    <div style={{
-      position: 'absolute',
-      right: 0,
-      top: '100%',
-      marginTop: 4,
-      background: 'white',
-      border: '1px solid #ccc',
-      borderRadius: 4,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-      display: 'flex',
-      flexDirection: 'column',
-      minWidth: 150,
-      zIndex: 1000
-    }}>
-      <button onClick={() => handleClick(onSave)} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Save</button>
-      <button onClick={() => handleClick(onLoad)} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Load</button>
-      <button onClick={() => handleClick(onExportJSON)} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Export JSON</button>
-      <button onClick={() => handleClick(onImportJSON)} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Import JSON</button>
-      <button onClick={() => handleClick(onExportPNG)} style={{ padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>Export PNG</button>
+    <div ref={menuRef} className="absolute right-0 top-full mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-3 shadow-lg text-sm z-50">
+      <button onClick={() => handleClick(onSave)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>S</u>ave</span></button>
+      <button onClick={() => handleClick(onLoad)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>L</u>oad</span></button>
+      <button onClick={() => handleClick(onExportJSON)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span>E<u>x</u>port JSON</span></button>
+      <button onClick={() => handleClick(onImportJSON)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>M</u>port JSON</span></button>
+      <button onClick={() => handleClick(onExportPNG)} className="w-full text-left px-3 py-2 hover:bg-accent/10">Export PNG</button>
     </div>
   )
 }
