@@ -33,7 +33,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
   const [fadeSpeed, setFadeSpeed] = useState(1200)
 
-  type HistoryEntry = { characters: Character[]; keyframes?: Keyframe[]; activeKeyframeIndex?: number }
+  type HistoryEntry = {
+    characters: Character[]
+    keyframes?: Keyframe[]
+    activeKeyframeIndex?: number
+    sceneBoundaries?: number[]
+    sceneNames?: string[]
+  }
   const [history, setHistory] = useState<HistoryEntry[]>([{ characters: [] }])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [toast, setToast] = useState<{ message: string; type: ToastType; key: number } | null>(null)
@@ -391,11 +397,23 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     return Math.round(a / step) * step
   }
 
-  function saveToHistory(newCharacters: Character[], optKeyframes?: Keyframe[], optActiveIndex?: number) {
+  function saveToHistory(
+    newCharacters: Character[],
+    optKeyframes?: Keyframe[],
+    optActiveIndex?: number,
+    optSceneBoundaries?: number[],
+    optSceneNames?: string[]
+  ) {
     const newHistory = history.slice(0, historyIndex + 1)
     const entry: HistoryEntry = {
       characters: JSON.parse(JSON.stringify(newCharacters))
     }
+
+    // Use provided scene metadata when available (caller computed it),
+    // otherwise fall back to current state values.
+    entry.sceneBoundaries = optSceneBoundaries ? JSON.parse(JSON.stringify(optSceneBoundaries)) : JSON.parse(JSON.stringify(sceneBoundaries))
+    entry.sceneNames = optSceneNames ? JSON.parse(JSON.stringify(optSceneNames)) : JSON.parse(JSON.stringify(sceneNames))
+
     if (optKeyframes) {
       entry.keyframes = JSON.parse(JSON.stringify(optKeyframes))
       entry.activeKeyframeIndex = optActiveIndex ?? 0
@@ -408,6 +426,22 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setHistoryIndex(newHistory.length - 1)
   }
 
+  // Infer scene boundaries from keyframe labels when possible.
+  function inferSceneBoundariesFromKeyframes(kfs: Keyframe[]): number[] {
+    const boundaries = [0]
+    for (let i = 1; i < kfs.length; i++) {
+      const prev = kfs[i - 1].label
+      const cur = kfs[i].label
+      const prevNum = parseInt(String(prev), 10)
+      const curNum = parseInt(String(cur), 10)
+      // If label resets to 1 (or non-number to 1), treat as new scene start
+      if (!isNaN(curNum) && curNum === 1 && !( !isNaN(prevNum) && prevNum === 1)) {
+        boundaries.push(i)
+      }
+    }
+    return boundaries
+  }
+
 
 
   function undo() {
@@ -416,10 +450,28 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const entry = history[newIndex]
       setHistoryIndex(newIndex)
       setCharacters(JSON.parse(JSON.stringify(entry.characters)))
+
+      // Restore scene metadata
+      setSceneBoundaries(entry.sceneBoundaries ?? [0])
+      setSceneNames(entry.sceneNames ?? [])
+
       if (entry.keyframes) {
-        setKeyframes(JSON.parse(JSON.stringify(entry.keyframes)))
+        const kfs = JSON.parse(JSON.stringify(entry.keyframes))
+        setKeyframes(kfs)
         setKeyframeMode(true)
-        setActiveKeyframeIndex(Math.min(entry.activeKeyframeIndex ?? 0, entry.keyframes.length - 1))
+        const idx = Math.min(entry.activeKeyframeIndex ?? 0, kfs.length - 1)
+        setActiveKeyframeIndex(idx)
+
+        // Set sceneIndex to the scene that contains the active keyframe
+        let newScene = 0
+        const bnds = entry.sceneBoundaries ?? [0]
+        for (let j = 0; j < bnds.length; j++) {
+          if ((bnds || [0])[j] <= idx) newScene = j
+          else break
+        }
+        setSceneIndex(newScene)
+      } else {
+        setKeyframeMode(false)
       }
     }
   }
@@ -430,10 +482,27 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const entry = history[newIndex]
       setHistoryIndex(newIndex)
       setCharacters(JSON.parse(JSON.stringify(entry.characters)))
+
+      // Restore scene metadata
+      setSceneBoundaries(entry.sceneBoundaries ?? [0])
+      setSceneNames(entry.sceneNames ?? [])
+
       if (entry.keyframes) {
-        setKeyframes(JSON.parse(JSON.stringify(entry.keyframes)))
+        const kfs = JSON.parse(JSON.stringify(entry.keyframes))
+        setKeyframes(kfs)
         setKeyframeMode(true)
-        setActiveKeyframeIndex(Math.min(entry.activeKeyframeIndex ?? 0, entry.keyframes.length - 1))
+        const idx = Math.min(entry.activeKeyframeIndex ?? 0, kfs.length - 1)
+        setActiveKeyframeIndex(idx)
+
+        let newScene = 0
+        const bnds = entry.sceneBoundaries ?? [0]
+        for (let j = 0; j < bnds.length; j++) {
+          if ((bnds || [0])[j] <= idx) newScene = j
+          else break
+        }
+        setSceneIndex(newScene)
+      } else {
+        setKeyframeMode(false)
       }
     }
   }
@@ -949,7 +1018,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setSceneIndex(newSceneIndex)
     setActiveKeyframeIndex(newActive)
     setCharacters(JSON.parse(JSON.stringify(relabeled[newActive].characters)))
-    saveToHistory(JSON.parse(JSON.stringify(relabeled[newActive].characters)), relabeled, newActive)
+    saveToHistory(JSON.parse(JSON.stringify(relabeled[newActive].characters)), relabeled, newActive, newBoundaries, newSceneNames)
     showToast('Scene deleted')
   }
 
@@ -979,13 +1048,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setActiveKeyframeIndex(activeIdx)
     setSceneIndex(newSceneIndex)
 
-    setSceneNames(prev => {
-      const copy = prev.slice()
-      copy[newSceneIndex] = copy[newSceneIndex] || `Scene ${newSceneIndex + 1}`
-      return copy
-    })
+    const newSceneNames = (sceneNames || []).slice()
+    newSceneNames[newSceneIndex] = newSceneNames[newSceneIndex] || `Scene ${newSceneIndex + 1}`
+    setSceneNames(newSceneNames)
 
-    saveToHistory(JSON.parse(JSON.stringify(relabeled[activeIdx].characters)), relabeled, activeIdx)
+    saveToHistory(JSON.parse(JSON.stringify(relabeled[activeIdx].characters)), relabeled, activeIdx, newBoundaries, newSceneNames)
   }
 
 
@@ -1001,21 +1068,49 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const currentSceneStart = sceneBoundaries[sceneIndex] ?? 0
     const nextBoundary = sceneBoundaries[sceneIndex + 1] ?? keyframes.length
     const insertAt = nextBoundary
-    const updated = renumberKeyframes([...keyframes.slice(0, insertAt), kf, ...keyframes.slice(insertAt)])
-    // expand current scene boundary implicitly handled by renumbering; no explicit sizes
-    setKeyframes(updated)
+    // Insert the new keyframe and shift subsequent scene boundaries so
+    // scene start indices remain correct for scenes after the insertion.
+    const updatedKfs = [...keyframes.slice(0, insertAt), kf, ...keyframes.slice(insertAt)]
+    const newBoundaries = (sceneBoundaries || [0]).map(b => (b < insertAt ? b : b + 1))
+    // If there were no boundaries, ensure at least one exists
+    if (newBoundaries.length === 0) newBoundaries.push(0)
+    const relabeled = renumberKeyframes(updatedKfs, newBoundaries)
+    setKeyframes(relabeled)
+    setSceneBoundaries(newBoundaries)
     setActiveKeyframeIndex(insertAt)
-    saveToHistory(characters, updated, insertAt)
+    saveToHistory(characters, relabeled, insertAt, newBoundaries, sceneNames)
   }
 
   function deleteKeyframe(index: number) {
     if (keyframes.length <= 1) return
-    const updated = renumberKeyframes(keyframes.filter((_, i) => i !== index))
-    setKeyframes(updated)
-    const newIndex = Math.min(index, updated.length - 1)
+    // Remove the keyframe and shift subsequent scene boundaries so scenes
+    // remain attached to their intended keyframes.
+    const filtered = keyframes.filter((_, i) => i !== index)
+
+    // Shift boundaries: boundaries at positions <= index stay, those > index decrement by 1
+    const rawBoundaries = Array.isArray(sceneBoundaries) && sceneBoundaries.length > 0 ? sceneBoundaries.slice() : [0]
+    let newBoundaries = rawBoundaries.map(b => (b <= index ? b : b - 1))
+    // Normalize: remove out-of-range boundaries and dedupe/sort
+    newBoundaries = newBoundaries.filter(b => Number.isInteger(b) && b >= 0 && b < filtered.length)
+    newBoundaries = Array.from(new Set(newBoundaries)).sort((a, b) => a - b)
+    if (newBoundaries.length === 0) newBoundaries = [0]
+
+    // Rebuild scene names to match new boundary count
+    const newSceneNames: string[] = []
+    for (let i = 0; i < newBoundaries.length; i++) {
+      const n = (sceneNames && sceneNames[i]) || null
+      newSceneNames.push(n && typeof n === 'string' ? n : `Scene ${i + 1}`)
+    }
+
+    const relabeled = renumberKeyframes(filtered, newBoundaries)
+    setKeyframes(relabeled)
+    setSceneBoundaries(newBoundaries)
+    setSceneNames(newSceneNames)
+
+    const newIndex = Math.min(index, relabeled.length - 1)
     setActiveKeyframeIndex(newIndex)
-    setCharacters(JSON.parse(JSON.stringify(updated[newIndex].characters)))
-    saveToHistory(JSON.parse(JSON.stringify(updated[newIndex].characters)), updated, newIndex)
+    setCharacters(JSON.parse(JSON.stringify(relabeled[newIndex].characters)))
+    saveToHistory(JSON.parse(JSON.stringify(relabeled[newIndex].characters)), relabeled, newIndex, newBoundaries, newSceneNames)
   }
 
   function renameKeyframe(index: number, name: string) {
@@ -1356,6 +1451,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setKeyframes(committedKfs)
     }
 
+    // Normalize scene names so we never save null/undefined entries.
+    const rawSceneNames = Array.isArray(sceneNames) ? sceneNames.slice() : []
+    const boundaries = Array.isArray(sceneBoundaries) && sceneBoundaries.length > 0 ? sceneBoundaries : [0]
+    for (let i = 0; i < boundaries.length; i++) {
+      const n = rawSceneNames[i]
+      rawSceneNames[i] = (n && typeof n === 'string') ? n : `Scene ${i + 1}`
+    }
+    if (JSON.stringify(rawSceneNames) !== JSON.stringify(sceneNames)) setSceneNames(rawSceneNames)
+
     const state = {
       characters: JSON.parse(JSON.stringify(characters)),
       guides,
@@ -1367,7 +1471,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       // keyframes kept flat for compatibility, but include scene metadata
       keyframes: committedKfs,
       sceneBoundaries: sceneBoundaries || [0],
-      sceneNames: sceneNames || [],
+      sceneNames: rawSceneNames,
       sceneIndex,
       projectTitle,
       sceneNotes,
@@ -1419,11 +1523,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           const maxId = Math.max(0, ...loadedKfs.map((kf: Keyframe) => kf.id || 0))
           nextKfId.current = maxId + 1
 
-          // Restore scene boundaries and names if present, else derive defaults
+          // Determine scene boundaries (validate or infer) and fill missing scene names
+          let finalBoundaries: number[] = []
           if (state.sceneBoundaries && Array.isArray(state.sceneBoundaries) && state.sceneBoundaries.length > 0) {
-            setSceneBoundaries(state.sceneBoundaries)
+            finalBoundaries = state.sceneBoundaries.slice()
           } else if (state.scenes && Array.isArray(state.scenes) && state.scenes.length > 0) {
-            // derive boundaries from scenes lengths
             const b: number[] = []
             let acc = 0
             for (const s of state.scenes) {
@@ -1431,22 +1535,37 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
               const len = Array.isArray(s) ? s.length : (s.keyframes ? s.keyframes.length : 0)
               acc += len
             }
-            setSceneBoundaries(b)
+            finalBoundaries = b
           } else {
-            setSceneBoundaries([0])
+            finalBoundaries = [0]
           }
 
-          setSceneNames(state.sceneNames && Array.isArray(state.sceneNames) ? state.sceneNames : ['Scene 1'])
+          // If boundaries look invalid for the loaded keyframes, try to infer from labels
+          if (finalBoundaries.some(b => typeof b !== 'number' || b < 0 || b >= loadedKfs.length) || finalBoundaries.length === 1 && loadedKfs.length > 1) {
+            const inferred = inferSceneBoundariesFromKeyframes(loadedKfs)
+            if (inferred && inferred.length > 0) finalBoundaries = inferred
+          }
+
+          // Build scene names array, filling nulls with "Scene N"
+          const rawNames: (string | null)[] = (state.sceneNames && Array.isArray(state.sceneNames)) ? state.sceneNames.slice() : []
+          const finalNames: string[] = []
+          for (let i = 0; i < finalBoundaries.length; i++) {
+            const n = rawNames[i]
+            finalNames.push(n && typeof n === 'string' ? n : `Scene ${i + 1}`)
+          }
+
+          setSceneBoundaries(finalBoundaries)
+          setSceneNames(finalNames)
           setSceneIndex(typeof state.sceneIndex === 'number' ? state.sceneIndex : 0)
           setProjectTitle(state.projectTitle || 'Untitled')
           setSceneNotes(state.sceneNotes || {})
           setKeyframeNotes(state.keyframeNotes || {})
 
           // If saved in keyframe mode, restore characters from the active keyframe
-          if (state.keyframeMode) {
+            if (state.keyframeMode) {
             setKeyframeMode(true)
             setCharacters(JSON.parse(JSON.stringify(loadedKfs[Math.min(idx, loadedKfs.length - 1)].characters || [])))
-            saveToHistory(JSON.parse(JSON.stringify(loadedKfs[Math.min(idx, loadedKfs.length - 1)].characters || [])), loadedKfs, idx)
+            saveToHistory(JSON.parse(JSON.stringify(loadedKfs[Math.min(idx, loadedKfs.length - 1)].characters || [])), loadedKfs, idx, finalBoundaries, finalNames)
           } else {
             setKeyframeMode(false)
             setCharacters(state.characters || [])
@@ -1471,6 +1590,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
       )
     }
+    // Normalize scene names for exported file
+    const exportRawSceneNames = Array.isArray(sceneNames) ? sceneNames.slice() : []
+    const exportBoundaries = Array.isArray(sceneBoundaries) && sceneBoundaries.length > 0 ? sceneBoundaries : [0]
+    for (let i = 0; i < exportBoundaries.length; i++) {
+      const n = exportRawSceneNames[i]
+      exportRawSceneNames[i] = (n && typeof n === 'string') ? n : `Scene ${i + 1}`
+    }
+
     const state = {
       characters,
       guides,
@@ -1481,7 +1608,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       defaultShoulderColor,
       keyframes: committedKfs,
       sceneBoundaries: sceneBoundaries || [0],
-      sceneNames: sceneNames || [],
+      sceneNames: exportRawSceneNames,
       sceneIndex,
       keyframeMode,
       keyframeSpeed,
@@ -1557,14 +1684,47 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 setKeyframeMode(false)
                 setCharacters(state.characters || [])
               }
+
+              // Determine scene boundaries and fill missing scene names
+              let finalBoundaries: number[] = []
+              if (state.sceneBoundaries && Array.isArray(state.sceneBoundaries) && state.sceneBoundaries.length > 0) {
+                finalBoundaries = state.sceneBoundaries.slice()
+              } else if (state.scenes && Array.isArray(state.scenes) && state.scenes.length > 0) {
+                const b: number[] = []
+                let acc = 0
+                for (const s of state.scenes) {
+                  b.push(acc)
+                  const len = Array.isArray(s) ? s.length : (s.keyframes ? s.keyframes.length : 0)
+                  acc += len
+                }
+                finalBoundaries = b
+              } else {
+                finalBoundaries = [0]
+              }
+
+              if (finalBoundaries.some(b => typeof b !== 'number' || b < 0 || b >= loadedKfs.length) || finalBoundaries.length === 1 && loadedKfs.length > 1) {
+                const inferred = inferSceneBoundariesFromKeyframes(loadedKfs)
+                if (inferred && inferred.length > 0) finalBoundaries = inferred
+              }
+
+              const rawNames: (string | null)[] = (state.sceneNames && Array.isArray(state.sceneNames)) ? state.sceneNames.slice() : []
+              const finalNames: string[] = []
+              for (let i = 0; i < finalBoundaries.length; i++) {
+                const n = rawNames[i]
+                finalNames.push(n && typeof n === 'string' ? n : `Scene ${i + 1}`)
+              }
+
+              setSceneBoundaries(finalBoundaries)
+              setSceneNames(finalNames)
             } else {
               setKeyframes([])
               setKeyframeMode(false)
               setCharacters(state.characters || [])
               nextKfId.current = 1
+              setSceneBoundaries([0])
+              setSceneNames(['Scene 1'])
             }
 
-            // restore title and notes if present
             setProjectTitle(state.projectTitle || 'Untitled')
             setSceneNotes(state.sceneNotes || {})
             setKeyframeNotes(state.keyframeNotes || {})
@@ -1747,11 +1907,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           }))
         }
         const newIndex = activeKeyframeIndex + 1
-        const updated = renumberKeyframes([...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)])
-        setKeyframes(updated)
+        const updatedKfs = [...keyframes.slice(0, newIndex), kf, ...keyframes.slice(newIndex)]
+        const newBoundaries = (sceneBoundaries || [0]).map(b => (b < newIndex ? b : b + 1))
+        if (newBoundaries.length === 0) newBoundaries.push(0)
+        const relabeled = renumberKeyframes(updatedKfs, newBoundaries)
+        setKeyframes(relabeled)
+        setSceneBoundaries(newBoundaries)
         setActiveKeyframeIndex(newIndex)
         setCharacters(JSON.parse(JSON.stringify(kf.characters)))
-        saveToHistory(kf.characters, updated, newIndex)
+        saveToHistory(kf.characters, relabeled, newIndex, newBoundaries, sceneNames)
 
         const charName = characters.find(c => c.id === charId)?.name || charId
         showToast(`Created new keyframe to hide ${charName} because they moved here.`, 'warning')

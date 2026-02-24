@@ -26,6 +26,14 @@ Entries format:
 - 10:25 — **Locking**: Wired `lockKeyframeTiming` through the toolbar/config stack; when enabled the Move/Fade inputs and ± buttons are disabled and visually subdued, mirroring the Stage Size lock behavior. (`src/components/ConfigMenu.tsx`, `src/components/Toolbar.tsx`, `src/components/StageBlockingApp.tsx`)
 - 10:30 — **Layout**: Cleaned up the Move/Fade input layout to match Width/Height controls and moved the `(s)` unit to the `Keyframe Timing` header for clarity. (`src/components/ConfigMenu.tsx`)
 
+### Data integrity & keyframe fixes
+- 14:40 — **Normalize scene names**: `sceneNames` are normalized on save/export/load to replace `null` entries with "Scene N" to avoid invalid saved state. (`src/components/StageBlockingApp.tsx`)
+- 14:45 — **Stable export snapshot**: Exports/save now use a stable keyframe snapshot when in keyframe mode so exported top-level `characters` match the editor state. (`src/components/StageBlockingApp.tsx`)
+- 14:50 — **Import robustness**: Added `inferSceneBoundariesFromKeyframes()` to infer missing scene boundaries from keyframe label resets during import and auto-fill missing scene names. (`src/components/StageBlockingApp.tsx`)
+- 15:05 — **Boundary shifting on edits**: Inserting or deleting keyframes inside a scene now shifts `sceneBoundaries` and renumbers keyframes so scenes remain intact after edits. (`src/components/StageBlockingApp.tsx`)
+- 15:10 — **History improvements**: History entries now include `sceneBoundaries` and `sceneNames`; `undo`/`redo` restore scene metadata as well as characters/keyframes. (`src/components/StageBlockingApp.tsx`)
+- 15:20 — **Persistence**: `projectTitle`, `sceneNotes`, and `keyframeNotes` are persisted to exports/imports to improve cross-device continuity. (`src/components/Toolbar.tsx`, `src/components/StageBlockingApp.tsx`)
+
 ## 2026-02-13
 ### Scenes, Persistence & UX
 - 10:10 — **Scenes**: Added scene model with `sceneBoundaries`, `sceneNames`, and `sceneIndex`. `New Scene` now saves prior scenes and starts a new scene with a first offstage keyframe and a second keyframe that is initially linked-to the first. (`StageBlockingApp.tsx`, `types.ts`)
