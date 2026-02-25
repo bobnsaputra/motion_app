@@ -1845,14 +1845,18 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   }
 
   function handleToggleReverse() {
+    const w = canvasSize.width
     const h = canvasSize.height
 
-    // Mirror helper: flips Y and reverses the facing angle
+    // Mirror helper: flips horizontally (mirror X) and vertically (mirror Y)
+    // and adjusts facing angle so characters remain visually correct.
+    // Flipping both axes is equivalent to rotating by PI (180°).
     function mirrorChars(chars: Character[]): Character[] {
       return chars.map(c => ({
         ...c,
+        x: w - c.x,
         y: h - c.y,
-        angle: c.angle !== undefined ? -c.angle : undefined
+        angle: c.angle !== undefined ? ((c.angle + Math.PI) % (Math.PI * 2)) : undefined
       }))
     }
 

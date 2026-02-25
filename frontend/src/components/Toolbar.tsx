@@ -129,6 +129,7 @@ export default function Toolbar(props: ToolbarProps) {
   const [renameEditing, setRenameEditing] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -144,6 +145,17 @@ export default function Toolbar(props: ToolbarProps) {
     setRenameEditing(false)
     setRenameValue('')
   }, [selectedCharId])
+
+  // Auto-scroll the keyframe strip so the active keyframe is visible
+  useEffect(() => {
+    if (!keyframeMode) return
+    const root = scrollRef.current
+    if (!root) return
+    const el = root.querySelector(`[data-kf-index="${activeKeyframeIndex}"]`) as HTMLElement | null
+    if (el) {
+      try { el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }) } catch (e) { /* ignore */ }
+    }
+  }, [activeKeyframeIndex, keyframes, keyframeMode])
 
   return (
     <header className="toolbar-root toolbar">
@@ -187,36 +199,27 @@ export default function Toolbar(props: ToolbarProps) {
                 <Info className="h-4 w-4" />
               </Button>
               {showShortcuts && (
-                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-56 rounded-md border border-border bg-white text-xs shadow-sm">
-                  <strong className="block text-sm mb-1">Shortcuts</strong>
-                  <div className="leading-tight">Space: Play / Stop</div>
-                  <div className="leading-tight">K: Toggle Keyframe Mode</div>
-                  <div className="leading-tight">A: Add character</div>
-                  <div className="leading-tight">D: Delete selected</div>
-                  <div className="leading-tight">P: Duplicate selected</div>
-                  <div className="leading-tight">U: Undo, O: Redo</div>
-                  <div className="leading-tight">S: Save</div>
-                      <div className="leading-tight">X: Export JSON</div>
+                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-64 rounded-lg border border-border bg-white p-3 text-xs shadow-sm">
+                  <strong className="block text-sm mb-2">Shortcuts</strong>
+                  <div className="flex flex-col gap-1">
+                    <div className="leading-tight">Space: Play / Stop</div>
+                    <div className="leading-tight">K: Toggle Keyframe Mode</div>
+                    <div className="leading-tight">A: Add character</div>
+                    <div className="leading-tight">D: Delete selected</div>
+                    <div className="leading-tight">P: Duplicate selected</div>
+                    <div className="leading-tight">U: Undo, O: Redo</div>
+                    <div className="leading-tight">S: Save</div>
+                    <div className="leading-tight">X: Export JSON</div>
                     <div className="leading-tight">← / → : Previous / Next keyframe</div>
                     <div className="leading-tight">↑ / ↓ : Previous / Next scene</div>
-                  <div className="leading-tight">+: Add keyframe</div>
-                  <div className="leading-tight">V: Toggle visibility</div>
-                  <div className="leading-tight">R: Reverse stage</div>
-                  <div className="leading-tight">Esc: Exit / Cancel</div>
+                    <div className="leading-tight">Double-click keyframe: Rename</div>
+                    <div className="leading-tight">+: Add keyframe</div>
+                    <div className="leading-tight">V: Toggle visibility</div>
+                    <div className="leading-tight">R: Reverse stage</div>
+                    <div className="leading-tight">Esc: Exit / Cancel</div>
+                  </div>
                 </div>
               )}
-            </div>
-
-            {/* Global keyframe actions (rename / delete) — placed near Shortcuts */}
-            <div className="flex items-center gap-1">
-              <button
-                className="rounded p-1 hover:bg-destructive/10 text-destructive disabled:opacity-50"
-                onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
-                disabled={keyframes.length <= 1}
-                title="Delete selected keyframe"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
             </div>
 
             <div className="h-6 w-px bg-border flex-shrink-0" />
@@ -240,10 +243,18 @@ export default function Toolbar(props: ToolbarProps) {
               <button title="Create new scene" onClick={() => props.onCreateScene && props.onCreateScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-accent/10 ml-1">
                 <Plus className="h-3 w-3 text-muted-foreground" />
               </button>
+              <button
+                className="rounded p-1 hover:bg-destructive/10 text-destructive disabled:opacity-50"
+                onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
+                disabled={keyframes.length <= 1}
+                title="Delete selected keyframe"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
             </div>
 
             {/* Compact Horizontal Scroll Area for Keyframes (only show current scene/page) */}
-            <div className="flex-1 min-w-0 flex items-center gap-1 kf-scrollbar py-1 px-1">
+            <div ref={scrollRef} className="flex-1 min-w-0 flex items-center gap-1 kf-scrollbar py-1 px-1">
               {(() => {
                 const sIndex = props.sceneIndex ?? 0
                 const sSize = props.sceneSize ?? 10
@@ -253,14 +264,14 @@ export default function Toolbar(props: ToolbarProps) {
                 return visible.map((kf, i) => {
                   const globalIdx = start + i
                   return (
-                    <div key={kf.id} className="flex items-center flex-shrink-0">
+                    <div key={kf.id} data-kf-index={globalIdx} className="flex items-center flex-shrink-0">
                       {i > 0 && <div className="h-px w-3 bg-border" />}
                       <div className={`group relative flex items-center rounded border px-2 py-0.5 text-xs cursor-pointer transition-colors ${globalIdx === activeKeyframeIndex ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border bg-background text-muted-foreground hover:bg-accent'}`} onClick={() => !isPlaying && onSelectKeyframe(globalIdx)}>
                           {editingKfIndex === globalIdx ? (
                           <input autoFocus className="w-16 bg-transparent text-xs outline-none" value={editKfValue} onChange={(e) => setEditKfValue(e.target.value)} onBlur={() => { if (editKfValue.trim()) onRenameKeyframe(globalIdx, editKfValue.trim()); setEditingKfIndex(null) }} onKeyDown={(e) => { if (e.key === 'Enter') { if (editKfValue.trim()) onRenameKeyframe(globalIdx, editKfValue.trim()); setEditingKfIndex(null) } if (e.key === 'Escape') setEditingKfIndex(null) }} onClick={(e) => e.stopPropagation()} />
                         ) : (
                           <>
-                            <button className="text-left" onClick={(e) => { e.stopPropagation(); setEditingKfIndex(globalIdx); setEditKfValue(kf.label) }}>{kf.label}</button>
+                            <button className="text-left" onDoubleClick={(e) => { e.stopPropagation(); setEditingKfIndex(globalIdx); setEditKfValue(kf.label) }}>{kf.label}</button>
                             {kf.characters && kf.characters.filter(c => c.visible === false).length > 0 && (
                               <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold px-1">{kf.characters.filter(c => c.visible === false).length}</span>
                             )}
@@ -275,12 +286,6 @@ export default function Toolbar(props: ToolbarProps) {
                 })
                 })()}
 
-              {/* Add button immediately after last visible keyframe (inside scroll area) */}
-              <div className="flex items-center flex-shrink-0">
-                <button className="rounded p-1 hover:bg-accent/10" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)" aria-label="Add keyframe">
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
 
             </div>
 
@@ -292,7 +297,15 @@ export default function Toolbar(props: ToolbarProps) {
               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onNextScene && props.onNextScene()} disabled={typeof props.sceneIndex === 'undefined' || isPlaying} title="Next Scene">
                 <ChevronDown className="h-3 w-3" />
               </Button>
-              <button title="Delete current scene" onClick={() => props.onDeleteScene && props.onDeleteScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-destructive/10 ml-1 text-destructive">
+              <button className="rounded p-1 hover:bg-accent/10" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)" aria-label="Add keyframe">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                className="rounded p-1 hover:bg-destructive/10 text-destructive"
+                onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
+                disabled={keyframes.length <= 1}
+                title="Delete selected keyframe"
+              >
                 <Trash2 className="h-3 w-3" />
               </button>
             </div>
@@ -370,6 +383,7 @@ export default function Toolbar(props: ToolbarProps) {
                   <div className="leading-tight">U: Undo, O: Redo</div>
                   <div className="leading-tight">S: Save</div>
                   <div className="leading-tight">X: Export JSON</div>
+                  <div className="leading-tight">Double-click keyframe: Rename</div>
                   <div className="leading-tight">R: Reverse stage</div>
                   <div className="leading-tight">Esc: Exit / Cancel</div>
                 </div>
