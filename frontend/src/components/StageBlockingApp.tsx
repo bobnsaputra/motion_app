@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
-import { Character, Guide, User, Keyframe } from '../types'
+import { Character, Guide, User, Keyframe, TextAnnotation } from '../types'
 import Toolbar from './Toolbar'
 import Sidebar from './Sidebar'
 import StageCanvas from './StageCanvas'
@@ -76,6 +76,25 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const kfsRef = useRef<Keyframe[] | null>(null)
   const animPairRef = useRef(0)
 
+  // ── Note / annotation mode ──
+  const [noteMode, setNoteMode] = useState(false)
+  const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null)
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
+  const annotationNextId = useRef(1)
+  const annotationDragRef = useRef<{
+    id: string
+    offsetX: number
+    offsetY: number
+    mode: 'move' | 'resize'
+    corner?: 'tl' | 'tr' | 'bl' | 'br'
+    startMouseX?: number  // mouse X at drag start
+    startMouseY?: number  // mouse Y at drag start
+    startX?: number       // annotation x at drag start
+    startY?: number       // annotation y at drag start
+    startWidth?: number   // annotation width at drag start
+    startHeight?: number  // annotation height at drag start
+  } | null>(null)
+
   const dragRef = useRef<{
     type: 'move' | 'handle' | 'char-move' | 'char-rotate' | null
     guideId?: string
@@ -87,6 +106,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     hasMoved?: boolean
   }>({ type: null })
   const skipNextClickRef = useRef(false)
+
+  // Refs to always get latest versions of file operations (avoids stale closures in keyboard handler)
+  const fileOpsRef = useRef({ saveToLocalStorage: () => {}, loadFromLocalStorage: () => {}, exportAsJSON: () => {}, importFromJSON: () => {} })
 
   // ── Guides initialization ──
   useEffect(() => {
@@ -109,11 +131,72 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     draw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize])
+  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize, noteMode, selectedAnnotationId, editingAnnotationId])
+
+  // Turn off note mode when exiting keyframe mode
+  useEffect(() => {
+    if (!keyframeMode) {
+      // commitEditingAnnotation has already been called by the mode toggle that set keyframeMode=false
+      setNoteMode(false)
+      setSelectedAnnotationId(null)
+      setEditingAnnotationId(null)
+    }
+  }, [keyframeMode])
+
+  // Re-initialize annotationNextId whenever keyframes change (covers mount, load, import)
+  useEffect(() => {
+    let maxId = 0
+    for (const kf of keyframes) {
+      for (const ann of kf.annotations ?? []) {
+        const num = parseInt(ann.id.replace('ann_', ''), 10)
+        if (!isNaN(num) && num > maxId) maxId = num
+      }
+    }
+    if (maxId + 1 > annotationNextId.current) {
+      annotationNextId.current = maxId + 1
+    }
+  }, [keyframes])
 
   // ── Mouse move / up for dragging ──
   useEffect(() => {
     function onMouseMove(e: MouseEvent) {
+      // ── Annotation dragging / resizing ──
+      if (annotationDragRef.current) {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const rect = canvas.getBoundingClientRect()
+        const mx = e.clientX - rect.left
+        const my = e.clientY - rect.top
+        const drag = annotationDragRef.current
+        if (drag.mode === 'resize' && drag.corner && drag.startMouseX != null && drag.startMouseY != null && drag.startX != null && drag.startY != null && drag.startWidth != null && drag.startHeight != null) {
+          const dx = mx - drag.startMouseX
+          const dy = my - drag.startMouseY
+          const c = drag.corner
+          const updates: Partial<TextAnnotation> = {}
+          // Horizontal: right-side corners expand width, left-side move x
+          if (c === 'br' || c === 'tr') {
+            updates.width = Math.max(60, drag.startWidth + dx)
+          } else {
+            const newWidth = Math.max(60, drag.startWidth - dx)
+            updates.x = drag.startX + drag.startWidth - newWidth
+            updates.width = newWidth
+          }
+          // Vertical: bottom corners expand height, top corners move y
+          if (c === 'br' || c === 'bl') {
+            updates.height = Math.max(20, drag.startHeight + dy)
+          } else {
+            const newHeight = Math.max(20, drag.startHeight - dy)
+            updates.y = drag.startY + drag.startHeight - newHeight
+            updates.height = newHeight
+          }
+          updateAnnotation(drag.id, updates)
+        } else {
+          // Move
+          updateAnnotation(drag.id, { x: mx - drag.offsetX, y: my - drag.offsetY })
+        }
+        return
+      }
+
       if (!dragRef.current.type) return
       const canvas = canvasRef.current
       if (!canvas) return
@@ -248,6 +331,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
 
     function onMouseUp() {
+      // ── Annotation drag release ──
+      if (annotationDragRef.current) {
+        annotationDragRef.current = null
+        return
+      }
+
       if (dragRef.current.type === 'char-move') {
         setAlignmentGuides([])
       }
@@ -287,6 +376,16 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        // If editing an annotation, commit text and close editor first
+        if (editingAnnotationId) {
+          commitEditingAnnotation()
+          return
+        }
+        if (noteMode) {
+          setNoteMode(false)
+          setSelectedAnnotationId(null)
+          return
+        }
         if (keyframeMode) {
           // Inline cleanup to avoid stale closure
           setIsPlaying(false)
@@ -311,6 +410,21 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
+      // Toggle note mode with 'n'
+      if ((e.key === 'n' || e.key === 'N') && keyframeMode) {
+        if (noteMode) {
+          commitEditingAnnotation()
+          setSelectedAnnotationId(null)
+        }
+        setNoteMode(prev => !prev)
+        return
+      }
+      // Delete selected annotation
+      if ((e.key === 'Delete' || e.key === 'Backspace') && noteMode && selectedAnnotationId && !editingAnnotationId) {
+        deleteAnnotation(selectedAnnotationId)
+        return
+      }
+
       if (e.key === 'a' || e.key === 'A') {
         if (!keyframeMode) setAddMode(prev => !prev)
       }
@@ -331,15 +445,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
       if ((e.key === 's' || e.key === 'S')) {
         e.preventDefault()
-        saveToLocalStorage()
+        fileOpsRef.current.saveToLocalStorage()
       }
       if ((e.key === 'l' || e.key === 'L')) {
         e.preventDefault()
-        loadFromLocalStorage()
+        fileOpsRef.current.loadFromLocalStorage()
       }
       if ((e.key === 'm' || e.key === 'M')) {
         e.preventDefault()
-        importFromJSON()
+        fileOpsRef.current.importFromJSON()
       }
       if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && keyframeMode) {
         e.preventDefault()
@@ -348,7 +462,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
       if ((e.key === 'x' || e.key === 'X')) {
         e.preventDefault()
-        exportAsJSON()
+        fileOpsRef.current.exportAsJSON()
       }
       if ((e.key === 'v' || e.key === 'V') && keyframeMode && selectedCharId) {
         e.preventDefault()
@@ -396,6 +510,110 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function snapToRightAngles(a: number) {
     const step = Math.PI / 2
     return Math.round(a / step) * step
+  }
+
+  // Word-wrap helper for annotation text (used by both draw and hit-testing)
+  function wrapText(text: string, fontSize: number, maxWidth: number): string[] {
+    const canvas = canvasRef.current
+    if (!canvas) return [text]
+    const ctx = canvas.getContext('2d')!
+    ctx.save()
+    ctx.font = `${fontSize}px "Inter", sans-serif`
+    const words = text.split(' ')
+    const lines: string[] = []
+    let currentLine = ''
+    for (const word of words) {
+      const parts = word.split('\n')
+      for (let pi = 0; pi < parts.length; pi++) {
+        if (pi > 0) { lines.push(currentLine); currentLine = '' }
+        const testLine = currentLine ? currentLine + ' ' + parts[pi] : parts[pi]
+        if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+          lines.push(currentLine)
+          currentLine = parts[pi]
+        } else {
+          currentLine = testLine
+        }
+      }
+    }
+    if (currentLine) lines.push(currentLine)
+    ctx.restore()
+    return lines
+  }
+
+  // Compute the visual height of an annotation box (text-based or user-set minimum)
+  function getAnnotationHeight(ann: TextAnnotation): number {
+    const lineHeight = ann.fontSize * 1.3
+    const lines = wrapText(ann.text, ann.fontSize, ann.width)
+    const textH = Math.max(lineHeight, lines.length * lineHeight)
+    return ann.height ? Math.max(ann.height, textH) : textH
+  }
+
+  // Hit-test annotation zones: returns { ann, zone } or null
+  function hitTestAnnotation(mx: number, my: number, annotations: TextAnnotation[]): { ann: TextAnnotation; zone: 'corner-tl' | 'corner-tr' | 'corner-bl' | 'corner-br' | 'border' | 'inside' } | null {
+    const CORNER = 10 // corner handle hit area (half-size)
+    const BORDER = 6  // border hit thickness
+    for (const ann of annotations) {
+      const totalH = getAnnotationHeight(ann)
+      const bx = ann.x - 2, by = ann.y - 2, bw = ann.width + 4, bh = totalH + 4
+      // Corner checks (small squares at each corner)
+      if (Math.abs(mx - bx) <= CORNER && Math.abs(my - by) <= CORNER) return { ann, zone: 'corner-tl' }
+      if (Math.abs(mx - (bx + bw)) <= CORNER && Math.abs(my - by) <= CORNER) return { ann, zone: 'corner-tr' }
+      if (Math.abs(mx - bx) <= CORNER && Math.abs(my - (by + bh)) <= CORNER) return { ann, zone: 'corner-bl' }
+      if (Math.abs(mx - (bx + bw)) <= CORNER && Math.abs(my - (by + bh)) <= CORNER) return { ann, zone: 'corner-br' }
+      // Check if inside the extended box area
+      if (mx >= bx - BORDER && mx <= bx + bw + BORDER && my >= by - BORDER && my <= by + bh + BORDER) {
+        // Border check: within BORDER px of any edge
+        const nearLeft = mx < bx + BORDER
+        const nearRight = mx > bx + bw - BORDER
+        const nearTop = my < by + BORDER
+        const nearBottom = my > by + bh - BORDER
+        if (nearLeft || nearRight || nearTop || nearBottom) return { ann, zone: 'border' }
+        // Inside
+        return { ann, zone: 'inside' }
+      }
+    }
+    return null
+  }
+
+  // Update an annotation in the current keyframe
+  function updateAnnotation(annId: string, updates: Partial<TextAnnotation>) {
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === activeKeyframeIndex ? {
+        ...kf,
+        annotations: (kf.annotations ?? []).map(a => a.id === annId ? { ...a, ...updates } : a)
+      } : kf
+    ))
+  }
+
+  // Delete an annotation from the current keyframe
+  function deleteAnnotation(annId: string) {
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === activeKeyframeIndex ? {
+        ...kf,
+        annotations: (kf.annotations ?? []).filter(a => a.id !== annId)
+      } : kf
+    ))
+    if (selectedAnnotationId === annId) setSelectedAnnotationId(null)
+    if (editingAnnotationId === annId) setEditingAnnotationId(null)
+  }
+
+  // Commit or delete the currently-editing annotation (reads from DOM textarea)
+  // Call this before any mode transition to avoid losing text.
+  function commitEditingAnnotation() {
+    if (!editingAnnotationId) return
+    // Try to read the latest text from the actual DOM element
+    const textarea = document.querySelector('textarea.z-50') as HTMLTextAreaElement | null
+    const currentText = textarea ? textarea.value : null
+    if (currentText !== null) {
+      if (!currentText.trim()) {
+        // Empty → remove the annotation
+        deleteAnnotation(editingAnnotationId)
+      } else {
+        updateAnnotation(editingAnnotationId, { text: currentText })
+      }
+    }
+    setEditingAnnotationId(null)
+    skipNextClickRef.current = true
   }
 
   function saveToHistory(
@@ -514,6 +732,46 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       skipNextClickRef.current = false
       return
     }
+
+    // ── Note mode: click to place a new text annotation ──
+    if (noteMode && keyframeMode) {
+      const canvas = canvasRef.current!
+      const rect = canvas.getBoundingClientRect()
+      const x = Math.round(e.clientX - rect.left)
+      const y = Math.round(e.clientY - rect.top)
+
+      // Check if clicking on an existing annotation (only 'inside' zone opens editing)
+      const annotations = keyframes[activeKeyframeIndex]?.annotations ?? []
+      const hit = hitTestAnnotation(x, y, annotations)
+      if (hit) {
+        setSelectedAnnotationId(hit.ann.id)
+        if (hit.zone === 'inside') {
+          setEditingAnnotationId(hit.ann.id)
+        }
+        return
+      }
+
+      // Create new annotation — block on keyframe 1, move to keyframe 2 instead
+      const targetKfIndex = activeKeyframeIndex === 0 && keyframes.length > 1 ? 1 : activeKeyframeIndex
+      if (activeKeyframeIndex === 0 && keyframes.length > 1) {
+        showToast('Notes cannot be placed on Keyframe 1 — moved to Keyframe 2', 'info')
+      }
+      const id = `ann_${annotationNextId.current++}`
+      const newAnn: TextAnnotation = { id, x, y, width: 200, text: '', fontSize: 14, color: '#000' }
+      const updatedKfs = keyframes.map((kf, i) =>
+        i === targetKfIndex ? { ...kf, annotations: [...(kf.annotations ?? []), newAnn] } : kf
+      )
+      setKeyframes(updatedKfs)
+      if (activeKeyframeIndex === 0 && keyframes.length > 1) {
+        // Switch to keyframe 2 so the user can edit the note there
+        setActiveKeyframeIndex(1)
+        setCharacters(JSON.parse(JSON.stringify(keyframes[1].characters)))
+      }
+      setSelectedAnnotationId(id)
+      setEditingAnnotationId(id)
+      return
+    }
+
     // In keyframe mode, only allow selecting/moving — no adding or gaze setting
     if (keyframeMode && (addMode || awaitingDirectionFor)) return
     if (awaitingDirectionFor) {
@@ -564,6 +822,54 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     setFileMenuOpen(false)
     setConfigMenuOpen(false)
+
+    // ── Note mode annotation dragging / resizing ──
+    if (noteMode && keyframeMode) {
+      const annotations = keyframes[activeKeyframeIndex]?.annotations ?? []
+      const hit = hitTestAnnotation(mx, my, annotations)
+      if (hit) {
+        const { ann, zone } = hit
+        setSelectedAnnotationId(ann.id)
+        if (zone.startsWith('corner-')) {
+          // Corner resize
+          const corner = zone.replace('corner-', '') as 'tl' | 'tr' | 'bl' | 'br'
+          annotationDragRef.current = {
+            id: ann.id,
+            offsetX: 0,
+            offsetY: 0,
+            mode: 'resize',
+            corner,
+            startMouseX: mx,
+            startMouseY: my,
+            startX: ann.x,
+            startY: ann.y,
+            startWidth: ann.width,
+            startHeight: getAnnotationHeight(ann),
+          }
+          skipNextClickRef.current = true
+          return
+        }
+        if (zone === 'border') {
+          // Border drag → move
+          annotationDragRef.current = {
+            id: ann.id,
+            offsetX: mx - ann.x,
+            offsetY: my - ann.y,
+            mode: 'move',
+          }
+          skipNextClickRef.current = true
+          return
+        }
+        // zone === 'inside' → just select, let onClick open editing
+        return
+      }
+      // Clicked empty space in note mode — deselect
+      // If we were editing, skip the upcoming click so it doesn't create a new box
+      if (editingAnnotationId) skipNextClickRef.current = true
+      setSelectedAnnotationId(null)
+      setEditingAnnotationId(null)
+      return
+    }
 
     if (addMode) return
 
@@ -666,6 +972,31 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     if (dragRef.current.type) return
     if (addMode) return
+
+    // ── Note mode: update cursor based on annotation hit zone ──
+    if (noteMode && keyframeMode) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      const annotations = keyframes[activeKeyframeIndex]?.annotations ?? []
+      const hit = hitTestAnnotation(mx, my, annotations)
+      const wrapper = canvas.parentElement
+      if (wrapper) {
+        if (!hit) {
+          wrapper.style.cursor = 'crosshair'
+        } else if (hit.zone === 'corner-tl' || hit.zone === 'corner-br') {
+          wrapper.style.cursor = 'nwse-resize'
+        } else if (hit.zone === 'corner-tr' || hit.zone === 'corner-bl') {
+          wrapper.style.cursor = 'nesw-resize'
+        } else if (hit.zone === 'border') {
+          wrapper.style.cursor = 'move'
+        } else {
+          wrapper.style.cursor = 'text'
+        }
+      }
+    }
   }
 
   // Drag & drop from Offstage: allow dropping a hidden character onto the canvas
@@ -884,6 +1215,46 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       ctx.restore()
     })
+
+    // ── Draw text annotations for the current keyframe ──
+    const currentAnnotations = keyframes[activeKeyframeIndex]?.annotations ?? []
+    currentAnnotations.forEach((ann) => {
+      if (editingAnnotationId === ann.id) return // skip drawing while editing (HTML overlay handles it)
+      if (!ann.text.trim()) return // don't draw empty annotations
+      ctx.save()
+      ctx.font = `${ann.fontSize}px "Inter", sans-serif`
+      ctx.fillStyle = ann.color || '#000'
+      ctx.textBaseline = 'top'
+      const lines = wrapText(ann.text, ann.fontSize, ann.width)
+      const lineHeight = ann.fontSize * 1.3
+      const totalH = getAnnotationHeight(ann)
+      lines.forEach((line, li) => {
+        ctx.fillText(line, ann.x, ann.y + li * lineHeight)
+      })
+      // Draw selection / border
+      if (selectedAnnotationId === ann.id || noteMode) {
+        const bx = ann.x - 2, by = ann.y - 2, bw = ann.width + 4, bh = totalH + 4
+        ctx.strokeStyle = selectedAnnotationId === ann.id ? '#2563eb' : '#94a3b8'
+        ctx.lineWidth = selectedAnnotationId === ann.id ? 2 : 1
+        ctx.setLineDash(selectedAnnotationId === ann.id ? [] : [4, 4])
+        ctx.strokeRect(bx, by, bw, bh)
+        // Draw corner resize handles when selected
+        if (selectedAnnotationId === ann.id) {
+          const hs = 5 // handle half-size
+          ctx.fillStyle = '#2563eb'
+          ctx.setLineDash([])
+          // TL
+          ctx.fillRect(bx - hs, by - hs, hs * 2, hs * 2)
+          // TR
+          ctx.fillRect(bx + bw - hs, by - hs, hs * 2, hs * 2)
+          // BL
+          ctx.fillRect(bx - hs, by + bh - hs, hs * 2, hs * 2)
+          // BR
+          ctx.fillRect(bx + bw - hs, by + bh - hs, hs * 2, hs * 2)
+        }
+      }
+      ctx.restore()
+    })
   }
 
   // ── Keyframe helpers ──
@@ -942,10 +1313,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
     } else {
       stopPlayback()
-      // Commit current characters into keyframes and record history before exiting
-      const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf)
-      setKeyframes(committed)
-      saveToHistory(characters, committed, activeKeyframeIndex)
+      // Commit any editing annotation before exiting
+      commitEditingAnnotation()
+      // Commit current characters into keyframes using functional form to preserve annotation updates
+      setKeyframes(prev => {
+        const committed = prev.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf)
+        saveToHistory(characters, committed, activeKeyframeIndex)
+        return committed
+      })
       setKeyframeMode(false)
     }
   }
@@ -1136,6 +1511,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setCharacters(JSON.parse(JSON.stringify(newKfs[idx].characters)))
     setSelectedCharId(null)
     setAwaitingDirectionFor(null)
+    setEditingAnnotationId(null)
+    setSelectedAnnotationId(null)
   }
 
   function goToPrevKeyframe() {
@@ -1451,6 +1828,30 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       )
       setKeyframes(committedKfs)
     }
+    // If a note is being edited, commit its text from the DOM before saving
+    if (editingAnnotationId) {
+      const textarea = document.querySelector('textarea.z-50') as HTMLTextAreaElement | null
+      const currentText = textarea ? textarea.value : null
+      if (currentText !== null) {
+        if (currentText.trim()) {
+          committedKfs = committedKfs.map((kf, i) => i === activeKeyframeIndex ? {
+            ...kf,
+            annotations: (kf.annotations ?? []).map(a => a.id === editingAnnotationId ? { ...a, text: currentText } : a)
+          } : kf)
+        } else {
+          committedKfs = committedKfs.map((kf, i) => i === activeKeyframeIndex ? {
+            ...kf,
+            annotations: (kf.annotations ?? []).filter(a => a.id !== editingAnnotationId)
+          } : kf)
+        }
+      }
+      setEditingAnnotationId(null)
+    }
+    // Clean up empty annotations before saving
+    committedKfs = committedKfs.map(kf => ({
+      ...kf,
+      annotations: (kf.annotations ?? []).filter(a => a.text.trim())
+    }))
 
     // Normalize scene names so we never save null/undefined entries.
     const rawSceneNames = Array.isArray(sceneNames) ? sceneNames.slice() : []
@@ -1480,6 +1881,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       keyframeMode,
       activeKeyframeIndex,
       keyframeSpeed,
+      fadeSpeed,
       labelFontSize
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
@@ -1563,6 +1965,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           setSceneNotes(state.sceneNotes || {})
           setKeyframeNotes(state.keyframeNotes || {})
           if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
+          if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
+          if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
 
           // If saved in keyframe mode, restore characters from the active keyframe
             if (state.keyframeMode) {
@@ -1593,6 +1997,30 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
       )
     }
+    // If a note is being edited, commit its text from the DOM before exporting
+    if (editingAnnotationId) {
+      const textarea = document.querySelector('textarea.z-50') as HTMLTextAreaElement | null
+      const currentText = textarea ? textarea.value : null
+      if (currentText !== null) {
+        if (currentText.trim()) {
+          committedKfs = committedKfs.map((kf, i) => i === activeKeyframeIndex ? {
+            ...kf,
+            annotations: (kf.annotations ?? []).map(a => a.id === editingAnnotationId ? { ...a, text: currentText } : a)
+          } : kf)
+        } else {
+          committedKfs = committedKfs.map((kf, i) => i === activeKeyframeIndex ? {
+            ...kf,
+            annotations: (kf.annotations ?? []).filter(a => a.id !== editingAnnotationId)
+          } : kf)
+        }
+      }
+      setEditingAnnotationId(null)
+    }
+    // Clean up empty annotations before exporting
+    committedKfs = committedKfs.map(kf => ({
+      ...kf,
+      annotations: (kf.annotations ?? []).filter(a => a.text.trim())
+    }))
     // Normalize scene names for exported file
     const exportRawSceneNames = Array.isArray(sceneNames) ? sceneNames.slice() : []
     const exportBoundaries = Array.isArray(sceneBoundaries) && sceneBoundaries.length > 0 ? sceneBoundaries : [0]
@@ -1615,6 +2043,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       sceneIndex,
       keyframeMode,
       keyframeSpeed,
+      fadeSpeed,
       projectTitle,
       sceneNotes,
       keyframeNotes,
@@ -1733,6 +2162,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setSceneNotes(state.sceneNotes || {})
             setKeyframeNotes(state.keyframeNotes || {})
             if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
+            if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
+            if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
             showToast('Layout imported')
@@ -1745,6 +2176,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
     input.click()
   }
+
+  // Keep file ops ref updated so keyboard handler always uses latest closures
+  fileOpsRef.current = { saveToLocalStorage, loadFromLocalStorage, exportAsJSON, importFromJSON }
 
   function exportAsImage() {
     const canvas = canvasRef.current
@@ -2030,10 +2464,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onLabelFontSizeChange={setLabelFontSize}
           fileMenuOpen={fileMenuOpen}
           setFileMenuOpen={setFileMenuOpen}
-          onSave={saveToLocalStorage}
-          onLoad={loadFromLocalStorage}
-          onExportJSON={exportAsJSON}
-          onImportJSON={importFromJSON}
+          onSave={() => fileOpsRef.current.saveToLocalStorage()}
+          onLoad={() => fileOpsRef.current.loadFromLocalStorage()}
+          onExportJSON={() => fileOpsRef.current.exportAsJSON()}
+          onImportJSON={() => fileOpsRef.current.importFromJSON()}
           onExportPNG={exportAsImage}
           keyframeMode={keyframeMode}
           onToggleKeyframeMode={toggleKeyframeMode}
@@ -2073,9 +2507,17 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onProjectTitleChange={(t: string) => { setProjectTitle(t); try { localStorage.setItem('stageProjectTitle', t) } catch (e) {} }}
           sceneNotes={sceneNotes}
           keyframeNotes={keyframeNotes}
+          noteMode={noteMode}
+          onToggleNoteMode={() => {
+            if (noteMode) {
+              commitEditingAnnotation()
+              setSelectedAnnotationId(null)
+            }
+            setNoteMode(prev => !prev)
+          }}
           />
         </div>
-        <div className="inline-block relative" style={{ width: '100%', maxWidth: canvasSize.width + 'px', marginBottom: 24 }}>
+        <div className="inline-block relative" style={{ width: '100%', maxWidth: canvasSize.width + 'px', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
           <StageCanvas
             canvasRef={canvasRef}
             canvasSize={canvasSize}
@@ -2085,6 +2527,71 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             onDrop={handleCanvasDrop}
             onDragOver={handleCanvasDragOver}
           />
+          {/* Annotation editing overlay */}
+          {editingAnnotationId && (() => {
+            const ann = (keyframes[activeKeyframeIndex]?.annotations ?? []).find(a => a.id === editingAnnotationId)
+            if (!ann) return null
+            return (
+              <textarea
+                key={ann.id}
+                autoFocus
+                className="absolute z-50 outline-none resize-none border-2 border-blue-500 bg-white/90 rounded px-1"
+                style={{
+                  left: ann.x,
+                  top: ann.y + 24, // offset for StageCanvas margin-top (24px inside <main>)
+                  width: ann.width,
+                  minHeight: 28,
+                  fontSize: ann.fontSize,
+                  fontFamily: '"Inter", sans-serif',
+                  color: ann.color || '#000',
+                  lineHeight: 1.3,
+                  overflow: 'hidden',
+                }}
+                ref={(el) => {
+                  // Auto-expand height to fit content and place cursor at end
+                  if (el) {
+                    el.style.height = 'auto'
+                    el.style.height = el.scrollHeight + 'px'
+                    el.setSelectionRange(el.value.length, el.value.length)
+                  }
+                }}
+                value={ann.text}
+                onChange={(e) => {
+                  updateAnnotation(ann.id, { text: e.target.value })
+                  // Auto-expand on content change
+                  const el = e.target
+                  el.style.height = 'auto'
+                  el.style.height = el.scrollHeight + 'px'
+                }}
+                onBlur={(e) => {
+                  // Read text directly from the DOM element (closure `ann.text` can be stale)
+                  const currentText = e.target.value
+                  if (!currentText.trim()) {
+                    deleteAnnotation(ann.id)
+                  } else {
+                    // Commit the latest text to state in case the last onChange hasn't settled
+                    updateAnnotation(ann.id, { text: currentText })
+                    setEditingAnnotationId(null)
+                  }
+                  // Prevent the click that caused the blur from creating a new annotation
+                  skipNextClickRef.current = true
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    if (!ann.text.trim()) deleteAnnotation(ann.id)
+                    else setEditingAnnotationId(null)
+                  }
+                  e.stopPropagation()
+                }}
+              />
+            )
+          })()}
+          {/* Note mode cursor hint */}
+          {noteMode && keyframeMode && (
+            <div className="absolute top-1 left-1 z-40 px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded shadow-sm" style={{ marginTop: 24 }}>
+              Note Mode — click to place text (N to exit, Esc to cancel)
+            </div>
+          )}
           <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
             <div className="text-xs text-muted-foreground">Offstage</div>
             <div className="mt-2 flex flex-col gap-2 max-w-xs">

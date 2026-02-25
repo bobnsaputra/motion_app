@@ -5,7 +5,7 @@ import {
   UserPlus, Trash2, Copy, Undo2, Redo2,
   Settings, Save, LogOut, Menu, Film,
   Eye, EyeOff,
-  Info,
+  Info, StickyNote,
   Plus, Play, Square, ChevronLeft, ChevronRight, Pencil
 } from 'lucide-react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
@@ -101,6 +101,8 @@ interface ToolbarProps {
   onProjectTitleChange?: (t: string) => void
   sceneNotes?: Record<number, string>
   keyframeNotes?: Record<string, string>
+  noteMode?: boolean
+  onToggleNoteMode?: () => void
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -217,6 +219,7 @@ export default function Toolbar(props: ToolbarProps) {
                     <div className="leading-tight">Double-click keyframe: Rename</div>
                     <div className="leading-tight">+: Add keyframe</div>
                     <div className="leading-tight">V: Toggle visibility</div>
+                    <div className="leading-tight">N: Note mode (place text)</div>
                     <div className="leading-tight">R: Reverse stage</div>
                     <div className="leading-tight">Esc: Exit / Cancel</div>
                   </div>
@@ -301,6 +304,14 @@ export default function Toolbar(props: ToolbarProps) {
               </Button>
               <button className="rounded p-1 hover:bg-accent/10" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)" aria-label="Add keyframe">
                 <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                className={`rounded p-1 hover:bg-accent/10 ${props.noteMode ? 'bg-amber-100 text-amber-700' : ''}`}
+                onClick={() => props.onToggleNoteMode && props.onToggleNoteMode()}
+                disabled={isPlaying}
+                title="Note Mode (N) — click canvas to place text"
+              >
+                <StickyNote className="h-3.5 w-3.5" />
               </button>
               <button
                 className="rounded p-1 hover:bg-destructive/10 text-destructive"

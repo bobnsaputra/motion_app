@@ -25,9 +25,21 @@ export type User = {
   email: string
 }
 
+export type TextAnnotation = {
+  id: string
+  x: number
+  y: number
+  width: number
+  height?: number // user-set minimum height (from corner resize); auto-computed if omitted
+  text: string
+  fontSize: number
+  color: string
+}
+
 export type Keyframe = {
   id: number
   label: string
   characters: Character[] // snapshot of all characters at this keyframe, with per-keyframe visibility
+  annotations?: TextAnnotation[] // text annotations on the canvas for this keyframe
   linkedTo?: number // optional index of another keyframe this one is linked to (follows that keyframe until edited)
 }

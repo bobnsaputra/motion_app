@@ -19,6 +19,31 @@ Entries format:
 ### Lock Stage Size UX
 - 09:10 — **ConfigMenu / Stage**: Added `Lock Stage Size` checkbox (default: enabled). When enabled, the Width/Height text inputs and the ±100 quick-apply buttons are disabled and visually subdued; attempts to change the canvas size are blocked and show an ephemeral toast. (`src/components/ConfigMenu.tsx`, `src/components/StageBlockingApp.tsx`)
 
+## 2026-02-26
+### Note Mode robustness & Config improvements
+- 00:00 — **Move speed increment**: Changed the Move speed ± quick-adjust buttons from ±100ms to ±1s (1000ms). Increased `MAX_MOVE_MS` from 1600 to 10000. (`ConfigMenu.tsx`)
+- 00:05 — **Speed persistence**: `keyframeSpeed` and `fadeSpeed` are now properly saved to localStorage, loaded on restore, included in JSON export, and restored on import. Previously `keyframeSpeed` was written but never read back, and `fadeSpeed` wasn't persisted at all. (`StageBlockingApp.tsx`)
+- 00:10 — **Commit notes on mode exit**: Added `commitEditingAnnotation()` helper that reads the current textarea DOM value and commits it before any mode transition. Pressing K (keyframe toggle), N (note toggle), Escape, or clicking the toolbar buttons now saves the editing note instead of discarding it. (`StageBlockingApp.tsx`)
+- 00:15 — **Keyframe 1 note restriction**: Notes cannot be placed on Keyframe 1 (the starting position). Creating a note on Keyframe 1 automatically moves it to Keyframe 2, switches the view, and shows an info toast. Consistent with the existing character drag block on Keyframe 1. (`StageBlockingApp.tsx`)
+- 00:20 — **Export annotation fix**: Both `saveToLocalStorage` and `exportAsJSON` now inline-read the textarea DOM value into their local snapshot before serializing, fixing a bug where the async `setKeyframes` from `commitEditingAnnotation()` hadn't applied yet and annotations were lost in exports. (`StageBlockingApp.tsx`)
+
+## 2026-02-25
+### Note Mode — Paint-like text annotations
+- 23:00 — **Note Mode**: Added a full Paint-like text annotation system per keyframe. Toggle with the StickyNote button (left of +) or press `N`. Click anywhere on the canvas to place a text box, type to add text, click away to finish. Annotations are per-keyframe and persist with save/load/export/import. (`StageBlockingApp.tsx`, `Toolbar.tsx`, `types.ts`)
+- 23:05 — **TextAnnotation type**: Added `TextAnnotation` type with `id`, `x`, `y`, `width`, `height`, `text`, `fontSize`, `color`. Extended `Keyframe` type with optional `annotations` array. (`types.ts`)
+- 23:10 — **Three interaction zones**: Annotations have distinct behaviors based on where you click: **corners** = resize (all 4 corners), **border/edge** = drag to move, **inside** = click to edit text. (`StageBlockingApp.tsx`)
+- 23:15 — **Corner resize handles**: Selected annotations show blue square handles at all 4 corners. Dragging any corner resizes both width and height. Right-side corners keep the left edge fixed; left-side corners keep the right edge; top corners keep the bottom; bottom corners keep the top. Minimum 60px wide, 20px tall. (`StageBlockingApp.tsx`)
+- 23:20 — **Cursor feedback**: Dynamic cursor changes on hover in note mode — `nwse-resize`/`nesw-resize` on corners, `move` on borders, `text` inside, `crosshair` on empty space. (`StageBlockingApp.tsx`)
+- 23:25 — **Auto-expanding textarea**: The editing overlay textarea auto-grows as you type or press Enter — no more hidden overflow. Cursor always starts at end of text when re-editing. (`StageBlockingApp.tsx`)
+- 23:30 — **Click-outside behavior**: Clicking outside an editing box closes it without creating a new annotation on the same click. The next click places a new box. Empty annotations are auto-deleted on blur. (`StageBlockingApp.tsx`)
+- 23:35 — **Empty annotation cleanup**: Empty annotations (no text) are filtered out before save/export and skipped during canvas drawing — no ghost dotted-line boxes. (`StageBlockingApp.tsx`)
+- 23:40 — **Stale closure fix**: Save/Load/Export/Import keyboard shortcuts and toolbar buttons now use a `fileOpsRef` to always call the latest function closures, fixing a bug where annotations were lost on save because the keyboard handler captured stale `keyframes` state. (`StageBlockingApp.tsx`)
+- 23:45 — **Blur text commit**: The `onBlur` handler now reads text directly from the DOM element (`e.target.value`) instead of the React closure, ensuring typed text is always preserved when clicking outside. (`StageBlockingApp.tsx`)
+- 23:48 — **annotationNextId re-init**: The annotation ID counter now updates whenever keyframes change (not just on mount), preventing duplicate IDs after load/import. (`StageBlockingApp.tsx`)
+
+### Config: Label font size
+- 22:00 — **Label font size**: Added `labelFontSize` state (default 14px, down from 20px) with a range slider (8–32px) in ConfigMenu. Applied to "STAGE" and "AUDIENCE" canvas labels. Persisted in save/load/export/import. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `types.ts`)
+
 ## 2026-02-24
 ### ConfigMenu: Keyframe Timing polish
 - 10:15 — **Keyframe Timing**: `Move` and `Fade` inputs now display seconds (s) instead of milliseconds and remain editable with a 2s debounce before applying. (`src/components/ConfigMenu.tsx`)

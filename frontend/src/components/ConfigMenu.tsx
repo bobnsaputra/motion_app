@@ -76,7 +76,7 @@ export default function ConfigMenu({
   const [keyframeSpeedError, setKeyframeSpeedError] = useState<string | null>(null)
   const [fadeSpeedError, setFadeSpeedError] = useState<string | null>(null)
   const MIN_MOVE_MS = 100
-  const MAX_MOVE_MS = 1600
+  const MAX_MOVE_MS = 10000
   const MIN_FADE_MS = 50
   const MAX_FADE_MS = 3000
 
@@ -307,18 +307,18 @@ export default function ConfigMenu({
             <span>Move</span>
             <span className="flex gap-1">
               <button
-                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localKeyframeSpeedStr) || (keyframeSpeed ?? 1200) / 1000) * 1000); applyKeyframeSpeedVal(curMs - 100) }}
+                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localKeyframeSpeedStr) || (keyframeSpeed ?? 1200) / 1000) * 1000); applyKeyframeSpeedVal(curMs - 1000) }}
                 disabled={!!lockKeyframeTiming}
                 className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title="-100 ms"
+                title="-1 s"
               >
                 −
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localKeyframeSpeedStr) || (keyframeSpeed ?? 1200) / 1000) * 1000); applyKeyframeSpeedVal(curMs + 100) }}
+                onClick={(e) => { e.stopPropagation(); const curMs = Math.round((Number(localKeyframeSpeedStr) || (keyframeSpeed ?? 1200) / 1000) * 1000); applyKeyframeSpeedVal(curMs + 1000) }}
                 disabled={!!lockKeyframeTiming}
                 className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockKeyframeTiming ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title="+100 ms"
+                title="+1 s"
               >
                 +
               </button>
