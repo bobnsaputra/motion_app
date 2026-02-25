@@ -29,6 +29,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [lockStageSize, setLockStageSize] = useState(true)
   const [lockKeyframeTiming, setLockKeyframeTiming] = useState(false)
   const [stageReversed, setStageReversed] = useState(false)
+  const [labelFontSize, setLabelFontSize] = useState(14)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
   const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
   const [fadeSpeed, setFadeSpeed] = useState(1200)
@@ -108,7 +109,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     draw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed])
+  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize])
 
   // ── Mouse move / up for dragging ──
   useEffect(() => {
@@ -750,14 +751,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     ctx.save()
-    ctx.font = '600 20px "Inter", sans-serif'
+    ctx.font = `600 ${labelFontSize}px "Inter", sans-serif`
     ctx.letterSpacing = '12px'
     ctx.textAlign = 'center'
     ctx.fillStyle = '#94a3b8' // Zinc 400 for subtle contrast
     const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
     const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
-    ctx.fillText(topLabel, canvas.width / 2, 50)
-    ctx.fillText(bottomLabel, canvas.width / 2, canvas.height - 25)
+    ctx.fillText(topLabel, canvas.width / 2, 30 + labelFontSize)
+    ctx.fillText(bottomLabel, canvas.width / 2, canvas.height - 15)
     ctx.restore()
 
     drawGuides(ctx)
@@ -1478,7 +1479,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       keyframeNotes,
       keyframeMode,
       activeKeyframeIndex,
-      keyframeSpeed
+      keyframeSpeed,
+      labelFontSize
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
@@ -1560,6 +1562,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           setProjectTitle(state.projectTitle || 'Untitled')
           setSceneNotes(state.sceneNotes || {})
           setKeyframeNotes(state.keyframeNotes || {})
+          if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
 
           // If saved in keyframe mode, restore characters from the active keyframe
             if (state.keyframeMode) {
@@ -1614,7 +1617,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       keyframeSpeed,
       projectTitle,
       sceneNotes,
-      keyframeNotes
+      keyframeNotes,
+      labelFontSize
     }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -1728,6 +1732,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setProjectTitle(state.projectTitle || 'Untitled')
             setSceneNotes(state.sceneNotes || {})
             setKeyframeNotes(state.keyframeNotes || {})
+            if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
             showToast('Layout imported')
@@ -2021,6 +2026,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onColorChange={handleColorChange}
           stageReversed={stageReversed}
           onToggleReverse={handleToggleReverse}
+          labelFontSize={labelFontSize}
+          onLabelFontSizeChange={setLabelFontSize}
           fileMenuOpen={fileMenuOpen}
           setFileMenuOpen={setFileMenuOpen}
           onSave={saveToLocalStorage}

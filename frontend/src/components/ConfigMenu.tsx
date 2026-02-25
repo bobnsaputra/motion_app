@@ -29,6 +29,8 @@ interface ConfigMenuProps {
   onColorChange: (head: string, shoulder: string) => void
   stageReversed: boolean
   onToggleReverse: () => void
+  labelFontSize?: number
+  onLabelFontSizeChange?: (size: number) => void
   keyframeSpeed?: number
   onKeyframeSpeedChange?: (speed: number) => void
   fadeSpeed?: number
@@ -54,7 +56,7 @@ export default function ConfigMenu({
   stageReversed,
   onToggleReverse
   , keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange, lockStageSize, setLockStageSize
-  , lockKeyframeTiming, setLockKeyframeTiming
+  , lockKeyframeTiming, setLockKeyframeTiming, labelFontSize, onLabelFontSizeChange
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [localWidthStr, setLocalWidthStr] = useState<string>(String(canvasSize.width))
@@ -426,6 +428,24 @@ export default function ConfigMenu({
           />
         </button>
       </div>
+
+      <div className="my-3 h-px bg-border" />
+
+      <label className="text-xs text-muted-foreground">
+        Stage / Audience Label Size
+        <div className="flex items-center gap-2 mt-1">
+          <input
+            type="range"
+            min={8}
+            max={32}
+            step={1}
+            value={labelFontSize ?? 14}
+            onChange={(e) => onLabelFontSizeChange && onLabelFontSizeChange(Number(e.target.value))}
+            className="flex-1 h-1.5 accent-primary"
+          />
+          <span className="text-xs tabular-nums w-6 text-center">{labelFontSize ?? 14}</span>
+        </div>
+      </label>
 
       <div className="my-3 h-px bg-border" />
 

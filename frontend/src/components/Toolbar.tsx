@@ -56,6 +56,8 @@ interface ToolbarProps {
   onColorChange: (head: string, shoulder: string) => void
   stageReversed: boolean
   onToggleReverse: () => void
+  labelFontSize?: number
+  onLabelFontSizeChange?: (size: number) => void
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
   onSave: () => void
@@ -431,6 +433,8 @@ export default function Toolbar(props: ToolbarProps) {
                       onColorChange={onColorChange}
                       stageReversed={stageReversed}
                       onToggleReverse={onToggleReverse}
+                      labelFontSize={props.labelFontSize}
+                      onLabelFontSizeChange={props.onLabelFontSizeChange}
                       keyframeSpeed={keyframeSpeed}
                       onKeyframeSpeedChange={onKeyframeSpeedChange}
                       fadeSpeed={fadeSpeed}
