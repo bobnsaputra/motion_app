@@ -1434,19 +1434,22 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   function addKeyframe() {
 
-    // When adding a keyframe, preserve visibility
+    // Commit current characters into the active keyframe before inserting
+    const baseKfs = keyframes.map((kf, i) =>
+      i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+    )
+
+    // When adding a keyframe, preserve visibility from current state
     const kf: Keyframe = {
       id: nextKfId.current++,
       label: '',
       characters: characters.map(c => ({ ...c, visible: c.visible !== false }))
     }
-    // By default insert within current scene after its last frame
-    const currentSceneStart = sceneBoundaries[sceneIndex] ?? 0
-    const nextBoundary = sceneBoundaries[sceneIndex + 1] ?? keyframes.length
-    const insertAt = nextBoundary
+    // Insert after the currently active keyframe (within the same scene)
+    const insertAt = activeKeyframeIndex + 1
     // Insert the new keyframe and shift subsequent scene boundaries so
     // scene start indices remain correct for scenes after the insertion.
-    const updatedKfs = [...keyframes.slice(0, insertAt), kf, ...keyframes.slice(insertAt)]
+    const updatedKfs = [...baseKfs.slice(0, insertAt), kf, ...baseKfs.slice(insertAt)]
     const newBoundaries = (sceneBoundaries || [0]).map(b => (b < insertAt ? b : b + 1))
     // If there were no boundaries, ensure at least one exists
     if (newBoundaries.length === 0) newBoundaries.push(0)
