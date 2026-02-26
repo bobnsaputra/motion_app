@@ -30,6 +30,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [lockKeyframeTiming, setLockKeyframeTiming] = useState(false)
   const [stageReversed, setStageReversed] = useState(false)
   const [labelFontSize, setLabelFontSize] = useState(14)
+  const [noteFontSize, setNoteFontSize] = useState(14)
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
   const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
   const [fadeSpeed, setFadeSpeed] = useState(1200)
@@ -757,7 +758,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         showToast('Notes cannot be placed on Keyframe 1 — moved to Keyframe 2', 'info')
       }
       const id = `ann_${annotationNextId.current++}`
-      const newAnn: TextAnnotation = { id, x, y, width: 200, text: '', fontSize: 14, color: '#000' }
+      const newAnn: TextAnnotation = { id, x, y, width: 200, text: '', fontSize: noteFontSize, color: '#000' }
       const updatedKfs = keyframes.map((kf, i) =>
         i === targetKfIndex ? { ...kf, annotations: [...(kf.annotations ?? []), newAnn] } : kf
       )
@@ -1885,7 +1886,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       activeKeyframeIndex,
       keyframeSpeed,
       fadeSpeed,
-      labelFontSize
+      labelFontSize,
+      noteFontSize
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
@@ -1968,6 +1970,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           setSceneNotes(state.sceneNotes || {})
           setKeyframeNotes(state.keyframeNotes || {})
           if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
+          if (typeof state.noteFontSize === 'number') setNoteFontSize(state.noteFontSize)
           if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
           if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
 
@@ -2050,7 +2053,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       projectTitle,
       sceneNotes,
       keyframeNotes,
-      labelFontSize
+      labelFontSize,
+      noteFontSize
     }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -2165,6 +2169,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setSceneNotes(state.sceneNotes || {})
             setKeyframeNotes(state.keyframeNotes || {})
             if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
+            if (typeof state.noteFontSize === 'number') setNoteFontSize(state.noteFontSize)
             if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
             if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
             setSelectedCharId(null)
@@ -2465,6 +2470,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onToggleReverse={handleToggleReverse}
           labelFontSize={labelFontSize}
           onLabelFontSizeChange={setLabelFontSize}
+          noteFontSize={noteFontSize}
+          onNoteFontSizeChange={setNoteFontSize}
           fileMenuOpen={fileMenuOpen}
           setFileMenuOpen={setFileMenuOpen}
           onSave={() => fileOpsRef.current.saveToLocalStorage()}

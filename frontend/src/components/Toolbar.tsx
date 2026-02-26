@@ -58,6 +58,8 @@ interface ToolbarProps {
   onToggleReverse: () => void
   labelFontSize?: number
   onLabelFontSizeChange?: (size: number) => void
+  noteFontSize?: number
+  onNoteFontSizeChange?: (size: number) => void
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
   onSave: () => void
@@ -446,6 +448,8 @@ export default function Toolbar(props: ToolbarProps) {
                       onToggleReverse={onToggleReverse}
                       labelFontSize={props.labelFontSize}
                       onLabelFontSizeChange={props.onLabelFontSizeChange}
+                      noteFontSize={props.noteFontSize}
+                      onNoteFontSizeChange={props.onNoteFontSizeChange}
                       keyframeSpeed={keyframeSpeed}
                       onKeyframeSpeedChange={onKeyframeSpeedChange}
                       fadeSpeed={fadeSpeed}

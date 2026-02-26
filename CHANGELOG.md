@@ -27,6 +27,7 @@ Entries format:
 - 00:15 — **Keyframe 1 note restriction**: Notes cannot be placed on Keyframe 1 (the starting position). Creating a note on Keyframe 1 automatically moves it to Keyframe 2, switches the view, and shows an info toast. Consistent with the existing character drag block on Keyframe 1. (`StageBlockingApp.tsx`)
 - 00:20 — **Export annotation fix**: Both `saveToLocalStorage` and `exportAsJSON` now inline-read the textarea DOM value into their local snapshot before serializing, fixing a bug where the async `setKeyframes` from `commitEditingAnnotation()` hadn't applied yet and annotations were lost in exports. (`StageBlockingApp.tsx`)
 - 00:25 — **Insert keyframe in-place**: `addKeyframe()` now inserts after the currently active keyframe instead of appending at the end of the scene. E.g., on keyframes 1 2 3 with 2 selected, clicking Add creates a new 3 and pushes the old 3→4. Scene boundaries after the insertion point are shifted accordingly. Current characters are committed to the active keyframe before inserting. (`StageBlockingApp.tsx`)
+- 00:30 — **Note font size config**: Added `noteFontSize` state (default 14px) with a range slider (8–48px) in ConfigMenu below the Stage/Audience label size slider. New annotations use the configured size. Persisted in save/load/export/import. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
 
 ## 2026-02-25
 ### Note Mode — Paint-like text annotations

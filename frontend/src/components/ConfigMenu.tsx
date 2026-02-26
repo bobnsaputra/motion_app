@@ -31,6 +31,8 @@ interface ConfigMenuProps {
   onToggleReverse: () => void
   labelFontSize?: number
   onLabelFontSizeChange?: (size: number) => void
+  noteFontSize?: number
+  onNoteFontSizeChange?: (size: number) => void
   keyframeSpeed?: number
   onKeyframeSpeedChange?: (speed: number) => void
   fadeSpeed?: number
@@ -56,7 +58,7 @@ export default function ConfigMenu({
   stageReversed,
   onToggleReverse
   , keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange, lockStageSize, setLockStageSize
-  , lockKeyframeTiming, setLockKeyframeTiming, labelFontSize, onLabelFontSizeChange
+  , lockKeyframeTiming, setLockKeyframeTiming, labelFontSize, onLabelFontSizeChange, noteFontSize, onNoteFontSizeChange
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [localWidthStr, setLocalWidthStr] = useState<string>(String(canvasSize.width))
@@ -444,6 +446,22 @@ export default function ConfigMenu({
             className="flex-1 h-1.5 accent-primary"
           />
           <span className="text-xs tabular-nums w-6 text-center">{labelFontSize ?? 14}</span>
+        </div>
+      </label>
+
+      <label className="text-xs text-muted-foreground mt-2">
+        Note Font Size
+        <div className="flex items-center gap-2 mt-1">
+          <input
+            type="range"
+            min={8}
+            max={48}
+            step={1}
+            value={noteFontSize ?? 14}
+            onChange={(e) => onNoteFontSizeChange && onNoteFontSizeChange(Number(e.target.value))}
+            className="flex-1 h-1.5 accent-primary"
+          />
+          <span className="text-xs tabular-nums w-6 text-center">{noteFontSize ?? 14}</span>
         </div>
       </label>
 
