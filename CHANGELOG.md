@@ -18,6 +18,7 @@ Entries format:
 - 00:30 — **Pastel color palette**: All 13 color presets replaced with cheerful pastel combinations (pink/mint, lavender/peach, mint/lime, etc.). Each new character auto-cycles through the palette based on counter index. Includes a charcoal/silver dark pastel pair. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`)
 - 00:35 — **Prevent Overlap toggle**: Added toggleable collision prevention in ConfigMenu (off by default). When enabled: red dashed ring warns of overlapping characters, characters auto-snap to non-colliding positions on drag release, and new character placement is nudged away. When disabled: no visual warning, free placement. Uses `preventOverlapRef` to avoid stale closure in mouseUp handler. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
 - 00:40 — **Play All Scenes**: Added a "Play All Scenes" button (PlayCircle icon) next to the existing Play Scene button. Plays from the first keyframe of the first scene through the last keyframe of the last scene, automatically advancing `sceneIndex` as boundaries are crossed. Existing Play button continues to play the current scene only. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
+- 00:45 — **Stage Notes per keyframe**: Added `stageNotes` field (`{ left, center, right }`) to the `Keyframe` type. Three editable text areas render below the stage canvas in keyframe mode, labeled "Stage Left", "Center Stage", "Stage Right". Notes persist automatically with save/load/export/import since they live on the keyframe object. (`types.ts`, `StageBlockingApp.tsx`)
 
 
 ## 2026-02-26

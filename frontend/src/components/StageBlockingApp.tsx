@@ -2939,6 +2939,39 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             </div>
           </div>
         </div>
+        {/* Stage Notes — 3-column text areas below stage */}
+        {keyframeMode && keyframes.length > 0 && (() => {
+          const kf = keyframes[activeKeyframeIndex]
+          if (!kf) return null
+          const notes = kf.stageNotes ?? { left: '', center: '', right: '' }
+          const updateStageNote = (position: 'left' | 'center' | 'right', value: string) => {
+            const updatedKfs = keyframes.map((k, i) =>
+              i === activeKeyframeIndex
+                ? { ...k, stageNotes: { ...(k.stageNotes ?? { left: '', center: '', right: '' }), [position]: value } }
+                : k
+            )
+            setKeyframes(updatedKfs)
+          }
+          return (
+            <div style={{ width: '100%', maxWidth: canvasSize.width + 'px', display: 'flex', gap: 8, marginBottom: 16 }}>
+              {(['left', 'center', 'right'] as const).map((pos) => (
+                <div key={pos} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {pos === 'left' ? 'Stage Left' : pos === 'center' ? 'Center Stage' : 'Stage Right'}
+                  </label>
+                  <textarea
+                    className="w-full rounded border border-gray-300 bg-white/80 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    style={{ minHeight: 48, fontFamily: '"Inter", sans-serif' }}
+                    placeholder={`Notes for ${pos === 'left' ? 'stage left' : pos === 'center' ? 'center stage' : 'stage right'}...`}
+                    value={notes[pos]}
+                    onChange={(e) => updateStageNote(pos, e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                </div>
+              ))}
+            </div>
+          )
+        })()}
         <ToastContainer toast={toast} />
       </div>
     </div>

@@ -42,4 +42,5 @@ export type Keyframe = {
   characters: Character[] // snapshot of all characters at this keyframe, with per-keyframe visibility
   annotations?: TextAnnotation[] // text annotations on the canvas for this keyframe
   linkedTo?: number // optional index of another keyframe this one is linked to (follows that keyframe until edited)
+  stageNotes?: { left: string; center: string; right: string } // director notes for left/center/right stage areas
 }
