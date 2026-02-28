@@ -5,19 +5,19 @@ All notable changes to this project will be documented in this file.
 Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
-## 2026-02-21
-### UI, Config & Login polish
-- 11:05 — **ConfigMenu**: Moved the "Stage Size" section to the bottom of the menu and added small ±100 quick-apply buttons beside the Width/Height labels (buttons apply immediately). Inputs remain free-text with a 2s debounce auto-apply. Added clamped limits and ephemeral toasts when exceeding maxima. (`src/components/ConfigMenu.tsx`)
-- 11:10 — **Size limits**: Increased stage max width to `2000` and set max height to `900`; clamped minimum 100. (`src/components/ConfigMenu.tsx`)
-- 11:15 — **Buttons**: Removed borders from the ± buttons for a cleaner, inline appearance. (`src/components/ConfigMenu.tsx`)
-- 11:20 — **Toolbar sizing**: Made the toolbar default responsive to the stage by wrapping it in a container set to the stage `canvasSize` (toolbar now matches the stage width and shrinks on small viewports). (`src/components/StageBlockingApp.tsx`, `src/styles.css`, `src/components/Toolbar.tsx`)
-- 11:25 — **Layout**: Adjusted layout so the stage is visually anchored toward the bottom of the main column while the toolbar sits above and is centered to the stage width. (`src/components/StageBlockingApp.tsx`, `src/styles.css`)
-- 11:30 — **Login UI**: Reworked login page glassmorphism to a light yellow/white palette, improved card contrast and input readability, updated title gradient to dark→yellow, and added a new SVG logo asset. (`src/components/Login.css`, `src/components/Login.tsx`, `src/assets/stage-logo.svg`)
-- 11:35 — **Cleanup**: Added timer cleanup for toast/debounce timers and minor UX polish across menus. (`src/components/ConfigMenu.tsx`)
 
-## 2026-02-23
-### Lock Stage Size UX
-- 09:10 — **ConfigMenu / Stage**: Added `Lock Stage Size` checkbox (default: enabled). When enabled, the Width/Height text inputs and the ±100 quick-apply buttons are disabled and visually subdued; attempts to change the canvas size are blocked and show an ephemeral toast. (`src/components/ConfigMenu.tsx`, `src/components/StageBlockingApp.tsx`)
+
+## 2026-03-01
+### Wing Stage, Person Size Refactor, Pastel Colors & Config Menu Overhaul
+- 00:00 — **Wing stage areas**: Added configurable wing areas on left/right sides of the stage with a darker shade. Toggle via checkbox in ConfigMenu. Width and height are independently adjustable with free-text inputs (2s debounce) and ±100 buttons. Max width = half stage width, max height = stage height. Lock toggle included. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
+- 00:05 — **Wing state persistence**: `showWings` and `wingSize` are saved/loaded/exported/imported. Fixed loading when keyframes array is empty (moved restore outside the keyframes conditional). `lockWingSize` defaults to true and is not persisted. (`StageBlockingApp.tsx`)
+- 00:10 — **Person size pixel refactor**: Replaced integer size levels (1–3) with pixel dimensions `{ headW, headH, shoulderW, shoulderH }`. Default: headW 48, headH 40, shoulderW 72, shoulderH 40. All canvas drawing, hit-testing, and miniature SVG use pixel values directly. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`, `types.ts`)
+- 00:15 — **Person size config**: Head size inputs removed (only Shoulder W/H configurable, 8–160px). Head dimensions scale proportionally. Persisted in save/load/export/import. (`ConfigMenu.tsx`, `StageBlockingApp.tsx`)
+- 00:20 — **Config menu reorder**: Sections reordered by usage priority: Color presets → Person Size → Keyframe Timing → Prevent Overlap → Reverse Stage → Stage Size → Wing Stage → Label/Note Font Size. (`ConfigMenu.tsx`)
+- 00:25 — **Config menu scrollable**: Added `maxHeight: 700px` with `overflowY: auto` to prevent overflow on smaller screens. (`ConfigMenu.tsx`)
+- 00:30 — **Pastel color palette**: All 13 color presets replaced with cheerful pastel combinations (pink/mint, lavender/peach, mint/lime, etc.). Each new character auto-cycles through the palette based on counter index. Includes a charcoal/silver dark pastel pair. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`)
+- 00:35 — **Prevent Overlap toggle**: Added toggleable collision prevention in ConfigMenu (off by default). When enabled: red dashed ring warns of overlapping characters, characters auto-snap to non-colliding positions on drag release, and new character placement is nudged away. When disabled: no visual warning, free placement. Uses `preventOverlapRef` to avoid stale closure in mouseUp handler. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
+
 
 ## 2026-02-26
 ### Note Mode robustness & Config improvements
@@ -28,6 +28,7 @@ Entries format:
 - 00:20 — **Export annotation fix**: Both `saveToLocalStorage` and `exportAsJSON` now inline-read the textarea DOM value into their local snapshot before serializing, fixing a bug where the async `setKeyframes` from `commitEditingAnnotation()` hadn't applied yet and annotations were lost in exports. (`StageBlockingApp.tsx`)
 - 00:25 — **Insert keyframe in-place**: `addKeyframe()` now inserts after the currently active keyframe instead of appending at the end of the scene. E.g., on keyframes 1 2 3 with 2 selected, clicking Add creates a new 3 and pushes the old 3→4. Scene boundaries after the insertion point are shifted accordingly. Current characters are committed to the active keyframe before inserting. (`StageBlockingApp.tsx`)
 - 00:30 — **Note font size config**: Added `noteFontSize` state (default 14px) with a range slider (8–48px) in ConfigMenu below the Stage/Audience label size slider. New annotations use the configured size. Persisted in save/load/export/import. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
+
 
 ## 2026-02-25
 ### Note Mode — Paint-like text annotations
@@ -46,6 +47,8 @@ Entries format:
 ### Config: Label font size
 - 22:00 — **Label font size**: Added `labelFontSize` state (default 14px, down from 20px) with a range slider (8–32px) in ConfigMenu. Applied to "STAGE" and "AUDIENCE" canvas labels. Persisted in save/load/export/import. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `types.ts`)
 
+
+
 ## 2026-02-24
 ### ConfigMenu: Keyframe Timing polish
 - 10:15 — **Keyframe Timing**: `Move` and `Fade` inputs now display seconds (s) instead of milliseconds and remain editable with a 2s debounce before applying. (`src/components/ConfigMenu.tsx`)
@@ -60,6 +63,21 @@ Entries format:
 - 15:05 — **Boundary shifting on edits**: Inserting or deleting keyframes inside a scene now shifts `sceneBoundaries` and renumbers keyframes so scenes remain intact after edits. (`src/components/StageBlockingApp.tsx`)
 - 15:10 — **History improvements**: History entries now include `sceneBoundaries` and `sceneNames`; `undo`/`redo` restore scene metadata as well as characters/keyframes. (`src/components/StageBlockingApp.tsx`)
 - 15:20 — **Persistence**: `projectTitle`, `sceneNotes`, and `keyframeNotes` are persisted to exports/imports to improve cross-device continuity. (`src/components/Toolbar.tsx`, `src/components/StageBlockingApp.tsx`)
+
+## 2026-02-23
+### Lock Stage Size UX
+- 09:10 — **ConfigMenu / Stage**: Added `Lock Stage Size` checkbox (default: enabled). When enabled, the Width/Height text inputs and the ±100 quick-apply buttons are disabled and visually subdued; attempts to change the canvas size are blocked and show an ephemeral toast. (`src/components/ConfigMenu.tsx`, `src/components/StageBlockingApp.tsx`)
+
+## 2026-02-21
+### UI, Config & Login polish
+- 11:05 — **ConfigMenu**: Moved the "Stage Size" section to the bottom of the menu and added small ±100 quick-apply buttons beside the Width/Height labels (buttons apply immediately). Inputs remain free-text with a 2s debounce auto-apply. Added clamped limits and ephemeral toasts when exceeding maxima. (`src/components/ConfigMenu.tsx`)
+- 11:10 — **Size limits**: Increased stage max width to `2000` and set max height to `900`; clamped minimum 100. (`src/components/ConfigMenu.tsx`)
+- 11:15 — **Buttons**: Removed borders from the ± buttons for a cleaner, inline appearance. (`src/components/ConfigMenu.tsx`)
+- 11:20 — **Toolbar sizing**: Made the toolbar default responsive to the stage by wrapping it in a container set to the stage `canvasSize` (toolbar now matches the stage width and shrinks on small viewports). (`src/components/StageBlockingApp.tsx`, `src/styles.css`, `src/components/Toolbar.tsx`)
+- 11:25 — **Layout**: Adjusted layout so the stage is visually anchored toward the bottom of the main column while the toolbar sits above and is centered to the stage width. (`src/components/StageBlockingApp.tsx`, `src/styles.css`)
+- 11:30 — **Login UI**: Reworked login page glassmorphism to a light yellow/white palette, improved card contrast and input readability, updated title gradient to dark→yellow, and added a new SVG logo asset. (`src/components/Login.css`, `src/components/Login.tsx`, `src/assets/stage-logo.svg`)
+- 11:35 — **Cleanup**: Added timer cleanup for toast/debounce timers and minor UX polish across menus. (`src/components/ConfigMenu.tsx`)
+
 
 ## 2026-02-13
 ### Scenes, Persistence & UX

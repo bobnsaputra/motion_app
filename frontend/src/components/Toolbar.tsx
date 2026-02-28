@@ -50,9 +50,10 @@ interface ToolbarProps {
   canvasSize: { width: number; height: number }
   onCanvasSizeChange: (size: { width: number; height: number }) => void
   defaultPersonSize: number
+  personSize?: { headW: number; headH: number; shoulderW: number; shoulderH: number }
   defaultPersonColor: string
   defaultShoulderColor: string
-  onSizeChange: (size: number) => void
+  onSizeChange: (size: { headW: number; headH: number; shoulderW: number; shoulderH: number }) => void
   onColorChange: (head: string, shoulder: string) => void
   stageReversed: boolean
   onToggleReverse: () => void
@@ -60,6 +61,14 @@ interface ToolbarProps {
   onLabelFontSizeChange?: (size: number) => void
   noteFontSize?: number
   onNoteFontSizeChange?: (size: number) => void
+  showWings?: boolean
+  setShowWings?: (v: boolean) => void
+  wingSize?: { width: number; height: number }
+  onWingSizeChange?: (size: { width: number; height: number }) => void
+  lockWingSize?: boolean
+  setLockWingSize?: (v: boolean) => void
+  preventOverlap?: boolean
+  setPreventOverlap?: (v: boolean) => void
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
   onSave: () => void
@@ -440,6 +449,7 @@ export default function Toolbar(props: ToolbarProps) {
                       selectedCharId={selectedCharId}
                       characters={characters}
                       defaultPersonSize={defaultPersonSize}
+                      personSize={props.personSize}
                       defaultPersonColor={defaultPersonColor}
                       defaultShoulderColor={defaultShoulderColor}
                       onSizeChange={onSizeChange}
@@ -450,6 +460,14 @@ export default function Toolbar(props: ToolbarProps) {
                       onLabelFontSizeChange={props.onLabelFontSizeChange}
                       noteFontSize={props.noteFontSize}
                       onNoteFontSizeChange={props.onNoteFontSizeChange}
+                      showWings={props.showWings}
+                      setShowWings={props.setShowWings}
+                      wingSize={props.wingSize}
+                      onWingSizeChange={props.onWingSizeChange}
+                      lockWingSize={props.lockWingSize}
+                      setLockWingSize={props.setLockWingSize}
+                      preventOverlap={props.preventOverlap}
+                      setPreventOverlap={props.setPreventOverlap}
                       keyframeSpeed={keyframeSpeed}
                       onKeyframeSpeedChange={onKeyframeSpeedChange}
                       fadeSpeed={fadeSpeed}

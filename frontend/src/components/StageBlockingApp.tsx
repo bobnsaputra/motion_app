@@ -10,6 +10,22 @@ interface StageBlockingAppProps {
   onLogout: () => void
 }
 
+const PASTEL_PAIRS = [
+  { head: '#FFD1DC', shoulder: '#B5EAD7' },  // pink + mint
+  { head: '#C7CEEA', shoulder: '#FFDAC1' },  // lavender + peach
+  { head: '#B5EAD7', shoulder: '#E2F0CB' },  // mint + lime
+  { head: '#FFDAC1', shoulder: '#FF9AA2' },  // peach + coral
+  { head: '#E2F0CB', shoulder: '#C7CEEA' },  // lime + lavender
+  { head: '#FF9AA2', shoulder: '#FFB7B2' },  // coral + salmon
+  { head: '#F3E0FF', shoulder: '#A0D2E7' },  // lilac + sky
+  { head: '#A0D2E7', shoulder: '#F3E0FF' },  // sky + lilac
+  { head: '#FFFFD8', shoulder: '#D4A5A5' },  // cream + rose
+  { head: '#D4A5A5', shoulder: '#FFFFD8' },  // rose + cream
+  { head: '#C1E1C1', shoulder: '#FFD1DC' },  // sage + pink
+  { head: '#FFB347', shoulder: '#B0E0E6' },  // pastel orange + powder blue
+  { head: '#6E6E78', shoulder: '#8A8A8A' },  // charcoal + silver
+]
+
 export default function StageBlockingApp({ user, onLogout }: StageBlockingAppProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [characters, setCharacters] = useState<Character[]>([])
@@ -22,8 +38,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [canvasSize, setCanvasSize] = useState({ width: 1600, height: 900 })
   const [guides, setGuides] = useState<Guide[]>([])
   const [defaultPersonSize, setDefaultPersonSize] = useState(2)
-  const [defaultPersonColor, setDefaultPersonColor] = useState('#ffd93d')
-  const [defaultShoulderColor, setDefaultShoulderColor] = useState('#ff6b6b')
+  const [personSize, setPersonSize] = useState({ headW: 48, headH: 40, shoulderW: 72, shoulderH: 40 })
+  const [defaultPersonColor, setDefaultPersonColor] = useState(PASTEL_PAIRS[0].head)
+  const [defaultShoulderColor, setDefaultShoulderColor] = useState(PASTEL_PAIRS[0].shoulder)
   const [fileMenuOpen, setFileMenuOpen] = useState(false)
   const [configMenuOpen, setConfigMenuOpen] = useState(false)
   const [lockStageSize, setLockStageSize] = useState(true)
@@ -31,6 +48,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [stageReversed, setStageReversed] = useState(false)
   const [labelFontSize, setLabelFontSize] = useState(14)
   const [noteFontSize, setNoteFontSize] = useState(14)
+  const [showWings, setShowWings] = useState(false)
+  const [wingSize, setWingSize] = useState({ width: Math.round(canvasSize.width / 8), height: canvasSize.height })
+  const [lockWingSize, setLockWingSize] = useState(true)
+  const [preventOverlap, setPreventOverlap] = useState(false)
+  const preventOverlapRef = useRef(preventOverlap)
+  useEffect(() => { preventOverlapRef.current = preventOverlap }, [preventOverlap])
   const [alignmentGuides, setAlignmentGuides] = useState<{ x?: number; y?: number }[]>([])
   const [keyframeSpeed, setKeyframeSpeed] = useState(1200)
   const [fadeSpeed, setFadeSpeed] = useState(1200)
@@ -132,7 +155,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     draw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize, noteMode, selectedAnnotationId, editingAnnotationId])
+  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize, noteMode, selectedAnnotationId, editingAnnotationId, showWings, wingSize, personSize, preventOverlap])
 
   // Turn off note mode when exiting keyframe mode
   useEffect(() => {
@@ -212,7 +235,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         if (!currentChar) return
 
         const snapThreshold = 8
-        const radius = (currentChar.size ?? defaultPersonSize) * 20
+        const radius = Math.max(personSize.headW, personSize.headH) / 2 + 4
 
         let snappedX = mx
         let snappedY = my
@@ -229,7 +252,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
         characters.forEach(other => {
           if (other.id === dragRef.current.charId) return
-          const otherRadius = (other.size ?? defaultPersonSize) * 20
+          const otherRadius = Math.max(personSize.headW, personSize.headH) / 2 + 4
 
           if (Math.abs(mx - other.x) < snapThreshold) {
             snappedX = other.x
@@ -350,11 +373,33 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         }
       }
       if (dragRef.current.type === 'char-move' && dragRef.current.hasMoved) {
+        // When preventOverlap is on, push the dropped character away from collisions
+        if (preventOverlapRef.current && dragRef.current.charId) {
+          const charId = dragRef.current.charId
+          const char = characters.find(c => c.id === charId)
+          if (char) {
+            const resolved = resolveCollisions(char.x, char.y, charId, characters)
+            if (resolved.x !== char.x || resolved.y !== char.y) {
+              const fixedChars = characters.map(c => c.id === charId ? { ...c, x: resolved.x, y: resolved.y } : c)
+              setCharacters(fixedChars)
+              if (keyframeMode) {
+                const proposedChars = JSON.parse(JSON.stringify(fixedChars)) as Character[]
+                const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: proposedChars } : kf)
+                setKeyframes(committed)
+                saveToHistory(fixedChars, committed, activeKeyframeIndex)
+              } else {
+                saveToHistory(fixedChars)
+              }
+              setSelectedCharId(null)
+              dragRef.current = { type: null }
+              return
+            }
+          }
+        }
         if (keyframeMode) {
           const proposedChars = JSON.parse(JSON.stringify(characters)) as Character[]
           const committed = keyframes.map((kf, i) => i === activeKeyframeIndex ? { ...kf, characters: proposedChars } : kf)
           setKeyframes(committed)
-          // Now save history with full keyframe objects
           saveToHistory(characters, committed, activeKeyframeIndex)
         } else {
           saveToHistory(characters)
@@ -511,6 +556,51 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function snapToRightAngles(a: number) {
     const step = Math.PI / 2
     return Math.round(a / step) * step
+  }
+
+  /** Push (x, y) away from all others so no two characters overlap.
+   *  Uses shoulder ellipse as the collision boundary (the larger shape). */
+  function resolveCollisions(
+    x: number,
+    y: number,
+    selfId: string | null,
+    chars: Character[],
+  ): { x: number; y: number } {
+    const rx = personSize.shoulderW / 2 + 2   // half-width + small gap
+    const ry = personSize.shoulderH / 2 + personSize.headH / 2 + 2 // half-height including head + gap
+    let cx = x
+    let cy = y
+
+    // Iterative push — up to 10 rounds to settle
+    for (let iter = 0; iter < 10; iter++) {
+      let pushed = false
+      for (const other of chars) {
+        if (other.id === selfId) continue
+        if (other.visible === false) continue
+        const dx = cx - other.x
+        const dy = cy - other.y
+        // Normalise to ellipse space: overlap when (dx/minDistX)^2 + (dy/minDistY)^2 < 1
+        const minDistX = rx * 2
+        const minDistY = ry * 2
+        const normX = dx / minDistX
+        const normY = dy / minDistY
+        const dist2 = normX * normX + normY * normY
+        if (dist2 < 1 && dist2 > 0) {
+          // Push out along the normalised direction
+          const dist = Math.sqrt(dist2)
+          const scale = (1 - dist) / dist
+          cx += dx * scale * 0.55
+          cy += dy * scale * 0.55
+          pushed = true
+        } else if (dist2 === 0) {
+          // Exactly same position — nudge right
+          cx += minDistX
+          pushed = true
+        }
+      }
+      if (!pushed) break
+    }
+    return { x: Math.round(cx), y: Math.round(cy) }
   }
 
   // Word-wrap helper for annotation text (used by both draw and hit-testing)
@@ -809,8 +899,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const x = Math.round(e.clientX - rect.left)
     const y = Math.round(e.clientY - rect.top)
     const id = String.fromCharCode(65 + (counter % 26))
+    const colorIndex = counter % PASTEL_PAIRS.length
+    const pastel = PASTEL_PAIRS[colorIndex]
     setCounter((c) => c + 1)
-    const updated = [...characters, { id, name: id, x, y, angle: Math.PI / 2, eyeOffset: 0, size: defaultPersonSize, color: defaultPersonColor, shoulderColor: defaultShoulderColor }]
+    setDefaultPersonColor(pastel.head)
+    setDefaultShoulderColor(pastel.shoulder)
+    const pos = preventOverlap ? resolveCollisions(x, y, id, characters) : { x, y }
+    const updated = [...characters, { id, name: id, x: pos.x, y: pos.y, angle: Math.PI / 2, eyeOffset: 0, color: pastel.head, shoulderColor: pastel.shoulder }]
     setCharacters(updated)
     saveToHistory(updated)
   }
@@ -878,22 +973,25 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const blockDrag = keyframeMode && activeKeyframeIndex === 0
 
     for (const char of characters) {
-      const size = char.size ?? 1
       const angle = char.angle ?? 0
 
       const d = Math.hypot(mx - char.x, my - char.y)
-      if (d <= 12 * size) {
+      const headRx = personSize.headW / 2
+      const headRy = personSize.headH / 2
+      const shoulderRx = personSize.shoulderW / 2
+      const shoulderRy = personSize.shoulderH / 2
+      if (d <= Math.max(headRx, headRy)) {
         setSelectedCharId(char.id)
         if (blockDrag) { showToast('Keyframe 1 is the starting position — move characters in other keyframes', 'info'); return }
         dragRef.current = { type: 'char-move', charId: char.id, hasMoved: false }
         return
       }
 
-      const shoulderDist = 8 * size
+      const shoulderDist = headRy
       const shoulderX = char.x - Math.cos(angle) * shoulderDist
       const shoulderY = char.y - Math.sin(angle) * shoulderDist
       const shoulderD = Math.hypot(mx - shoulderX, my - shoulderY)
-      if (shoulderD <= 18 * size) {
+      if (shoulderD <= Math.max(shoulderRx, shoulderRy)) {
         setSelectedCharId(char.id)
         if (blockDrag) { showToast('Keyframe 1 is the starting position — move characters in other keyframes', 'info'); return }
         dragRef.current = { type: 'char-move', charId: char.id, hasMoved: false }
@@ -1016,9 +1114,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const x = Math.round(e.clientX - rect.left)
     const y = Math.round(e.clientY - rect.top)
 
+    const pos = preventOverlap ? resolveCollisions(x, y, id, characters) : { x, y }
+
     if (keyframeMode && keyframes.length > 0) {
       const updatedKfs = keyframes.map((kf, i) =>
-        i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === id ? { ...c, x, y, visible: true } : c) } : kf
+        i === activeKeyframeIndex ? { ...kf, characters: kf.characters.map(c => c.id === id ? { ...c, x: pos.x, y: pos.y, visible: true } : c) } : kf
       )
       setKeyframes(updatedKfs)
       const updatedChars = JSON.parse(JSON.stringify(updatedKfs[activeKeyframeIndex].characters))
@@ -1026,7 +1126,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       saveToHistory(updatedChars, updatedKfs, activeKeyframeIndex)
       setSelectedCharId(id)
     } else {
-      const updated = characters.map(c => c.id === id ? { ...c, x, y, visible: true } : c)
+      const updated = characters.map(c => c.id === id ? { ...c, x: pos.x, y: pos.y, visible: true } : c)
       setCharacters(updated)
       saveToHistory(updated)
       setSelectedCharId(id)
@@ -1081,6 +1181,42 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     const ctx = canvas.getContext('2d')!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    // ── Draw wing areas ──
+    if (showWings) {
+      ctx.save()
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'
+      const ww = Math.min(wingSize.width, canvas.width / 2)
+      const wh = Math.min(wingSize.height, canvas.height)
+      // Left wing
+      ctx.fillRect(0, 0, ww, wh)
+      // Right wing
+      ctx.fillRect(canvas.width - ww, 0, ww, wh)
+      // Wing border lines
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)'
+      ctx.lineWidth = 1
+      ctx.setLineDash([6, 4])
+      ctx.beginPath()
+      ctx.moveTo(ww, 0)
+      ctx.lineTo(ww, wh)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(canvas.width - ww, 0)
+      ctx.lineTo(canvas.width - ww, wh)
+      ctx.stroke()
+      // Bottom edge if wing height < canvas height
+      if (wh < canvas.height) {
+        ctx.beginPath()
+        ctx.moveTo(0, wh)
+        ctx.lineTo(ww, wh)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(canvas.width - ww, wh)
+        ctx.lineTo(canvas.width, wh)
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
 
     ctx.save()
     ctx.font = `600 ${labelFontSize}px "Inter", sans-serif`
@@ -1146,8 +1282,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       // proceed to draw the character with the applied globalAlpha
 
-      const size = char.size ?? 1
-      const shoulderDist = 8 * size
+      const headRx = personSize.headW / 2
+      const headRy = personSize.headH / 2
+      const shoulderRx = personSize.shoulderW / 2
+      const shoulderRy = personSize.shoulderH / 2
+      const shoulderDist = headRy
       const shoulderX = char.x - Math.cos(angle) * shoulderDist
       const shoulderY = char.y - Math.sin(angle) * shoulderDist
 
@@ -1158,7 +1297,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ctx.save()
         ctx.translate(shoulderX, shoulderY)
         ctx.beginPath()
-        ctx.ellipse(0, 0, 18 * size, 10 * size, 0, 0, Math.PI * 2)
+        ctx.ellipse(0, 0, shoulderRx, shoulderRy, 0, 0, Math.PI * 2)
         ctx.fillStyle = char.shoulderColor || '#ff6b6b'
         ctx.fill()
         ctx.restore()
@@ -1167,7 +1306,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       ctx.save()
       ctx.translate(char.x, char.y)
       ctx.beginPath()
-      ctx.ellipse(0, 0, 12 * size, 10 * size, 0, 0, Math.PI * 2)
+      ctx.ellipse(0, 0, headRx, headRy, 0, 0, Math.PI * 2)
       ctx.fillStyle = char.color || '#ffd93d'
       ctx.fill()
       ctx.lineWidth = 2
@@ -1179,11 +1318,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       ctx.translate(char.x, char.y)
       ctx.strokeStyle = '#000'
       ctx.lineWidth = 2
-      const headRx = 12 * size
-      const headRy = 10 * size
       const startX = Math.cos(eyeOffsetAngle) * (headRx + 2)
       const startY = Math.sin(eyeOffsetAngle) * (headRy + 2)
-      const lineLen = 6 * size
+      const lineLen = Math.min(headRx, headRy) * 0.5
       ctx.beginPath()
       ctx.moveTo(startX, startY)
       ctx.lineTo(startX + Math.cos(eyeOffsetAngle) * lineLen, startY + Math.sin(eyeOffsetAngle) * lineLen)
@@ -1196,9 +1333,35 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       ctx.textBaseline = 'middle'
       ctx.fillText(char.name, char.x, char.y)
 
+      // ── Overlap warning glow (only when preventOverlap is on) ──
+      if (preventOverlap) {
+        const isOverlapping = characters.some(other => {
+          if (other.id === char.id) return false
+          if (other.visible === false) return false
+          const dx = char.x - other.x
+          const dy = char.y - other.y
+          const minDistX = personSize.shoulderW
+          const minDistY = personSize.shoulderH + personSize.headH
+          const normX = dx / minDistX
+          const normY = dy / minDistY
+          return normX * normX + normY * normY < 1
+        })
+        if (isOverlapping) {
+          ctx.save()
+          ctx.beginPath()
+          ctx.arc(char.x, char.y, Math.max(shoulderRx, headRx + headRy) + 6, 0, Math.PI * 2)
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)'
+          ctx.lineWidth = 2.5
+          ctx.setLineDash([4, 3])
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.restore()
+        }
+      }
+
       if (selectedCharId === char.id && !(dragRef.current.type === 'char-move' && dragRef.current.hasMoved)) {
         ctx.beginPath()
-        ctx.arc(char.x, char.y, 16 * size, 0, Math.PI * 2)
+        ctx.arc(char.x, char.y, Math.max(headRx, headRy) + 4, 0, Math.PI * 2)
         ctx.strokeStyle = '#2c3e50'
         ctx.lineWidth = 2
         ctx.stroke()
@@ -1208,7 +1371,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ctx.save()
         ctx.translate(shoulderX, shoulderY)
         ctx.beginPath()
-        ctx.ellipse(0, 0, 18 * size, 10 * size, 0, 0, Math.PI * 2)
+        ctx.ellipse(0, 0, shoulderRx, shoulderRy, 0, 0, Math.PI * 2)
         ctx.fillStyle = char.shoulderColor || '#ff6b6b'
         ctx.fill()
         ctx.restore()
@@ -1872,6 +2035,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       canvasSize,
       counter,
       defaultPersonSize,
+      personSize,
       defaultPersonColor,
       defaultShoulderColor,
       // keyframes kept flat for compatibility, but include scene metadata
@@ -1887,7 +2051,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       keyframeSpeed,
       fadeSpeed,
       labelFontSize,
-      noteFontSize
+      noteFontSize,
+      showWings,
+      wingSize
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
@@ -1902,6 +2068,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
         setCounter(state.counter || 0)
         setDefaultPersonSize(state.defaultPersonSize || 1)
+        if (state.personSize && typeof state.personSize.headW === 'number') setPersonSize(state.personSize)
         setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
         setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
         // Load keyframes with backward compatibility for a few formats:
@@ -1971,8 +2138,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           setKeyframeNotes(state.keyframeNotes || {})
           if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
           if (typeof state.noteFontSize === 'number') setNoteFontSize(state.noteFontSize)
-          if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
-          if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
 
           // If saved in keyframe mode, restore characters from the active keyframe
             if (state.keyframeMode) {
@@ -1983,7 +2148,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setKeyframeMode(false)
             setCharacters(state.characters || [])
           }
+        } else {
+          setKeyframes([])
+          setKeyframeMode(false)
+          setCharacters(state.characters || [])
+          nextKfId.current = 1
+          setSceneBoundaries([0])
+          setSceneNames(['Scene 1'])
         }
+
+        if (typeof state.showWings === 'boolean') setShowWings(state.showWings)
+        if (state.wingSize && typeof state.wingSize.width === 'number') setWingSize(state.wingSize)
+        if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
+        if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
 
         setSelectedCharId(null)
         setAwaitingDirectionFor(null)
@@ -2041,6 +2218,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       canvasSize,
       counter,
       defaultPersonSize,
+      personSize,
       defaultPersonColor,
       defaultShoulderColor,
       keyframes: committedKfs,
@@ -2054,7 +2232,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       sceneNotes,
       keyframeNotes,
       labelFontSize,
-      noteFontSize
+      noteFontSize,
+      showWings,
+      wingSize
     }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -2096,6 +2276,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
             setCounter(state.counter || 0)
             setDefaultPersonSize(state.defaultPersonSize || 1)
+            if (state.personSize && typeof state.personSize.headW === 'number') setPersonSize(state.personSize)
             setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
             setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
 
@@ -2172,6 +2353,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             if (typeof state.noteFontSize === 'number') setNoteFontSize(state.noteFontSize)
             if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
             if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
+            if (typeof state.showWings === 'boolean') setShowWings(state.showWings)
+            if (state.wingSize && typeof state.wingSize.width === 'number') setWingSize(state.wingSize)
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
             showToast('Layout imported')
@@ -2270,14 +2453,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
   }
 
-  function handleSizeChange(v: number) {
-    if (selectedCharId) {
-      const updated = characters.map((c) => (c.id === selectedCharId ? { ...c, size: v } : c))
-      setCharacters(updated)
-      saveToHistory(updated)
-    } else {
-      setDefaultPersonSize(v)
-    }
+  function handleSizeChange(v: { headW: number; headH: number; shoulderW: number; shoulderH: number }) {
+    setPersonSize(v)
   }
 
   function handleColorChange(head: string, shoulder: string) {
@@ -2462,6 +2639,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           lockKeyframeTiming={lockKeyframeTiming}
           setLockKeyframeTiming={setLockKeyframeTiming}
           defaultPersonSize={defaultPersonSize}
+          personSize={personSize}
           defaultPersonColor={defaultPersonColor}
           defaultShoulderColor={defaultShoulderColor}
           onSizeChange={handleSizeChange}
@@ -2472,6 +2650,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onLabelFontSizeChange={setLabelFontSize}
           noteFontSize={noteFontSize}
           onNoteFontSizeChange={setNoteFontSize}
+          showWings={showWings}
+          setShowWings={setShowWings}
+          wingSize={wingSize}
+          onWingSizeChange={setWingSize}
+          lockWingSize={lockWingSize}
+          setLockWingSize={setLockWingSize}
+          preventOverlap={preventOverlap}
+          setPreventOverlap={setPreventOverlap}
           fileMenuOpen={fileMenuOpen}
           setFileMenuOpen={setFileMenuOpen}
           onSave={() => fileOpsRef.current.saveToLocalStorage()}
@@ -2618,11 +2804,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 >
                   <svg width="36" height="36" viewBox="0 0 36 36" className="flex-shrink-0">
                     {(() => {
-                      const s = c.size ?? defaultPersonSize
-                      const shoulderRx = 9 * s
-                      const shoulderRy = 5 * s
-                      const headRx = 6 * s
-                      const headRy = 5 * s
+                      const scale = 18 / Math.max(personSize.headW, personSize.shoulderW)
+                      const shoulderRx = personSize.shoulderW / 2 * scale
+                      const shoulderRy = personSize.shoulderH / 2 * scale
+                      const headRx = personSize.headW / 2 * scale
+                      const headRy = personSize.headH / 2 * scale
                       return (
                         <g>
                           <ellipse cx="18" cy="24" rx={shoulderRx} ry={shoulderRy} fill={c.shoulderColor || '#ff6b6b'} />
