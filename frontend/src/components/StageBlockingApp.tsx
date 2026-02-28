@@ -1828,6 +1828,121 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     animFrameRef.current = requestAnimationFrame(animate)
   }
 
+  function startPlaybackAll() {
+    if (keyframes.length < 2) return
+    setIsPlaying(true)
+    setSelectedCharId(null)
+    setAwaitingDirectionFor(null)
+
+    // Snapshot all keyframes across all scenes
+    const allKfs: Keyframe[] = JSON.parse(JSON.stringify(keyframes.map((kf, i) =>
+      i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+    )))
+
+    if (allKfs.length < 2) {
+      setIsPlaying(false)
+      return
+    }
+
+    // Start from the very first keyframe
+    let currentKfPair = 0
+    const totalPairs = allKfs.length - 1
+    const msMove = keyframeSpeed
+    const msFade = fadeSpeed
+    let startTime: number | null = null
+    kfsRef.current = allKfs
+    animPairRef.current = 0
+
+    // Jump to scene 0 and first keyframe
+    setSceneIndex(0)
+    setActiveKeyframeIndex(1)
+    setCharacters(JSON.parse(JSON.stringify(allKfs[0].characters)))
+
+    function animate(timestamp: number) {
+      if (startTime === null) startTime = timestamp
+      const elapsed = timestamp - startTime
+      let pairProgress = elapsed / msMove
+
+      if (currentKfPair >= totalPairs) {
+        setCharacters(JSON.parse(JSON.stringify(allKfs[allKfs.length - 1].characters)))
+        setActiveKeyframeIndex(allKfs.length - 1)
+        // Set scene index to last scene
+        for (let s = sceneBoundaries.length - 1; s >= 0; s--) {
+          if ((sceneBoundaries[s] ?? 0) <= allKfs.length - 1) { setSceneIndex(s); break }
+        }
+        setAnimationProgress(null)
+        setFadeProgress(null)
+        setIsPlaying(false)
+        animFrameRef.current = null
+        return
+      }
+
+      while (pairProgress >= 1 && currentKfPair < totalPairs) {
+        currentKfPair++
+        startTime = startTime! + msMove
+        pairProgress = (timestamp - startTime) / msMove
+
+        if (currentKfPair >= totalPairs) {
+          setCharacters(JSON.parse(JSON.stringify(allKfs[allKfs.length - 1].characters)))
+          setActiveKeyframeIndex(allKfs.length - 1)
+          for (let s = sceneBoundaries.length - 1; s >= 0; s--) {
+            if ((sceneBoundaries[s] ?? 0) <= allKfs.length - 1) { setSceneIndex(s); break }
+          }
+          setAnimationProgress(null)
+          setFadeProgress(null)
+          setIsPlaying(false)
+          animFrameRef.current = null
+          return
+        }
+      }
+
+      const t = Math.max(0, Math.min(pairProgress, 1))
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+      const fadeElapsed = timestamp - startTime
+      const fadeT = Math.max(0, Math.min(fadeElapsed / msFade, 1))
+
+      const fromChars = allKfs[currentKfPair].characters
+      const toChars = allKfs[currentKfPair + 1].characters
+
+      const interpolated = fromChars.map((fc: Character) => {
+        const tc = toChars.find((c: Character) => c.id === fc.id)
+        if (!tc) return fc
+        const fromEntry = allKfs[currentKfPair].characters.find((c: Character) => c.id === fc.id)
+        const toEntry = allKfs[currentKfPair + 1].characters.find((c: Character) => c.id === fc.id)
+        const fromVis = fromEntry ? (fromEntry.visible !== false) : true
+        const toVis = toEntry ? (toEntry.visible !== false) : true
+        if (!fromVis && toVis) return { ...tc }
+        if (fromVis && !toVis) return { ...fc }
+        return {
+          ...fc,
+          x: fc.x + (tc.x - fc.x) * eased,
+          y: fc.y + (tc.y - fc.y) * eased,
+          angle: fc.angle !== undefined && tc.angle !== undefined
+            ? fc.angle + (tc.angle - fc.angle) * eased
+            : tc.angle,
+          eyeOffset: fc.eyeOffset !== undefined && tc.eyeOffset !== undefined
+            ? fc.eyeOffset + (tc.eyeOffset - fc.eyeOffset) * eased
+            : tc.eyeOffset
+        }
+      })
+
+      setCharacters(interpolated)
+      const targetIdx = Math.min(currentKfPair + 1, allKfs.length - 1)
+      setActiveKeyframeIndex(targetIdx)
+      // Update scene index to match the target keyframe
+      for (let s = sceneBoundaries.length - 1; s >= 0; s--) {
+        if ((sceneBoundaries[s] ?? 0) <= targetIdx) { setSceneIndex(s); break }
+      }
+      animPairRef.current = currentKfPair
+      setAnimationProgress(eased)
+      setFadeProgress(fadeT)
+
+      animFrameRef.current = requestAnimationFrame(animate)
+    }
+
+    animFrameRef.current = requestAnimationFrame(animate)
+  }
+
   function stopPlayback() {
     setIsPlaying(false)
     setAnimationProgress(null)
@@ -2685,6 +2800,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onDeleteKeyframe={deleteKeyframe}
           onRenameKeyframe={renameKeyframe}
           onPlay={startPlayback}
+          onPlayAll={startPlaybackAll}
           onStop={stopPlayback}
           onPrev={goToPrevKeyframe}
           onNext={goToNextKeyframe}

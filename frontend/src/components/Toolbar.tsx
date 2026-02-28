@@ -6,7 +6,7 @@ import {
   Settings, Save, LogOut, Menu, Film,
   Eye, EyeOff,
   Info, StickyNote,
-  Plus, Play, Square, ChevronLeft, ChevronRight, Pencil
+  Plus, Play, Square, ChevronLeft, ChevronRight, Pencil, PlayCircle
 } from 'lucide-react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import ConfigMenu from './ConfigMenu'
@@ -86,6 +86,7 @@ interface ToolbarProps {
   onDeleteKeyframe: (index: number) => void
   onRenameKeyframe: (index: number, name: string) => void
   onPlay: () => void
+  onPlayAll: () => void
   onStop: () => void
   onPrev: () => void
   onNext: () => void
@@ -125,7 +126,7 @@ export default function Toolbar(props: ToolbarProps) {
     onSizeChange, onColorChange, stageReversed, onToggleReverse,
     fileMenuOpen, setFileMenuOpen, onSave, onLoad, onExportJSON, onImportJSON, onExportPNG,
     keyframeMode, onToggleKeyframeMode, keyframes, activeKeyframeIndex, isPlaying,
-    onSelectKeyframe, onAddKeyframe, onDeleteKeyframe, onRenameKeyframe, onPlay, onStop, onPrev, onNext,
+    onSelectKeyframe, onAddKeyframe, onDeleteKeyframe, onRenameKeyframe, onPlay, onPlayAll, onStop, onPrev, onNext,
     onUpdateCharVisible, keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
   } = props
 
@@ -197,9 +198,14 @@ export default function Toolbar(props: ToolbarProps) {
                 <Square className="h-4 w-4" />
               </Button>
             ) : (
-              <Button variant="default" size="icon" className="h-8 w-8" onClick={onPlay} disabled={keyframes.length < 2} title="Play (Space)">
-                <Play className="h-4 w-4" />
-              </Button>
+              <>
+                <Button variant="default" size="icon" className="h-8 w-8" onClick={onPlay} disabled={keyframes.length < 2} title="Play Scene (Space)">
+                  <Play className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={onPlayAll} disabled={keyframes.length < 2} title="Play All Scenes">
+                  <PlayCircle className="h-4 w-4" />
+                </Button>
+              </>
             )}
 
             <div className="relative">
@@ -217,7 +223,7 @@ export default function Toolbar(props: ToolbarProps) {
                 <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-64 rounded-lg border border-border bg-white p-3 text-xs shadow-sm">
                   <strong className="block text-sm mb-2">Shortcuts</strong>
                   <div className="flex flex-col gap-1">
-                    <div className="leading-tight">Space: Play / Stop</div>
+                    <div className="leading-tight">Space: Play Scene / Stop</div>
                     <div className="leading-tight">K: Toggle Keyframe Mode</div>
                     <div className="leading-tight">A: Add character</div>
                     <div className="leading-tight">D: Delete selected</div>

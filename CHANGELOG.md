@@ -17,6 +17,7 @@ Entries format:
 - 00:25 — **Config menu scrollable**: Added `maxHeight: 700px` with `overflowY: auto` to prevent overflow on smaller screens. (`ConfigMenu.tsx`)
 - 00:30 — **Pastel color palette**: All 13 color presets replaced with cheerful pastel combinations (pink/mint, lavender/peach, mint/lime, etc.). Each new character auto-cycles through the palette based on counter index. Includes a charcoal/silver dark pastel pair. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`)
 - 00:35 — **Prevent Overlap toggle**: Added toggleable collision prevention in ConfigMenu (off by default). When enabled: red dashed ring warns of overlapping characters, characters auto-snap to non-colliding positions on drag release, and new character placement is nudged away. When disabled: no visual warning, free placement. Uses `preventOverlapRef` to avoid stale closure in mouseUp handler. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
+- 00:40 — **Play All Scenes**: Added a "Play All Scenes" button (PlayCircle icon) next to the existing Play Scene button. Plays from the first keyframe of the first scene through the last keyframe of the last scene, automatically advancing `sceneIndex` as boundaries are crossed. Existing Play button continues to play the current scene only. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
 
 
 ## 2026-02-26
