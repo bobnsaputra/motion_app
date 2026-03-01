@@ -16,6 +16,18 @@ Entries format:
 - 02:30 — **Props blocked in keyframe mode**: Props can no longer be clicked, dragged, or resized in keyframe mode to avoid conflicts with character positioning workflow. (`StageBlockingApp.tsx`)
 - 02:35 — **Visibility eye button on canvas**: Added a visibility toggle button drawn directly beside the selected character on the canvas in keyframe mode (like the lock button on props). Transparent (35% opacity, 18px) when not hovered; fully opaque and bigger (24px) when hovered with pointer cursor. Click to toggle character visibility. Removed the old visibility toolbar button. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
 
+### Mode Mutual Exclusivity & Props UX
+- 04:00 — **Four mutually exclusive modes**: Enforced strict mutual exclusivity between Add Char, Edit Char, Add Prop, and Edit Prop modes. Entering any mode exits all others — deselects characters/props, clears gaze direction, exits keyframe mode as needed. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
+- 04:05 — **P key dual function**: P key now duplicates the selected character (when one is selected) or toggles Props mode (when no selection). Shortcut lists updated to show both. Props button underscores P only when no character is selected. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
+- 04:10 — **Props button dynamic label**: Button shows "Add Prop… (Esc)" in add mode, "Edit Prop… (Esc)" when a prop is selected, or "Props" when inactive. Added `selectedPropId` prop to Toolbar. (`Toolbar.tsx`, `StageBlockingApp.tsx`)
+- 04:15 — **Add Prop mode isolation**: In Add Prop mode, clicking existing props is ignored — only empty-space clicks place new props. Prevents accidental selection while placing. (`StageBlockingApp.tsx`)
+- 04:20 — **Edit Prop exit on empty click**: Clicking empty space in Edit Prop mode deselects the prop and exits Props mode entirely, returning to the default state. (`StageBlockingApp.tsx`)
+- 04:25 — **Add Char blocks prop interaction**: Props cannot be clicked, selected, or dragged while in Add Char mode. (`StageBlockingApp.tsx`)
+- 04:30 — **Prop click clears char state**: Clicking a prop to enter Edit Prop mode now clears both `selectedCharId` and `awaitingDirectionFor`, preventing stale character gaze editing. (`StageBlockingApp.tsx`)
+- 04:35 — **Add tooltip position**: Moved the Add Character hover tooltip from right side to left side of the button. (`Toolbar.tsx`)
+- 04:40 — **Custom rotate cursor**: Props rotation handle shows a circular arrow SVG cursor instead of the grab hand. (`StageBlockingApp.tsx`)
+- 04:45 — **Smaller props picker**: Reduced props shape picker button sizes (w-5 h-5), SVG icons (10px), and padding for a more compact overlay. (`StageBlockingApp.tsx`)
+
 ### Multi-Project Cloud Storage
 - 03:00 — **Projects table migration**: Created Supabase migration for `projects` table with `id`, `user_id`, `title`, `data` (jsonb), `created_at`, `updated_at`. RLS policies restrict all CRUD to the owning user. Auto-updates `updated_at` via existing `handle_updated_at()` trigger. (`supabase/migrations/20260302000000_create_projects.sql`)
 - 03:05 — **Projects service layer**: Created CRUD service module with `listProjects()`, `loadProject()`, `createProject()`, `updateProject()`, `deleteProject()`. List returns metadata only (no data blob) for performance. (`frontend/src/lib/projects.ts`)

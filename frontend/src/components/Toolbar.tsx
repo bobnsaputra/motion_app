@@ -119,7 +119,9 @@ interface ToolbarProps {
   noteMode?: boolean
   onToggleNoteMode?: () => void
   propsMode?: boolean
+  selectedPropId?: string | null
   onTogglePropsMode?: () => void
+  onDeselectChar?: () => void
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -224,7 +226,8 @@ export default function Toolbar(props: ToolbarProps) {
                     <div className="leading-tight">K: Toggle Keyframe Mode</div>
                     <div className="leading-tight">A: Add character</div>
                     <div className="leading-tight">D: Delete selected</div>
-                    <div className="leading-tight">P: Duplicate selected</div>
+                    <div className="leading-tight">P: Duplicate (with selection)</div>
+                    <div className="leading-tight">P: Toggle Props mode (no selection)</div>
                     <div className="leading-tight">U: Undo, O: Redo</div>
                     <div className="leading-tight">S: Save</div>
                     <div className="leading-tight">X: Export JSON</div>
@@ -352,19 +355,21 @@ export default function Toolbar(props: ToolbarProps) {
           <>
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <div className="relative">
-                <Button variant={addMode ? 'default' : 'outline'} size="sm" onClick={() => setAddMode(s => !s)} title="Add character (A)" onMouseEnter={() => setShowAddTooltip(true)} onMouseLeave={() => setShowAddTooltip(false)}>
+                <Button variant={addMode ? 'default' : 'outline'} size="sm" onClick={() => { if (props.propsMode && props.onTogglePropsMode) props.onTogglePropsMode(); if (props.onDeselectChar) props.onDeselectChar(); setAddMode(s => !s) }} title="Add character (A)" onMouseEnter={() => setShowAddTooltip(true)} onMouseLeave={() => setShowAddTooltip(false)}>
                   <UserPlus className="h-4 w-4" />
                   {addMode ? 'Adding… (Esc)' : <span><u>A</u>dd</span>}
                 </Button>
                 {showAddTooltip && (
-                  <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 w-max rounded-md border border-border bg-white px-2 py-1 text-xs shadow-sm">
+                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 w-max rounded-md border border-border bg-white px-2 py-1 text-xs shadow-sm">
                     Add character (A)
                   </div>
                 )}
               </div>
               <Button variant={props.propsMode ? 'default' : 'outline'} size="sm" onClick={props.onTogglePropsMode} title="Props mode — place stage decorations">
                 <Box className="h-4 w-4" />
-                {props.propsMode ? 'Props… (Esc)' : 'Props'}
+                {props.propsMode
+                  ? (props.selectedPropId ? <span>Edit <u>P</u>rop… (Esc)</span> : <span>Add <u>P</u>rop… (Esc)</span>)
+                  : selectedCharId ? <span>Props</span> : <span><u>P</u>rops</span>}
               </Button>
 
               {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
@@ -410,7 +415,8 @@ export default function Toolbar(props: ToolbarProps) {
                   <div className="leading-tight">K: Toggle Keyframe Mode</div>
                   <div className="leading-tight">A: Add character</div>
                   <div className="leading-tight">D: Delete selected</div>
-                  <div className="leading-tight">P: Duplicate selected</div>
+                  <div className="leading-tight">P: Duplicate (with selection)</div>
+                  <div className="leading-tight">P: Toggle Props mode (no selection)</div>
                   <div className="leading-tight">U: Undo, O: Redo</div>
                   <div className="leading-tight">S: Save</div>
                   <div className="leading-tight">X: Export JSON</div>
