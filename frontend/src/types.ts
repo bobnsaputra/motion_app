@@ -36,11 +36,28 @@ export type TextAnnotation = {
   color: string
 }
 
+export type StageProp = {
+  id: string
+  name: string        // e.g. "Chair", "Table"
+  shape: 'rect' | 'circle' | 'triangle'
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number    // degrees
+  color: string
+  opacity: number     // 0-1
+  label?: string      // optional visible label on the prop
+  locked?: boolean    // prevent accidental drags
+  visible?: boolean   // false = offstage
+}
+
 export type Keyframe = {
   id: number
   label: string
   characters: Character[] // snapshot of all characters at this keyframe, with per-keyframe visibility
   annotations?: TextAnnotation[] // text annotations on the canvas for this keyframe
+  stageProps?: StageProp[] // stage props/decorations for this keyframe
   linkedTo?: number // optional index of another keyframe this one is linked to (follows that keyframe until edited)
   stageNotes?: { left: string; center: string; right: string } // director notes for left/center/right stage areas
 }

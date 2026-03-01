@@ -5,7 +5,7 @@ import {
   UserPlus, Trash2, Copy, Undo2, Redo2,
   Settings, Save, LogOut, Menu, Film,
   Eye, EyeOff,
-  Info, StickyNote,
+  Info, StickyNote, Box,
   Plus, Play, Square, ChevronLeft, ChevronRight, Pencil, PlayCircle
 } from 'lucide-react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
@@ -115,6 +115,8 @@ interface ToolbarProps {
   keyframeNotes?: Record<string, string>
   noteMode?: boolean
   onToggleNoteMode?: () => void
+  propsMode?: boolean
+  onTogglePropsMode?: () => void
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -365,6 +367,10 @@ export default function Toolbar(props: ToolbarProps) {
                   </div>
                 )}
               </div>
+              <Button variant={props.propsMode ? 'default' : 'outline'} size="sm" onClick={props.onTogglePropsMode} title="Props mode — place stage decorations">
+                <Box className="h-4 w-4" />
+                {props.propsMode ? 'Props… (Esc)' : 'Props'}
+              </Button>
 
               {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
                 <Button variant="destructive" size="sm" onClick={onDeleteSelected}><Trash2 className="h-4 w-4" /><span><u>D</u>elete</span></Button>

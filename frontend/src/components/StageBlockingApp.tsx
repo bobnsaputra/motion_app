@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
-import { Character, Guide, User, Keyframe, TextAnnotation } from '../types'
+import { Character, Guide, User, Keyframe, TextAnnotation, StageProp } from '../types'
 import Toolbar from './Toolbar'
 import Sidebar from './Sidebar'
 import StageCanvas from './StageCanvas'
@@ -121,6 +121,27 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     startHeight?: number  // annotation height at drag start
   } | null>(null)
 
+  // ── Props mode ──
+  const [propsMode, setPropsMode] = useState(false)
+  const [selectedPropId, setSelectedPropId] = useState<string | null>(null)
+  const propNextId = useRef(1)
+  const propDragRef = useRef<{
+    id: string
+    offsetX: number
+    offsetY: number
+    mode: 'move' | 'resize'
+    corner?: 'tl' | 'tr' | 'bl' | 'br'
+    startMouseX?: number
+    startMouseY?: number
+    startX?: number
+    startY?: number
+    startWidth?: number
+    startHeight?: number
+  } | null>(null)
+
+  const PROP_SHAPES: StageProp['shape'][] = ['rect', 'circle', 'triangle']
+  const [propShapeIndex, setPropShapeIndex] = useState(0)
+
   const dragRef = useRef<{
     type: 'move' | 'handle' | 'char-move' | 'char-rotate' | null
     guideId?: string
@@ -157,7 +178,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     draw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize, noteMode, selectedAnnotationId, editingAnnotationId, showWings, wingSize, personSize, preventOverlap])
+  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize, noteMode, selectedAnnotationId, editingAnnotationId, showWings, wingSize, personSize, preventOverlap, propsMode, selectedPropId])
 
   // Turn off note mode when exiting keyframe mode
   useEffect(() => {
@@ -166,6 +187,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       setNoteMode(false)
       setSelectedAnnotationId(null)
       setEditingAnnotationId(null)
+      setPropsMode(false)
+      setSelectedPropId(null)
     }
   }, [keyframeMode])
 
@@ -181,11 +204,55 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     if (maxId + 1 > annotationNextId.current) {
       annotationNextId.current = maxId + 1
     }
+    // Also re-init propNextId
+    let maxPropId = 0
+    for (const kf of keyframes) {
+      for (const p of kf.stageProps ?? []) {
+        const num = parseInt(p.id.replace('prop_', ''), 10)
+        if (!isNaN(num) && num > maxPropId) maxPropId = num
+      }
+    }
+    if (maxPropId + 1 > propNextId.current) {
+      propNextId.current = maxPropId + 1
+    }
   }, [keyframes])
 
   // ── Mouse move / up for dragging ──
   useEffect(() => {
     function onMouseMove(e: MouseEvent) {
+      // ── Prop dragging / resizing ──
+      if (propDragRef.current) {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const rect = canvas.getBoundingClientRect()
+        const mx = e.clientX - rect.left
+        const my = e.clientY - rect.top
+        const drag = propDragRef.current
+        if (drag.mode === 'resize' && drag.corner && drag.startMouseX != null && drag.startMouseY != null && drag.startX != null && drag.startY != null && drag.startWidth != null && drag.startHeight != null) {
+          const dx = mx - drag.startMouseX
+          const dy = my - drag.startMouseY
+          const c = drag.corner
+          const updates: Partial<StageProp> = {}
+          if (c === 'br' || c === 'tr') {
+            updates.width = Math.max(20, drag.startWidth + dx)
+          } else {
+            const newWidth = Math.max(20, drag.startWidth - dx)
+            updates.x = drag.startX + drag.startWidth - newWidth
+            updates.width = newWidth
+          }
+          if (c === 'br' || c === 'bl') {
+            updates.height = Math.max(20, drag.startHeight + dy)
+          } else {
+            const newHeight = Math.max(20, drag.startHeight - dy)
+            updates.y = drag.startY + drag.startHeight - newHeight
+            updates.height = newHeight
+          }
+          updateStageProp(drag.id, updates)
+        } else {
+          updateStageProp(drag.id, { x: mx - drag.offsetX, y: my - drag.offsetY })
+        }
+        return
+      }
       // ── Annotation dragging / resizing ──
       if (annotationDragRef.current) {
         const canvas = canvasRef.current
@@ -357,6 +424,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
 
     function onMouseUp() {
+      // ── Prop drag release ──
+      if (propDragRef.current) {
+        propDragRef.current = null
+        return
+      }
       // ── Annotation drag release ──
       if (annotationDragRef.current) {
         annotationDragRef.current = null
@@ -434,6 +506,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           setSelectedAnnotationId(null)
           return
         }
+        if (propsMode) {
+          setPropsMode(false)
+          setSelectedPropId(null)
+          return
+        }
         if (keyframeMode) {
           // Inline cleanup to avoid stale closure
           setIsPlaying(false)
@@ -470,6 +547,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       // Delete selected annotation
       if ((e.key === 'Delete' || e.key === 'Backspace') && noteMode && selectedAnnotationId && !editingAnnotationId) {
         deleteAnnotation(selectedAnnotationId)
+        return
+      }
+      // Delete selected prop
+      if ((e.key === 'Delete' || e.key === 'Backspace') && propsMode && selectedPropId) {
+        deleteStageProp(selectedPropId)
         return
       }
 
@@ -709,6 +791,67 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     skipNextClickRef.current = true
   }
 
+  // ── Prop helpers ──
+  function getStageProps(): StageProp[] {
+    return keyframes[activeKeyframeIndex]?.stageProps ?? []
+  }
+
+  function updateStageProp(propId: string, updates: Partial<StageProp>) {
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === activeKeyframeIndex ? {
+        ...kf,
+        stageProps: (kf.stageProps ?? []).map(p => p.id === propId ? { ...p, ...updates } : p)
+      } : kf
+    ))
+  }
+
+  function deleteStageProp(propId: string) {
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === activeKeyframeIndex ? {
+        ...kf,
+        stageProps: (kf.stageProps ?? []).filter(p => p.id !== propId)
+      } : kf
+    ))
+    if (selectedPropId === propId) setSelectedPropId(null)
+  }
+
+  function addStageProp(x: number, y: number) {
+    const shape = PROP_SHAPES[propShapeIndex % PROP_SHAPES.length]
+    const id = `prop_${propNextId.current++}`
+    const newProp: StageProp = {
+      id,
+      name: `Prop ${propNextId.current - 1}`,
+      shape,
+      x,
+      y,
+      width: 60,
+      height: 60,
+      rotation: 0,
+      color: '#ffffff',
+      opacity: 1,
+      visible: true,
+    }
+    setKeyframes(prev => prev.map((kf, i) =>
+      i === activeKeyframeIndex ? {
+        ...kf,
+        stageProps: [...(kf.stageProps ?? []), newProp]
+      } : kf
+    ))
+    setSelectedPropId(id)
+  }
+
+  function hitTestProp(mx: number, my: number, props: StageProp[]): StageProp | null {
+    // Check in reverse order (topmost first)
+    for (let i = props.length - 1; i >= 0; i--) {
+      const p = props[i]
+      if (p.visible === false) continue
+      if (mx >= p.x && mx <= p.x + p.width && my >= p.y && my <= p.y + p.height) {
+        return p
+      }
+    }
+    return null
+  }
+
   function saveToHistory(
     newCharacters: Character[],
     optKeyframes?: Keyframe[],
@@ -865,8 +1008,70 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       return
     }
 
+    // ── Props mode: click to place or select a prop ──
+    if (propsMode) {
+      const canvas = canvasRef.current!
+      const rect = canvas.getBoundingClientRect()
+      const x = Math.round(e.clientX - rect.left)
+      const y = Math.round(e.clientY - rect.top)
+      // Check lock button click on selected prop
+      if (selectedPropId) {
+        const selProp = getStageProps().find(p => p.id === selectedPropId)
+        if (selProp) {
+          const lockBtnX = selProp.x + selProp.width + 6
+          const lockBtnY = selProp.y - 14
+          const lockSize = 18
+          if (x >= lockBtnX && x <= lockBtnX + lockSize && y >= lockBtnY && y <= lockBtnY + lockSize) {
+            updateStageProp(selectedPropId, { locked: !selProp.locked })
+            return
+          }
+        }
+      }
+      const props = getStageProps()
+      const hitProp = hitTestProp(x, y, props)
+      if (hitProp) {
+        setSelectedPropId(hitProp.id)
+        return
+      }
+      // Place a new prop centered at click
+      addStageProp(x - 30, y - 30)
+      return
+    }
+
     // In keyframe mode, only allow selecting/moving — no adding or gaze setting
     if (keyframeMode && (addMode || awaitingDirectionFor)) return
+
+    // ── Always allow clicking existing props (select / lock toggle) ──
+    if (!propsMode) {
+      const canvas = canvasRef.current!
+      const rect = canvas.getBoundingClientRect()
+      const x = Math.round(e.clientX - rect.left)
+      const y = Math.round(e.clientY - rect.top)
+      // Check lock button click on selected prop
+      if (selectedPropId) {
+        const selProp = getStageProps().find(p => p.id === selectedPropId)
+        if (selProp) {
+          const lockBtnX = selProp.x + selProp.width + 6
+          const lockBtnY = selProp.y - 14
+          const lockSize = 18
+          if (x >= lockBtnX && x <= lockBtnX + lockSize && y >= lockBtnY && y <= lockBtnY + lockSize) {
+            updateStageProp(selectedPropId, { locked: !selProp.locked })
+            return
+          }
+        }
+      }
+      const props = getStageProps()
+      const hitProp = hitTestProp(x, y, props)
+      if (hitProp) {
+        setSelectedPropId(hitProp.id)
+        return
+      }
+      // Clicked empty space — deselect prop
+      if (selectedPropId) {
+        setSelectedPropId(null)
+      }
+    }
+
     if (awaitingDirectionFor) {
       const canvas = canvasRef.current!
       const rect = canvas.getBoundingClientRect()
@@ -920,6 +1125,96 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     setFileMenuOpen(false)
     setConfigMenuOpen(false)
+
+    // ── Props mode: start drag ──
+    if (propsMode) {
+      const props = getStageProps()
+      // Check corner resize handles on selected prop first
+      if (selectedPropId) {
+        const selProp = props.find(p => p.id === selectedPropId)
+        if (selProp && !selProp.locked) {
+          const hs = 6 // handle half-size
+          const corners: { key: 'tl' | 'tr' | 'bl' | 'br'; cx: number; cy: number }[] = [
+            { key: 'tl', cx: selProp.x, cy: selProp.y },
+            { key: 'tr', cx: selProp.x + selProp.width, cy: selProp.y },
+            { key: 'bl', cx: selProp.x, cy: selProp.y + selProp.height },
+            { key: 'br', cx: selProp.x + selProp.width, cy: selProp.y + selProp.height },
+          ]
+          for (const corner of corners) {
+            if (Math.abs(mx - corner.cx) <= hs + 2 && Math.abs(my - corner.cy) <= hs + 2) {
+              propDragRef.current = {
+                id: selProp.id,
+                offsetX: 0,
+                offsetY: 0,
+                mode: 'resize',
+                corner: corner.key,
+                startMouseX: mx,
+                startMouseY: my,
+                startX: selProp.x,
+                startY: selProp.y,
+                startWidth: selProp.width,
+                startHeight: selProp.height,
+              }
+              skipNextClickRef.current = true
+              return
+            }
+          }
+        }
+      }
+      const hitProp = hitTestProp(mx, my, props)
+      if (hitProp && !hitProp.locked) {
+        setSelectedPropId(hitProp.id)
+        propDragRef.current = { id: hitProp.id, offsetX: mx - hitProp.x, offsetY: my - hitProp.y, mode: 'move' }
+        skipNextClickRef.current = true
+        return
+      }
+      setSelectedPropId(null)
+      return
+    }
+
+    // ── Always allow dragging/resizing existing props outside props mode ──
+    if (!propsMode) {
+      const allProps = getStageProps()
+      // Check corner resize handles on selected prop first
+      if (selectedPropId) {
+        const selProp = allProps.find(p => p.id === selectedPropId)
+        if (selProp && !selProp.locked) {
+          const hs = 6
+          const corners: { key: 'tl' | 'tr' | 'bl' | 'br'; cx: number; cy: number }[] = [
+            { key: 'tl', cx: selProp.x, cy: selProp.y },
+            { key: 'tr', cx: selProp.x + selProp.width, cy: selProp.y },
+            { key: 'bl', cx: selProp.x, cy: selProp.y + selProp.height },
+            { key: 'br', cx: selProp.x + selProp.width, cy: selProp.y + selProp.height },
+          ]
+          for (const corner of corners) {
+            if (Math.abs(mx - corner.cx) <= hs + 2 && Math.abs(my - corner.cy) <= hs + 2) {
+              propDragRef.current = {
+                id: selProp.id,
+                offsetX: 0,
+                offsetY: 0,
+                mode: 'resize',
+                corner: corner.key,
+                startMouseX: mx,
+                startMouseY: my,
+                startX: selProp.x,
+                startY: selProp.y,
+                startWidth: selProp.width,
+                startHeight: selProp.height,
+              }
+              skipNextClickRef.current = true
+              return
+            }
+          }
+        }
+      }
+      const hitProp2 = hitTestProp(mx, my, allProps)
+      if (hitProp2 && !hitProp2.locked) {
+        setSelectedPropId(hitProp2.id)
+        propDragRef.current = { id: hitProp2.id, offsetX: mx - hitProp2.x, offsetY: my - hitProp2.y, mode: 'move' }
+        skipNextClickRef.current = true
+        return
+      }
+    }
 
     // ── Note mode annotation dragging / resizing ──
     if (noteMode && keyframeMode) {
@@ -1263,6 +1558,123 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       ctx.restore()
     }
+
+    // ── Draw stage props (behind characters) ──
+    const currentProps = keyframes[activeKeyframeIndex]?.stageProps ?? []
+    currentProps.forEach((prop) => {
+      if (prop.visible === false) return
+      ctx.save()
+      ctx.globalAlpha = prop.opacity ?? 0.7
+      ctx.fillStyle = prop.color || '#d4a574'
+      const cx = prop.x + prop.width / 2
+      const cy = prop.y + prop.height / 2
+      ctx.translate(cx, cy)
+      ctx.rotate((prop.rotation ?? 0) * Math.PI / 180)
+      ctx.translate(-cx, -cy)
+
+      if (prop.shape === 'rect') {
+        ctx.fillRect(prop.x, prop.y, prop.width, prop.height)
+      } else if (prop.shape === 'circle') {
+        ctx.beginPath()
+        ctx.ellipse(cx, cy, prop.width / 2, prop.height / 2, 0, 0, Math.PI * 2)
+        ctx.fill()
+      } else if (prop.shape === 'triangle') {
+        ctx.beginPath()
+        ctx.moveTo(cx, prop.y)
+        ctx.lineTo(prop.x + prop.width, prop.y + prop.height)
+        ctx.lineTo(prop.x, prop.y + prop.height)
+        ctx.closePath()
+        ctx.fill()
+      }
+
+      // Stroke border
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'
+      ctx.lineWidth = 1
+      ctx.globalAlpha = 1
+      if (prop.shape === 'rect') {
+        ctx.strokeRect(prop.x, prop.y, prop.width, prop.height)
+      } else if (prop.shape === 'circle') {
+        ctx.beginPath()
+        ctx.ellipse(cx, cy, prop.width / 2, prop.height / 2, 0, 0, Math.PI * 2)
+        ctx.stroke()
+      } else if (prop.shape === 'triangle') {
+        ctx.beginPath()
+        ctx.moveTo(cx, prop.y)
+        ctx.lineTo(prop.x + prop.width, prop.y + prop.height)
+        ctx.lineTo(prop.x, prop.y + prop.height)
+        ctx.closePath()
+        ctx.stroke()
+      }
+
+      // Label
+      if (prop.label || prop.name) {
+        ctx.globalAlpha = 1
+        ctx.font = '11px "Inter", sans-serif'
+        ctx.fillStyle = '#333'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(prop.label || prop.name, cx, cy)
+      }
+
+      // Selection highlight + resize handles
+      if (selectedPropId === prop.id) {
+        ctx.strokeStyle = '#2563eb'
+        ctx.lineWidth = 2
+        ctx.setLineDash([4, 3])
+        ctx.strokeRect(prop.x - 3, prop.y - 3, prop.width + 6, prop.height + 6)
+        ctx.setLineDash([])
+        // Draw corner resize handles
+        const hs = 5
+        const corners = [
+          { x: prop.x, y: prop.y },
+          { x: prop.x + prop.width, y: prop.y },
+          { x: prop.x, y: prop.y + prop.height },
+          { x: prop.x + prop.width, y: prop.y + prop.height },
+        ]
+        for (const c of corners) {
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(c.x - hs, c.y - hs, hs * 2, hs * 2)
+          ctx.strokeStyle = '#2563eb'
+          ctx.lineWidth = 1.5
+          ctx.strokeRect(c.x - hs, c.y - hs, hs * 2, hs * 2)
+        }
+
+        // Draw lock button (top-right, outside selection box)
+        const lockBtnX = prop.x + prop.width + 6
+        const lockBtnY = prop.y - 14
+        const lockSize = 18
+        ctx.fillStyle = prop.locked ? '#ef4444' : 'rgba(255,255,255,0.7)'
+        ctx.strokeStyle = prop.locked ? '#dc2626' : 'rgba(0,0,0,0.25)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.roundRect(lockBtnX, lockBtnY, lockSize, lockSize, 3)
+        ctx.fill()
+        ctx.stroke()
+        // Draw lock icon or X
+        if (prop.locked) {
+          // Draw X
+          ctx.strokeStyle = '#ffffff'
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.moveTo(lockBtnX + 5, lockBtnY + 5)
+          ctx.lineTo(lockBtnX + lockSize - 5, lockBtnY + lockSize - 5)
+          ctx.moveTo(lockBtnX + lockSize - 5, lockBtnY + 5)
+          ctx.lineTo(lockBtnX + 5, lockBtnY + lockSize - 5)
+          ctx.stroke()
+        } else {
+          // Draw unlock icon (small padlock outline)
+          ctx.strokeStyle = '#666'
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.arc(lockBtnX + lockSize / 2, lockBtnY + 7, 3.5, Math.PI, 0)
+          ctx.stroke()
+          ctx.fillStyle = '#666'
+          ctx.fillRect(lockBtnX + 4, lockBtnY + 9, lockSize - 8, 6)
+        }
+      }
+
+      ctx.restore()
+    })
 
     characters.forEach((char) => {
       const angle = char.angle ?? 0
@@ -2832,6 +3244,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             }
             setNoteMode(prev => !prev)
           }}
+          propsMode={propsMode}
+          onTogglePropsMode={() => {
+            setPropsMode(prev => !prev)
+            setSelectedPropId(null)
+          }}
           />
         </div>
         <div className="inline-block relative" style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
@@ -2909,6 +3326,103 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
               Note Mode — click to place text (N to exit, Esc to cancel)
             </div>
           )}
+          {/* Props mode shape picker */}
+          {propsMode && (
+            <div className="absolute top-1 left-1 z-40 flex items-center gap-2 px-2 py-1.5 bg-orange-50 border border-orange-200 text-orange-800 text-xs rounded shadow-sm" style={{ marginTop: noteMode ? 52 : 24 }}>
+              <span className="font-medium">Props:</span>
+              {PROP_SHAPES.map((shape, i) => (
+                <button
+                  key={shape}
+                  onClick={() => setPropShapeIndex(i)}
+                  className={`flex items-center justify-center w-7 h-7 rounded border transition-colors ${
+                    propShapeIndex === i
+                      ? 'bg-orange-500 text-white border-orange-600'
+                      : 'bg-white text-orange-700 border-orange-300 hover:bg-orange-100'
+                  }`}
+                  title={shape.charAt(0).toUpperCase() + shape.slice(1)}
+                >
+                  {shape === 'rect' && (
+                    <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" fill="currentColor" rx="1" /></svg>
+                  )}
+                  {shape === 'circle' && (
+                    <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="currentColor" /></svg>
+                  )}
+                  {shape === 'triangle' && (
+                    <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,1 13,13 1,13" fill="currentColor" /></svg>
+                  )}
+                </button>
+              ))}
+              <span className="ml-1 text-[10px] text-orange-600">Click stage to place · Esc to exit</span>
+            </div>
+          )}
+          {/* Offstage Props panel (left side) */}
+          {keyframeMode && (
+            <div className="absolute right-full mr-2 z-40" style={{ top: 40, minWidth: 100 }}>
+              <div className="text-xs text-muted-foreground">Props</div>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {(keyframes[activeKeyframeIndex]?.stageProps ?? []).filter(p => p.visible === false).length > 0 && (
+                  <div className="text-xs text-muted-foreground mb-1 italic">Offstage:</div>
+                )}
+                {(keyframes[activeKeyframeIndex]?.stageProps ?? []).filter(p => p.visible === false).map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-2 rounded px-2 py-1 bg-transparent cursor-pointer hover:bg-gray-100"
+                    style={{ userSelect: 'none' }}
+                    onClick={() => {
+                      updateStageProp(p.id, { visible: true, x: canvasSize.width / 2 - p.width / 2, y: canvasSize.height / 2 - p.height / 2 })
+                    }}
+                    title="Click to bring on stage"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" className="flex-shrink-0">
+                      {p.shape === 'rect' && <rect x="2" y="2" width="20" height="20" fill={p.color} opacity={0.7} stroke="#666" strokeWidth="1" />}
+                      {p.shape === 'circle' && <ellipse cx="12" cy="12" rx="10" ry="10" fill={p.color} opacity={0.7} stroke="#666" strokeWidth="1" />}
+                      {p.shape === 'triangle' && <polygon points="12,2 22,22 2,22" fill={p.color} opacity={0.7} stroke="#666" strokeWidth="1" />}
+                    </svg>
+                    <div className="text-xs text-foreground">{p.name}</div>
+                  </div>
+                ))}
+                {/* Selected prop controls */}
+                {selectedPropId && propsMode && (() => {
+                  const sp = (keyframes[activeKeyframeIndex]?.stageProps ?? []).find(p => p.id === selectedPropId)
+                  if (!sp || sp.visible === false) return null
+                  return (
+                    <div className="mt-2 border-t pt-2 space-y-1.5">
+                      <div className="text-xs font-semibold text-muted-foreground">Selected Prop</div>
+                      <input
+                        className="w-full text-xs rounded border px-1 py-0.5"
+                        value={sp.name}
+                        onChange={(e) => updateStageProp(sp.id, { name: e.target.value })}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder="Prop name"
+                      />
+                      <div className="flex items-center gap-1">
+                        <label className="text-xs text-muted-foreground">Shape:</label>
+                        {(['rect', 'circle', 'triangle'] as const).map(s => (
+                          <button key={s} className={`text-xs px-1.5 py-0.5 rounded border ${sp.shape === s ? 'bg-blue-100 border-blue-400' : 'border-gray-300'}`}
+                            onClick={() => updateStageProp(sp.id, { shape: s })}
+                          >{s === 'rect' ? '▬' : s === 'circle' ? '●' : '▲'}</button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <label className="text-xs text-muted-foreground">Color:</label>
+                        <input type="color" value={sp.color} onChange={(e) => updateStageProp(sp.id, { color: e.target.value })} className="w-6 h-6 border-0 p-0 cursor-pointer" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <label className="text-xs text-muted-foreground">W:</label>
+                        <input type="number" value={sp.width} min={10} max={500} className="w-12 text-xs rounded border px-1 py-0.5" onChange={(e) => updateStageProp(sp.id, { width: Number(e.target.value) || 60 })} onKeyDown={(e) => e.stopPropagation()} />
+                        <label className="text-xs text-muted-foreground">H:</label>
+                        <input type="number" value={sp.height} min={10} max={500} className="w-12 text-xs rounded border px-1 py-0.5" onChange={(e) => updateStageProp(sp.id, { height: Number(e.target.value) || 60 })} onKeyDown={(e) => e.stopPropagation()} />
+                      </div>
+                      <div className="flex gap-1">
+                        <button className="text-xs px-1.5 py-0.5 rounded border border-gray-300 hover:bg-gray-100" onClick={() => updateStageProp(sp.id, { visible: false })} title="Send offstage">Offstage</button>
+                        <button className="text-xs px-1.5 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50" onClick={() => deleteStageProp(sp.id)} title="Delete prop">Delete</button>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
           <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
             <div className="text-xs text-muted-foreground">Offstage</div>
             <div className="mt-2 flex flex-col gap-2 max-w-xs">
@@ -2963,10 +3477,22 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 <div key={pos} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <textarea
                     className="w-full rounded border border-gray-300 bg-white/80 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    style={{ minHeight: 48, fontFamily: '"Inter", sans-serif' }}
+                    style={{ minHeight: 48, fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}
                     placeholder={`Notes for ${pos === 'left' ? 'stage left' : pos === 'center' ? 'center stage' : 'stage right'}...`}
                     value={notes[pos]}
-                    onChange={(e) => updateStageNote(pos, e.target.value)}
+                    onChange={(e) => {
+                      updateStageNote(pos, e.target.value)
+                      // Auto-expand height
+                      e.target.style.height = 'auto'
+                      e.target.style.height = e.target.scrollHeight + 'px'
+                    }}
+                    ref={(el) => {
+                      // Auto-expand on mount/update
+                      if (el) {
+                        el.style.height = 'auto'
+                        el.style.height = el.scrollHeight + 'px'
+                      }
+                    }}
                     onKeyDown={(e) => e.stopPropagation()}
                   />
                 </div>
