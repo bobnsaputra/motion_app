@@ -7,6 +7,15 @@ Entries format:
 
 
 
+## 2026-03-02
+### Props & Visibility Improvements
+- 02:10 — **Props as top-level state**: Moved `stageProps` from being stored inside keyframes to a top-level React state, matching how characters work. Props now exist independently of keyframe mode — no need to enter keyframes first. Save/load/export/import include `stageProps` at the top level with backward compatibility for old files that stored props inside keyframes. (`StageBlockingApp.tsx`)
+- 02:15 — **Props lock fix in Props mode**: Fixed lock button not working inside Props mode. The `onCanvasMouseDown` handler was intercepting clicks and setting `skipNextClickRef`, which swallowed the click event before the lock hit-test in `handleCanvasClick`. Lock button check now runs first in `onCanvasMouseDown` for the propsMode block. (`StageBlockingApp.tsx`)
+- 02:20 — **Prop resize cursor**: Hovering over a selected prop's corner resize handles now shows `nwse-resize` or `nesw-resize` cursor, matching annotation behavior. (`StageBlockingApp.tsx`)
+- 02:25 — **Auto-enter Props mode on click**: Clicking a prop outside of Props mode now automatically enters Props mode and selects the prop, for both click and drag interactions. (`StageBlockingApp.tsx`)
+- 02:30 — **Props blocked in keyframe mode**: Props can no longer be clicked, dragged, or resized in keyframe mode to avoid conflicts with character positioning workflow. (`StageBlockingApp.tsx`)
+- 02:35 — **Visibility eye button on canvas**: Added a visibility toggle button drawn directly beside the selected character on the canvas in keyframe mode (like the lock button on props). Transparent (35% opacity, 18px) when not hovered; fully opaque and bigger (24px) when hovered with pointer cursor. Click to toggle character visibility. Removed the old visibility toolbar button. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
+
 ## 2026-03-01
 ### Wing Expansion, Head Tuning, Loading Screen & Stage Props
 - 01:00 — **Wing canvas expansion**: Wings now expand the overall canvas width instead of overlapping the stage area. Each wing adds up to 500px per side. `wingOffset` and `totalCanvasWidth` computed values drive layout; `ctx.translate(wingOffset, 0)` keeps all stage content in stage-local coordinates. All mouse handlers subtract `wingOffset` for correct hit-testing. Container divs use `totalCanvasWidth` for `maxWidth`. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`)

@@ -48,7 +48,7 @@ export default function App() {
         alignItems: 'center',
         justifyContent: 'center',
         gap: '20px',
-        background: 'rgba(0, 0, 0, 0.6)',
+        background: 'rgba(0, 0, 0, 0.25)',
         backdropFilter: 'blur(4px)',
       }}>
         <div style={{

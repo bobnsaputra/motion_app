@@ -124,6 +124,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   // ── Props mode ──
   const [propsMode, setPropsMode] = useState(false)
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null)
+  const [stageProps, setStageProps] = useState<StageProp[]>([])
   const propNextId = useRef(1)
   const propDragRef = useRef<{
     id: string
@@ -153,6 +154,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     hasMoved?: boolean
   }>({ type: null })
   const skipNextClickRef = useRef(false)
+  const [hoveringVisBtn, setHoveringVisBtn] = useState(false)
 
   // Refs to always get latest versions of file operations (avoids stale closures in keyboard handler)
   const fileOpsRef = useRef({ saveToLocalStorage: () => {}, loadFromLocalStorage: () => {}, exportAsJSON: () => {}, importFromJSON: () => {} })
@@ -178,7 +180,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   useEffect(() => {
     draw()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize, noteMode, selectedAnnotationId, editingAnnotationId, showWings, wingSize, personSize, preventOverlap, propsMode, selectedPropId])
+  }, [characters, guides, canvasSize, selectedCharId, awaitingDirectionFor, keyframeMode, activeKeyframeIndex, keyframes, animationProgress, stageReversed, labelFontSize, noteMode, selectedAnnotationId, editingAnnotationId, showWings, wingSize, personSize, preventOverlap, propsMode, selectedPropId, stageProps, hoveringVisBtn])
 
   // Turn off note mode when exiting keyframe mode
   useEffect(() => {
@@ -204,18 +206,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     if (maxId + 1 > annotationNextId.current) {
       annotationNextId.current = maxId + 1
     }
-    // Also re-init propNextId
+  }, [keyframes])
+
+  // Re-init propNextId whenever stageProps change
+  useEffect(() => {
     let maxPropId = 0
-    for (const kf of keyframes) {
-      for (const p of kf.stageProps ?? []) {
-        const num = parseInt(p.id.replace('prop_', ''), 10)
-        if (!isNaN(num) && num > maxPropId) maxPropId = num
-      }
+    for (const p of stageProps) {
+      const num = parseInt(p.id.replace('prop_', ''), 10)
+      if (!isNaN(num) && num > maxPropId) maxPropId = num
     }
     if (maxPropId + 1 > propNextId.current) {
       propNextId.current = maxPropId + 1
     }
-  }, [keyframes])
+  }, [stageProps])
 
   // ── Mouse move / up for dragging ──
   useEffect(() => {
@@ -793,25 +796,15 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   // ── Prop helpers ──
   function getStageProps(): StageProp[] {
-    return keyframes[activeKeyframeIndex]?.stageProps ?? []
+    return stageProps
   }
 
   function updateStageProp(propId: string, updates: Partial<StageProp>) {
-    setKeyframes(prev => prev.map((kf, i) =>
-      i === activeKeyframeIndex ? {
-        ...kf,
-        stageProps: (kf.stageProps ?? []).map(p => p.id === propId ? { ...p, ...updates } : p)
-      } : kf
-    ))
+    setStageProps(prev => prev.map(p => p.id === propId ? { ...p, ...updates } : p))
   }
 
   function deleteStageProp(propId: string) {
-    setKeyframes(prev => prev.map((kf, i) =>
-      i === activeKeyframeIndex ? {
-        ...kf,
-        stageProps: (kf.stageProps ?? []).filter(p => p.id !== propId)
-      } : kf
-    ))
+    setStageProps(prev => prev.filter(p => p.id !== propId))
     if (selectedPropId === propId) setSelectedPropId(null)
   }
 
@@ -831,12 +824,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       opacity: 1,
       visible: true,
     }
-    setKeyframes(prev => prev.map((kf, i) =>
-      i === activeKeyframeIndex ? {
-        ...kf,
-        stageProps: [...(kf.stageProps ?? []), newProp]
-      } : kf
-    ))
+    setStageProps(prev => [...prev, newProp])
     setSelectedPropId(id)
   }
 
@@ -1008,8 +996,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       return
     }
 
-    // ── Props mode: click to place or select a prop ──
-    if (propsMode) {
+    // ── Props mode: click to place or select a prop (not in keyframe mode) ──
+    if (propsMode && !keyframeMode) {
       const canvas = canvasRef.current!
       const rect = canvas.getBoundingClientRect()
       const x = Math.round(e.clientX - rect.left)
@@ -1041,8 +1029,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     // In keyframe mode, only allow selecting/moving — no adding or gaze setting
     if (keyframeMode && (addMode || awaitingDirectionFor)) return
 
-    // ── Always allow clicking existing props (select / lock toggle) ──
-    if (!propsMode) {
+    // ── Allow clicking existing props (select / lock toggle) — not in keyframe mode ──
+    if (!propsMode && !keyframeMode) {
       const canvas = canvasRef.current!
       const rect = canvas.getBoundingClientRect()
       const x = Math.round(e.clientX - rect.left)
@@ -1064,6 +1052,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const hitProp = hitTestProp(x, y, props)
       if (hitProp) {
         setSelectedPropId(hitProp.id)
+        setPropsMode(true)
         return
       }
       // Clicked empty space — deselect prop
@@ -1126,10 +1115,24 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setFileMenuOpen(false)
     setConfigMenuOpen(false)
 
-    // ── Props mode: start drag ──
-    if (propsMode) {
+    // ── Props mode: start drag (not in keyframe mode) ──
+    if (propsMode && !keyframeMode) {
       const props = getStageProps()
-      // Check corner resize handles on selected prop first
+      // Check lock button click on selected prop first
+      if (selectedPropId) {
+        const selProp = props.find(p => p.id === selectedPropId)
+        if (selProp) {
+          const lockBtnX = selProp.x + selProp.width + 6
+          const lockBtnY = selProp.y - 14
+          const lockSize = 18
+          if (mx >= lockBtnX && mx <= lockBtnX + lockSize && my >= lockBtnY && my <= lockBtnY + lockSize) {
+            updateStageProp(selectedPropId, { locked: !selProp.locked })
+            skipNextClickRef.current = true
+            return
+          }
+        }
+      }
+      // Check corner resize handles on selected prop
       if (selectedPropId) {
         const selProp = props.find(p => p.id === selectedPropId)
         if (selProp && !selProp.locked) {
@@ -1172,8 +1175,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       return
     }
 
-    // ── Always allow dragging/resizing existing props outside props mode ──
-    if (!propsMode) {
+    // ── Allow dragging/resizing existing props outside props mode — not in keyframe mode ──
+    if (!propsMode && !keyframeMode) {
       const allProps = getStageProps()
       // Check corner resize handles on selected prop first
       if (selectedPropId) {
@@ -1210,6 +1213,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const hitProp2 = hitTestProp(mx, my, allProps)
       if (hitProp2 && !hitProp2.locked) {
         setSelectedPropId(hitProp2.id)
+        setPropsMode(true)
         propDragRef.current = { id: hitProp2.id, offsetX: mx - hitProp2.x, offsetY: my - hitProp2.y, mode: 'move' }
         skipNextClickRef.current = true
         return
@@ -1277,6 +1281,18 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const headRy = personSize.headH / 2
       const shoulderRx = personSize.shoulderW / 2
       const shoulderRy = personSize.shoulderH / 2
+      // Check visibility button click (only on selected char in keyframe mode)
+      if (keyframeMode && selectedCharId === char.id) {
+        const visBtnSize = hoveringVisBtn ? 24 : 18
+        const visBtnX = char.x + Math.max(headRx, shoulderRx) + 8
+        const visBtnY = char.y - visBtnSize / 2
+        if (mx >= visBtnX && mx <= visBtnX + visBtnSize && my >= visBtnY && my <= visBtnY + visBtnSize) {
+          const newVis = !(char.visible !== false)
+          handleUpdateCharVisible(char.id, newVis)
+          return
+        }
+      }
+
       if (d <= Math.max(headRx, headRy)) {
         setSelectedCharId(char.id)
         if (blockDrag) { showToast('Keyframe 1 is the starting position — move characters in other keyframes', 'info'); return }
@@ -1392,6 +1408,69 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           wrapper.style.cursor = 'text'
         }
       }
+      return
+    }
+
+    // ── Update cursor for prop resize handles ──
+    if (selectedPropId) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left - wingOffset
+      const my = e.clientY - rect.top
+      const selProp = getStageProps().find(p => p.id === selectedPropId)
+      const wrapper = canvas.parentElement
+      if (selProp && !selProp.locked && wrapper) {
+        const hs = 6
+        const corners: { key: string; cx: number; cy: number }[] = [
+          { key: 'tl', cx: selProp.x, cy: selProp.y },
+          { key: 'tr', cx: selProp.x + selProp.width, cy: selProp.y },
+          { key: 'bl', cx: selProp.x, cy: selProp.y + selProp.height },
+          { key: 'br', cx: selProp.x + selProp.width, cy: selProp.y + selProp.height },
+        ]
+        let hitCorner = ''
+        for (const corner of corners) {
+          if (Math.abs(mx - corner.cx) <= hs + 2 && Math.abs(my - corner.cy) <= hs + 2) {
+            hitCorner = corner.key
+            break
+          }
+        }
+        if (hitCorner === 'tl' || hitCorner === 'br') {
+          wrapper.style.cursor = 'nwse-resize'
+        } else if (hitCorner === 'tr' || hitCorner === 'bl') {
+          wrapper.style.cursor = 'nesw-resize'
+        } else {
+          wrapper.style.cursor = ''
+        }
+      }
+    }
+
+    // ── Track hover on visibility eye button beside selected character ──
+    if (keyframeMode && selectedCharId) {
+      const canvas = canvasRef.current
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect()
+        const mx = e.clientX - rect.left - wingOffset
+        const my = e.clientY - rect.top
+        const char = characters.find(c => c.id === selectedCharId)
+        if (char) {
+          const headRx = personSize.headW / 2
+          const shoulderRx = personSize.shoulderW / 2
+          const visBtnSize = hoveringVisBtn ? 24 : 18
+          const visBtnX = char.x + Math.max(headRx, shoulderRx) + 8
+          const visBtnY = char.y - visBtnSize / 2
+          const isOver = mx >= visBtnX && mx <= visBtnX + visBtnSize && my >= visBtnY && my <= visBtnY + visBtnSize
+          if (isOver !== hoveringVisBtn) {
+            setHoveringVisBtn(isOver)
+            const wrapper = canvas.parentElement
+            if (wrapper) wrapper.style.cursor = isOver ? 'pointer' : ''
+          }
+        } else if (hoveringVisBtn) {
+          setHoveringVisBtn(false)
+        }
+      }
+    } else if (hoveringVisBtn) {
+      setHoveringVisBtn(false)
     }
   }
 
@@ -1560,7 +1639,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
 
     // ── Draw stage props (behind characters) ──
-    const currentProps = keyframes[activeKeyframeIndex]?.stageProps ?? []
+    const currentProps = stageProps
     currentProps.forEach((prop) => {
       if (prop.visible === false) return
       ctx.save()
@@ -1785,6 +1864,65 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ctx.strokeStyle = '#2c3e50'
         ctx.lineWidth = 2
         ctx.stroke()
+
+        // Draw visibility eye button beside selected character in keyframe mode
+        if (keyframeMode) {
+          const isHovered = hoveringVisBtn
+          const visBtnSize = isHovered ? 24 : 18
+          const visBtnX = char.x + Math.max(headRx, shoulderRx) + 8
+          const visBtnY = char.y - visBtnSize / 2
+          const isVisible = char.visible !== false
+          if (isHovered) {
+            // Hovered: fully opaque and bigger
+            ctx.globalAlpha = 1
+            ctx.fillStyle = isVisible ? 'rgba(255,255,255,0.95)' : '#ef4444'
+            ctx.strokeStyle = isVisible ? 'rgba(0,0,0,0.4)' : '#dc2626'
+          } else {
+            // Not hovered: transparent
+            ctx.globalAlpha = 0.35
+            ctx.fillStyle = isVisible ? 'rgba(255,255,255,0.7)' : 'rgba(239,68,68,0.7)'
+            ctx.strokeStyle = isVisible ? 'rgba(0,0,0,0.15)' : 'rgba(220,38,38,0.5)'
+          }
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.roundRect(visBtnX, visBtnY, visBtnSize, visBtnSize, 3)
+          ctx.fill()
+          ctx.stroke()
+          // Draw eye icon
+          const ecx = visBtnX + visBtnSize / 2
+          const ecy = visBtnY + visBtnSize / 2
+          const es = isHovered ? 1.3 : 1 // scale factor
+          if (isVisible) {
+            // Open eye
+            ctx.strokeStyle = isHovered ? '#333' : '#666'
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.moveTo(ecx - 5 * es, ecy)
+            ctx.quadraticCurveTo(ecx, ecy - 4 * es, ecx + 5 * es, ecy)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(ecx - 5 * es, ecy)
+            ctx.quadraticCurveTo(ecx, ecy + 4 * es, ecx + 5 * es, ecy)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(ecx, ecy, 1.5 * es, 0, Math.PI * 2)
+            ctx.fillStyle = isHovered ? '#333' : '#666'
+            ctx.fill()
+          } else {
+            // Closed eye with slash
+            ctx.strokeStyle = isHovered ? '#fff' : 'rgba(255,255,255,0.8)'
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.moveTo(ecx - 5 * es, ecy)
+            ctx.quadraticCurveTo(ecx, ecy + 4 * es, ecx + 5 * es, ecy)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(ecx - 4 * es, ecy - 4 * es)
+            ctx.lineTo(ecx + 4 * es, ecy + 4 * es)
+            ctx.stroke()
+          }
+          ctx.globalAlpha = 1
+        }
       }
 
       if (!shouldersUnder) {
@@ -2590,7 +2728,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       labelFontSize,
       noteFontSize,
       showWings,
-      wingSize
+      wingSize,
+      stageProps: JSON.parse(JSON.stringify(stageProps))
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
@@ -2698,6 +2837,17 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
         if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
 
+        // Load stage props (top-level or migrate from keyframes)
+        if (state.stageProps && Array.isArray(state.stageProps)) {
+          setStageProps(state.stageProps)
+        } else if (loadedKfs.length > 0) {
+          // Backward compat: extract stageProps from first keyframe that has them
+          const fromKf = loadedKfs.find(kf => kf.stageProps && kf.stageProps.length > 0)
+          setStageProps(fromKf?.stageProps ?? [])
+        } else {
+          setStageProps([])
+        }
+
         setSelectedCharId(null)
         setAwaitingDirectionFor(null)
         showToast('Layout loaded')
@@ -2769,7 +2919,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       labelFontSize,
       noteFontSize,
       showWings,
-      wingSize
+      wingSize,
+      stageProps: JSON.parse(JSON.stringify(stageProps))
     }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -2889,6 +3040,17 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
             if (typeof state.showWings === 'boolean') setShowWings(state.showWings)
             if (state.wingSize && typeof state.wingSize.width === 'number') setWingSize(state.wingSize)
+
+            // Load stage props (top-level or migrate from keyframes)
+            if (state.stageProps && Array.isArray(state.stageProps)) {
+              setStageProps(state.stageProps)
+            } else if (loadedKfs.length > 0) {
+              const fromKf = loadedKfs.find((kf: any) => kf.stageProps && kf.stageProps.length > 0)
+              setStageProps(fromKf?.stageProps ?? [])
+            } else {
+              setStageProps([])
+            }
+
             setSelectedCharId(null)
             setAwaitingDirectionFor(null)
             showToast('Layout imported')
@@ -3356,14 +3518,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             </div>
           )}
           {/* Offstage Props panel (left side) */}
-          {keyframeMode && (
+          {stageProps.length > 0 && (
             <div className="absolute right-full mr-2 z-40" style={{ top: 40, minWidth: 100 }}>
               <div className="text-xs text-muted-foreground">Props</div>
               <div className="mt-2 flex flex-col gap-1.5">
-                {(keyframes[activeKeyframeIndex]?.stageProps ?? []).filter(p => p.visible === false).length > 0 && (
+                {stageProps.filter(p => p.visible === false).length > 0 && (
                   <div className="text-xs text-muted-foreground mb-1 italic">Offstage:</div>
                 )}
-                {(keyframes[activeKeyframeIndex]?.stageProps ?? []).filter(p => p.visible === false).map((p) => (
+                {stageProps.filter(p => p.visible === false).map((p) => (
                   <div
                     key={p.id}
                     className="flex items-center gap-2 rounded px-2 py-1 bg-transparent cursor-pointer hover:bg-gray-100"
@@ -3383,7 +3545,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 ))}
                 {/* Selected prop controls */}
                 {selectedPropId && propsMode && (() => {
-                  const sp = (keyframes[activeKeyframeIndex]?.stageProps ?? []).find(p => p.id === selectedPropId)
+                  const sp = stageProps.find(p => p.id === selectedPropId)
                   if (!sp || sp.visible === false) return null
                   return (
                     <div className="mt-2 border-t pt-2 space-y-1.5">

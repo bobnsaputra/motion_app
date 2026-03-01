@@ -187,14 +187,6 @@ export default function Toolbar(props: ToolbarProps) {
 
             <div className="h-6 w-px bg-border" />
 
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-              if (!selectedCharId) return
-              const newVis = !(selectedChar?.visible !== false)
-              onUpdateCharVisible(selectedCharId, newVis)
-            }} disabled={!selectedCharId} title="Toggle visibility (V)">
-              {selectedChar?.visible === false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            </Button>
-
             {isPlaying ? (
               <Button variant="default" size="icon" className="h-8 w-8" onClick={onStop} title="Stop (Space)">
                 <Square className="h-4 w-4" />
