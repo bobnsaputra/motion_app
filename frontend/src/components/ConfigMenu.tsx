@@ -95,7 +95,7 @@ export default function ConfigMenu({
   const [localWingWidthStr, setLocalWingWidthStr] = useState<string>(String(wingSize?.width ?? Math.round(canvasSize.width / 8)))
   const [localWingHeightStr, setLocalWingHeightStr] = useState<string>(String(wingSize?.height ?? canvasSize.height))
   const MIN_WING_W = 20
-  const MAX_WING_W = Math.round(canvasSize.width / 2)
+  const MAX_WING_W = 500
   const MIN_WING_H = 20
   const MAX_WING_H = canvasSize.height
   const MIN_MOVE_MS = 100

@@ -8,6 +8,14 @@ Entries format:
 
 
 ## 2026-03-01
+### Wing Expansion, Head Tuning, Loading Screen & Stage Props
+- 01:00 — **Wing canvas expansion**: Wings now expand the overall canvas width instead of overlapping the stage area. Each wing adds up to 500px per side. `wingOffset` and `totalCanvasWidth` computed values drive layout; `ctx.translate(wingOffset, 0)` keeps all stage content in stage-local coordinates. All mouse handlers subtract `wingOffset` for correct hit-testing. Container divs use `totalCanvasWidth` for `maxWidth`. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`)
+- 01:05 — **Grid lines extend to wings**: Horizontal guides now stretch into wing areas when wings are visible, using `drawStart = -wingOffset` and `drawEnd = canvasSize.width + wingOffset`. (`StageBlockingApp.tsx`)
+- 01:10 — **Head size tuning**: Default head dimensions adjusted through multiple iterations (48×40 → 36×30 → 24×20 → 32×26 → 40×34). Final default: `headW: 40, headH: 34`. Added Head W and Head H number inputs in ConfigMenu's Person Size section. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`)
+- 01:15 — **Person size removed from persistence**: `personSize` is no longer saved to localStorage or included in JSON export/import. Always uses the code default on load, preventing stale cached values from overriding new defaults. (`StageBlockingApp.tsx`)
+- 01:20 — **Head-shoulder overlap**: Reduced `shoulderDist` from `headRy` to `headRy * 0.45` so the head sits deeper inside the shoulder ellipse. Applied in both the draw function and hit-testing for consistent click behavior. (`StageBlockingApp.tsx`)
+- 01:25 — **Loading screen redesign**: Replaced the dark rectangle auth-checking screen with a themed spinner matching the Login page's warm yellow gradient (`#fffdf0` → `#fff7d6`). Shows a gold spinning circle with subtle "Loading…" text. (`App.tsx`)
+
 ### Wing Stage, Person Size Refactor, Pastel Colors & Config Menu Overhaul
 - 00:00 — **Wing stage areas**: Added configurable wing areas on left/right sides of the stage with a darker shade. Toggle via checkbox in ConfigMenu. Width and height are independently adjustable with free-text inputs (2s debounce) and ±100 buttons. Max width = half stage width, max height = stage height. Lock toggle included. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
 - 00:05 — **Wing state persistence**: `showWings` and `wingSize` are saved/loaded/exported/imported. Fixed loading when keyframes array is empty (moved restore outside the keyframes conditional). `lockWingSize` defaults to true and is not persisted. (`StageBlockingApp.tsx`)

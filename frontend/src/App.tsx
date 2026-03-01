@@ -41,13 +41,24 @@ export default function App() {
     return (
       <div style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         height: '100vh',
-        background: '#0a0a0f',
-        color: '#fff'
+        gap: '16px',
+        background: 'linear-gradient(to bottom, #fffdf0 0%, #fff9e6 35%, #fff7d6 60%)',
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}>
-        Loading...
+        <div style={{
+          width: 36,
+          height: 36,
+          border: '3px solid rgba(180, 160, 100, 0.2)',
+          borderTopColor: '#b8960c',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <span style={{ color: '#7a6c3a', fontSize: 14, letterSpacing: '0.02em' }}>Loading…</span>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }

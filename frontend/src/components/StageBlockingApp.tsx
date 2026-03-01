@@ -38,7 +38,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [canvasSize, setCanvasSize] = useState({ width: 1600, height: 900 })
   const [guides, setGuides] = useState<Guide[]>([])
   const [defaultPersonSize, setDefaultPersonSize] = useState(2)
-  const [personSize, setPersonSize] = useState({ headW: 48, headH: 40, shoulderW: 72, shoulderH: 40 })
+  const [personSize, setPersonSize] = useState({ headW: 40, headH: 34, shoulderW: 72, shoulderH: 40 })
   const [defaultPersonColor, setDefaultPersonColor] = useState(PASTEL_PAIRS[0].head)
   const [defaultShoulderColor, setDefaultShoulderColor] = useState(PASTEL_PAIRS[0].shoulder)
   const [fileMenuOpen, setFileMenuOpen] = useState(false)
@@ -51,6 +51,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [showWings, setShowWings] = useState(false)
   const [wingSize, setWingSize] = useState({ width: Math.round(canvasSize.width / 8), height: canvasSize.height })
   const [lockWingSize, setLockWingSize] = useState(true)
+  const wingOffset = showWings ? Math.min(wingSize.width, 500) : 0
+  const totalCanvasWidth = canvasSize.width + 2 * wingOffset
   const [preventOverlap, setPreventOverlap] = useState(false)
   const preventOverlapRef = useRef(preventOverlap)
   useEffect(() => { preventOverlapRef.current = preventOverlap }, [preventOverlap])
@@ -189,7 +191,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         const canvas = canvasRef.current
         if (!canvas) return
         const rect = canvas.getBoundingClientRect()
-        const mx = e.clientX - rect.left
+        const mx = e.clientX - rect.left - wingOffset
         const my = e.clientY - rect.top
         const drag = annotationDragRef.current
         if (drag.mode === 'resize' && drag.corner && drag.startMouseX != null && drag.startMouseY != null && drag.startX != null && drag.startY != null && drag.startWidth != null && drag.startHeight != null) {
@@ -225,7 +227,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const canvas = canvasRef.current
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
-      const mx = e.clientX - rect.left
+      const mx = e.clientX - rect.left - wingOffset
       const my = e.clientY - rect.top
 
       if (dragRef.current.type === 'char-move') {
@@ -331,20 +333,20 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           if (g.id !== dragRef.current.guideId) return g
           if (dragRef.current.type === 'move') {
             if (g.orientation === 'v') {
-              const pos = Math.max(0, Math.min(canvas.width, mx - (dragRef.current.offset || 0)))
+              const pos = Math.max(0, Math.min(canvasSize.width, mx - (dragRef.current.offset || 0)))
               return { ...g, pos }
             } else {
-              const pos = Math.max(0, Math.min(canvas.height, my - (dragRef.current.offset || 0)))
+              const pos = Math.max(0, Math.min(canvasSize.height, my - (dragRef.current.offset || 0)))
               return { ...g, pos }
             }
           } else if (dragRef.current.type === 'handle') {
             const handle = dragRef.current.handle!
             if (g.orientation === 'v') {
-              const val = Math.max(0, Math.min(canvas.height, handle === 'start' ? my : my))
+              const val = Math.max(0, Math.min(canvasSize.height, handle === 'start' ? my : my))
               if (handle === 'start') return { ...g, start: Math.min(val, g.end) }
               return { ...g, end: Math.max(val, g.start) }
             } else {
-              const val = Math.max(0, Math.min(canvas.width, handle === 'start' ? mx : mx))
+              const val = Math.max(0, Math.min(canvasSize.width, handle === 'start' ? mx : mx))
               if (handle === 'start') return { ...g, start: Math.min(val, g.end) }
               return { ...g, end: Math.max(val, g.start) }
             }
@@ -416,7 +418,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
     }
-  }, [characters, keyframeMode])
+  }, [characters, keyframeMode, wingOffset])
 
   // ── Keyboard shortcuts ──
   useEffect(() => {
@@ -828,7 +830,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     if (noteMode && keyframeMode) {
       const canvas = canvasRef.current!
       const rect = canvas.getBoundingClientRect()
-      const x = Math.round(e.clientX - rect.left)
+      const x = Math.round(e.clientX - rect.left - wingOffset)
       const y = Math.round(e.clientY - rect.top)
 
       // Check if clicking on an existing annotation (only 'inside' zone opens editing)
@@ -868,7 +870,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     if (awaitingDirectionFor) {
       const canvas = canvasRef.current!
       const rect = canvas.getBoundingClientRect()
-      const x = e.clientX - rect.left
+      const x = e.clientX - rect.left - wingOffset
       const y = e.clientY - rect.top
       const target = characters.find((c) => c.id === awaitingDirectionFor)
       if (target) {
@@ -896,7 +898,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     if (!addMode) return
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
-    const x = Math.round(e.clientX - rect.left)
+    const x = Math.round(e.clientX - rect.left - wingOffset)
     const y = Math.round(e.clientY - rect.top)
     const id = String.fromCharCode(65 + (counter % 26))
     const colorIndex = counter % PASTEL_PAIRS.length
@@ -913,7 +915,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function onCanvasMouseDown(e: React.MouseEvent) {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
-    const mx = e.clientX - rect.left
+    const mx = e.clientX - rect.left - wingOffset
     const my = e.clientY - rect.top
 
     setFileMenuOpen(false)
@@ -987,7 +989,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         return
       }
 
-      const shoulderDist = headRy
+      const shoulderDist = headRy * 0.45
       const shoulderX = char.x - Math.cos(angle) * shoulderDist
       const shoulderY = char.y - Math.sin(angle) * shoulderDist
       const shoulderD = Math.hypot(mx - shoulderX, my - shoulderY)
@@ -1046,7 +1048,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     if (awaitingDirectionFor) {
       const canvas = canvasRef.current!
       const rect = canvas.getBoundingClientRect()
-      const mx = e.clientX - rect.left
+      const mx = e.clientX - rect.left - wingOffset
       const my = e.clientY - rect.top
       setCharacters((prev) =>
         prev.map((c) => {
@@ -1077,7 +1079,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const canvas = canvasRef.current
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
-      const mx = e.clientX - rect.left
+      const mx = e.clientX - rect.left - wingOffset
       const my = e.clientY - rect.top
       const annotations = keyframes[activeKeyframeIndex]?.annotations ?? []
       const hit = hitTestAnnotation(mx, my, annotations)
@@ -1111,7 +1113,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
-    const x = Math.round(e.clientX - rect.left)
+    const x = Math.round(e.clientX - rect.left - wingOffset)
     const y = Math.round(e.clientY - rect.top)
 
     const pos = preventOverlap ? resolveCollisions(x, y, id, characters) : { x, y }
@@ -1155,9 +1157,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         ctx.fill()
         ctx.setLineDash([6, 6])
       } else {
+        // Extend horizontal guides into wing areas
+        const drawStart = showWings ? Math.min(g.start, -wingOffset) : g.start
+        const drawEnd = showWings ? Math.max(g.end, canvasSize.width + wingOffset) : g.end
         ctx.beginPath()
-        ctx.moveTo(g.start, g.pos)
-        ctx.lineTo(g.end, g.pos)
+        ctx.moveTo(drawStart, g.pos)
+        ctx.lineTo(drawEnd, g.pos)
         ctx.stroke()
         ctx.setLineDash([])
         ctx.fillStyle = '#333'
@@ -1176,47 +1181,50 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function draw() {
     const canvas = canvasRef.current
     if (!canvas) return
-    if (canvas.width !== canvasSize.width) canvas.width = canvasSize.width
+    if (canvas.width !== totalCanvasWidth) canvas.width = totalCanvasWidth
     if (canvas.height !== canvasSize.height) canvas.height = canvasSize.height
 
     const ctx = canvas.getContext('2d')!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // ── Draw wing areas ──
-    if (showWings) {
+    // ── Draw wing areas (absolute canvas coordinates, before translate) ──
+    if (showWings && wingOffset > 0) {
       ctx.save()
       ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'
-      const ww = Math.min(wingSize.width, canvas.width / 2)
       const wh = Math.min(wingSize.height, canvas.height)
       // Left wing
-      ctx.fillRect(0, 0, ww, wh)
+      ctx.fillRect(0, 0, wingOffset, wh)
       // Right wing
-      ctx.fillRect(canvas.width - ww, 0, ww, wh)
+      ctx.fillRect(canvas.width - wingOffset, 0, wingOffset, wh)
       // Wing border lines
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)'
       ctx.lineWidth = 1
       ctx.setLineDash([6, 4])
       ctx.beginPath()
-      ctx.moveTo(ww, 0)
-      ctx.lineTo(ww, wh)
+      ctx.moveTo(wingOffset, 0)
+      ctx.lineTo(wingOffset, wh)
       ctx.stroke()
       ctx.beginPath()
-      ctx.moveTo(canvas.width - ww, 0)
-      ctx.lineTo(canvas.width - ww, wh)
+      ctx.moveTo(canvas.width - wingOffset, 0)
+      ctx.lineTo(canvas.width - wingOffset, wh)
       ctx.stroke()
       // Bottom edge if wing height < canvas height
       if (wh < canvas.height) {
         ctx.beginPath()
         ctx.moveTo(0, wh)
-        ctx.lineTo(ww, wh)
+        ctx.lineTo(wingOffset, wh)
         ctx.stroke()
         ctx.beginPath()
-        ctx.moveTo(canvas.width - ww, wh)
+        ctx.moveTo(canvas.width - wingOffset, wh)
         ctx.lineTo(canvas.width, wh)
         ctx.stroke()
       }
       ctx.restore()
     }
+
+    // Translate context so stage area [0, canvasSize.width] starts after the left wing
+    ctx.save()
+    ctx.translate(wingOffset, 0)
 
     ctx.save()
     ctx.font = `600 ${labelFontSize}px "Inter", sans-serif`
@@ -1225,8 +1233,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     ctx.fillStyle = '#94a3b8' // Zinc 400 for subtle contrast
     const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
     const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
-    ctx.fillText(topLabel, canvas.width / 2, 30 + labelFontSize)
-    ctx.fillText(bottomLabel, canvas.width / 2, canvas.height - 15)
+    ctx.fillText(topLabel, canvasSize.width / 2, 30 + labelFontSize)
+    ctx.fillText(bottomLabel, canvasSize.width / 2, canvas.height - 15)
     ctx.restore()
 
     drawGuides(ctx)
@@ -1248,7 +1256,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         if (guide.y !== undefined) {
           ctx.beginPath()
           ctx.moveTo(0, guide.y)
-          ctx.lineTo(canvas.width, guide.y)
+          ctx.lineTo(canvasSize.width, guide.y)
           ctx.stroke()
         }
       })
@@ -1286,7 +1294,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const headRy = personSize.headH / 2
       const shoulderRx = personSize.shoulderW / 2
       const shoulderRy = personSize.shoulderH / 2
-      const shoulderDist = headRy
+      const shoulderDist = headRy * 0.45
       const shoulderX = char.x - Math.cos(angle) * shoulderDist
       const shoulderY = char.y - Math.sin(angle) * shoulderDist
 
@@ -1419,6 +1427,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }
       ctx.restore()
     })
+
+    // Restore the wing-offset translate
+    ctx.restore()
   }
 
   // ── Keyframe helpers ──
@@ -2150,7 +2161,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       canvasSize,
       counter,
       defaultPersonSize,
-      personSize,
       defaultPersonColor,
       defaultShoulderColor,
       // keyframes kept flat for compatibility, but include scene metadata
@@ -2183,7 +2193,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
         setCounter(state.counter || 0)
         setDefaultPersonSize(state.defaultPersonSize || 1)
-        if (state.personSize && typeof state.personSize.headW === 'number') setPersonSize(state.personSize)
         setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
         setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
         // Load keyframes with backward compatibility for a few formats:
@@ -2333,7 +2342,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       canvasSize,
       counter,
       defaultPersonSize,
-      personSize,
       defaultPersonColor,
       defaultShoulderColor,
       keyframes: committedKfs,
@@ -2391,7 +2399,6 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
             setCounter(state.counter || 0)
             setDefaultPersonSize(state.defaultPersonSize || 1)
-            if (state.personSize && typeof state.personSize.headW === 'number') setPersonSize(state.personSize)
             setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
             setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
 
@@ -2691,11 +2698,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       showToast('Stage size is locked', 'info')
       return
     }
-    // Use the real canvas element size when available (more reliable than state),
-    // then shift all characters so they maintain their position relative to the stage center
-    const canvasEl = canvasRef.current
-    const oldW = canvasEl ? canvasEl.width : canvasSize.width
-    const oldH = canvasEl ? canvasEl.height : canvasSize.height
+    // Use stage area size (without wing offset) for centering calculations
+    const oldW = canvasSize.width
+    const oldH = canvasSize.height
     const oldCx = oldW / 2
     const oldCy = oldH / 2
     const newCx = size.width / 2
@@ -2728,7 +2733,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
       {/* Main Content Area (Full width, sidebar sits on top) */}
       <div className="flex-1 flex flex-col min-w-0 relative pt-8 pl-12 justify-between items-center">
-        <div style={{ width: '100%', maxWidth: canvasSize.width + 'px', margin: '0 auto' }}>
+        <div style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', margin: '0 auto' }}>
           <Toolbar
           addMode={addMode}
           setAddMode={setAddMode}
@@ -2829,10 +2834,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           }}
           />
         </div>
-        <div className="inline-block relative" style={{ width: '100%', maxWidth: canvasSize.width + 'px', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
+        <div className="inline-block relative" style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
           <StageCanvas
             canvasRef={canvasRef}
-            canvasSize={canvasSize}
+            canvasSize={{ width: totalCanvasWidth, height: canvasSize.height }}
             onClick={handleCanvasClick}
             onMouseDown={onCanvasMouseDown}
             onMouseMove={onCanvasMouseMove}
@@ -2849,7 +2854,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 autoFocus
                 className="absolute z-50 outline-none resize-none border-2 border-blue-500 bg-white/90 rounded px-1"
                 style={{
-                  left: ann.x,
+                  left: ann.x + wingOffset,
                   top: ann.y + 24, // offset for StageCanvas margin-top (24px inside <main>)
                   width: ann.width,
                   minHeight: 28,
@@ -2953,12 +2958,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setKeyframes(updatedKfs)
           }
           return (
-            <div style={{ width: '100%', maxWidth: canvasSize.width + 'px', display: 'flex', gap: 8, marginBottom: 16 }}>
+            <div style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', display: 'flex', gap: 8, marginBottom: 16 }}>
               {(['left', 'center', 'right'] as const).map((pos) => (
                 <div key={pos} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    {pos === 'left' ? 'Stage Left' : pos === 'center' ? 'Center Stage' : 'Stage Right'}
-                  </label>
                   <textarea
                     className="w-full rounded border border-gray-300 bg-white/80 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
                     style={{ minHeight: 48, fontFamily: '"Inter", sans-serif' }}
