@@ -4,6 +4,8 @@ import Toolbar from './Toolbar'
 import Sidebar from './Sidebar'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
+import ProjectListModal from './ProjectListModal'
+import { createProject, updateProject, loadProject } from '../lib/projects'
 
 interface StageBlockingAppProps {
   user: User
@@ -155,6 +157,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   }>({ type: null })
   const skipNextClickRef = useRef(false)
   const [hoveringVisBtn, setHoveringVisBtn] = useState(false)
+
+  // ── Cloud project state ──
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
+  const [projectListOpen, setProjectListOpen] = useState(false)
+  const [cloudSaving, setCloudSaving] = useState(false)
 
   // Refs to always get latest versions of file operations (avoids stale closures in keyboard handler)
   const fileOpsRef = useRef({ saveToLocalStorage: () => {}, loadFromLocalStorage: () => {}, exportAsJSON: () => {}, importFromJSON: () => {} })
@@ -3067,6 +3074,211 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   // Keep file ops ref updated so keyboard handler always uses latest closures
   fileOpsRef.current = { saveToLocalStorage, loadFromLocalStorage, exportAsJSON, importFromJSON }
 
+  /** Build the full project state object (shared by save, export, and cloud) */
+  function buildProjectState() {
+    let committedKfs = keyframes
+    if (keyframeMode) {
+      committedKfs = keyframes.map((kf, i) =>
+        i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+      )
+    }
+    if (editingAnnotationId) {
+      const textarea = document.querySelector('textarea.z-50') as HTMLTextAreaElement | null
+      const currentText = textarea ? textarea.value : null
+      if (currentText !== null) {
+        if (currentText.trim()) {
+          committedKfs = committedKfs.map((kf, i) => i === activeKeyframeIndex ? {
+            ...kf,
+            annotations: (kf.annotations ?? []).map(a => a.id === editingAnnotationId ? { ...a, text: currentText } : a)
+          } : kf)
+        } else {
+          committedKfs = committedKfs.map((kf, i) => i === activeKeyframeIndex ? {
+            ...kf,
+            annotations: (kf.annotations ?? []).filter(a => a.id !== editingAnnotationId)
+          } : kf)
+        }
+      }
+    }
+    committedKfs = committedKfs.map(kf => ({
+      ...kf,
+      annotations: (kf.annotations ?? []).filter(a => a.text.trim())
+    }))
+    const rawSceneNames = Array.isArray(sceneNames) ? sceneNames.slice() : []
+    const boundaries = Array.isArray(sceneBoundaries) && sceneBoundaries.length > 0 ? sceneBoundaries : [0]
+    for (let i = 0; i < boundaries.length; i++) {
+      const n = rawSceneNames[i]
+      rawSceneNames[i] = (n && typeof n === 'string') ? n : `Scene ${i + 1}`
+    }
+    return {
+      characters: JSON.parse(JSON.stringify(characters)),
+      guides,
+      canvasSize,
+      counter,
+      defaultPersonSize,
+      defaultPersonColor,
+      defaultShoulderColor,
+      keyframes: committedKfs,
+      sceneBoundaries: sceneBoundaries || [0],
+      sceneNames: rawSceneNames,
+      sceneIndex,
+      projectTitle,
+      sceneNotes,
+      keyframeNotes,
+      keyframeMode,
+      activeKeyframeIndex,
+      keyframeSpeed,
+      fadeSpeed,
+      labelFontSize,
+      noteFontSize,
+      showWings,
+      wingSize,
+      stageProps: JSON.parse(JSON.stringify(stageProps))
+    }
+  }
+
+  /** Save current project to Supabase */
+  async function saveToCloud() {
+    if (cloudSaving) return
+    setCloudSaving(true)
+    try {
+      const state = buildProjectState()
+      if (currentProjectId) {
+        await updateProject(currentProjectId, { title: projectTitle, data: state as Record<string, unknown> })
+        showToast('Saved to cloud')
+      } else {
+        const row = await createProject(projectTitle, state as Record<string, unknown>)
+        setCurrentProjectId(row.id)
+        showToast('Saved to cloud (new project)')
+      }
+      // Also save to localStorage as backup
+      localStorage.setItem('stageLayout', JSON.stringify(state))
+    } catch (err: any) {
+      showToast(err.message || 'Failed to save to cloud', 'error')
+    } finally {
+      setCloudSaving(false)
+    }
+  }
+
+  /** Load a project from Supabase by id */
+  async function loadProjectFromCloud(projectId: string) {
+    try {
+      const row = await loadProject(projectId)
+      const state = row.data as any
+      setCurrentProjectId(row.id)
+
+      // Restore all state (same logic as loadFromLocalStorage / importFromJSON)
+      setGuides(state.guides || [])
+      setCanvasSize(state.canvasSize || { width: 1600, height: 900 })
+      setCounter(state.counter || 0)
+      setDefaultPersonSize(state.defaultPersonSize || 1)
+      setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
+      setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
+
+      let loadedKfs: Keyframe[] = []
+      if (state.scenes && Array.isArray(state.scenes)) {
+        if (state.scenes.length > 0 && Array.isArray(state.scenes[0])) {
+          loadedKfs = state.scenes.flat() as Keyframe[]
+        } else {
+          loadedKfs = state.scenes.flatMap((s: any) => s.keyframes ?? [])
+        }
+      } else if (state.keyframes && Array.isArray(state.keyframes)) {
+        loadedKfs = state.keyframes
+      }
+
+      if (loadedKfs && loadedKfs.length > 0) {
+        setKeyframes(loadedKfs)
+        let idx = state.activeKeyframeIndex ?? 0
+        if (idx < 0) idx = 0
+        if (idx >= loadedKfs.length) idx = loadedKfs.length - 1
+        setActiveKeyframeIndex(idx)
+        const maxId = Math.max(0, ...loadedKfs.map((kf: Keyframe) => kf.id || 0))
+        nextKfId.current = maxId + 1
+
+        let finalBoundaries: number[] = []
+        if (state.sceneBoundaries && Array.isArray(state.sceneBoundaries) && state.sceneBoundaries.length > 0) {
+          finalBoundaries = state.sceneBoundaries.slice()
+        } else {
+          finalBoundaries = [0]
+        }
+        if (finalBoundaries.some((b: number) => typeof b !== 'number' || b < 0 || b >= loadedKfs.length) || finalBoundaries.length === 1 && loadedKfs.length > 1) {
+          const inferred = inferSceneBoundariesFromKeyframes(loadedKfs)
+          if (inferred && inferred.length > 0) finalBoundaries = inferred
+        }
+        const rawNames: (string | null)[] = (state.sceneNames && Array.isArray(state.sceneNames)) ? state.sceneNames.slice() : []
+        const finalNames: string[] = []
+        for (let i = 0; i < finalBoundaries.length; i++) {
+          const n = rawNames[i]
+          finalNames.push(n && typeof n === 'string' ? n : `Scene ${i + 1}`)
+        }
+        setSceneBoundaries(finalBoundaries)
+        setSceneNames(finalNames)
+        setSceneIndex(typeof state.sceneIndex === 'number' ? state.sceneIndex : 0)
+        if (state.keyframeMode) {
+          setKeyframeMode(true)
+          setCharacters(JSON.parse(JSON.stringify(loadedKfs[Math.min(idx, loadedKfs.length - 1)].characters || [])))
+        } else {
+          setKeyframeMode(false)
+          setCharacters(state.characters || [])
+        }
+      } else {
+        setKeyframes([])
+        setKeyframeMode(false)
+        setCharacters(state.characters || [])
+        nextKfId.current = 1
+        setSceneBoundaries([0])
+        setSceneNames(['Scene 1'])
+      }
+
+      setProjectTitle(state.projectTitle || row.title || 'Untitled')
+      setSceneNotes(state.sceneNotes || {})
+      setKeyframeNotes(state.keyframeNotes || {})
+      if (typeof state.labelFontSize === 'number') setLabelFontSize(state.labelFontSize)
+      if (typeof state.noteFontSize === 'number') setNoteFontSize(state.noteFontSize)
+      if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
+      if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
+      if (typeof state.showWings === 'boolean') setShowWings(state.showWings)
+      if (state.wingSize && typeof state.wingSize.width === 'number') setWingSize(state.wingSize)
+
+      if (state.stageProps && Array.isArray(state.stageProps)) {
+        setStageProps(state.stageProps)
+      } else if (loadedKfs.length > 0) {
+        const fromKf = loadedKfs.find((kf: any) => kf.stageProps && kf.stageProps.length > 0)
+        setStageProps(fromKf?.stageProps ?? [])
+      } else {
+        setStageProps([])
+      }
+
+      setSelectedCharId(null)
+      setAwaitingDirectionFor(null)
+      setProjectListOpen(false)
+      showToast(`Loaded "${row.title}"`)
+    } catch (err: any) {
+      showToast(err.message || 'Failed to load project', 'error')
+    }
+  }
+
+  /** Start a new blank project (clears everything, unsets cloud project id) */
+  function newProject() {
+    setCurrentProjectId(null)
+    setCharacters([])
+    setKeyframes([])
+    setKeyframeMode(false)
+    setActiveKeyframeIndex(0)
+    setSceneBoundaries([0])
+    setSceneNames(['Scene 1'])
+    setSceneIndex(0)
+    setProjectTitle('Untitled')
+    setSceneNotes({})
+    setKeyframeNotes({})
+    setCounter(0)
+    setStageProps([])
+    setSelectedCharId(null)
+    setAwaitingDirectionFor(null)
+    nextKfId.current = 1
+    setProjectListOpen(false)
+    showToast('New project created')
+  }
+
   function exportAsImage() {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -3303,7 +3515,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   return (
     <div className="app">
       {/* Collapsible Sidebar Dock (Overlay) */}
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        currentProjectId={currentProjectId}
+        onSelectProject={loadProjectFromCloud}
+        onNewProject={newProject}
+      />
 
       {/* Main Content Area (Full width, sidebar sits on top) */}
       <div className="flex-1 flex flex-col min-w-0 relative pt-8 pl-12 justify-between items-center">
@@ -3359,6 +3577,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onExportJSON={() => fileOpsRef.current.exportAsJSON()}
           onImportJSON={() => fileOpsRef.current.importFromJSON()}
           onExportPNG={exportAsImage}
+          onCloudSave={saveToCloud}
+          onOpenProjects={() => setProjectListOpen(true)}
+          cloudSaving={cloudSaving}
           keyframeMode={keyframeMode}
           onToggleKeyframeMode={toggleKeyframeMode}
           keyframes={keyframes}
@@ -3664,6 +3885,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         })()}
         <ToastContainer toast={toast} />
       </div>
+      <ProjectListModal
+        isOpen={projectListOpen}
+        onClose={() => setProjectListOpen(false)}
+        onSelect={loadProjectFromCloud}
+        onNew={newProject}
+        currentProjectId={currentProjectId}
+      />
     </div>
   )
 }

@@ -16,6 +16,14 @@ Entries format:
 - 02:30 — **Props blocked in keyframe mode**: Props can no longer be clicked, dragged, or resized in keyframe mode to avoid conflicts with character positioning workflow. (`StageBlockingApp.tsx`)
 - 02:35 — **Visibility eye button on canvas**: Added a visibility toggle button drawn directly beside the selected character on the canvas in keyframe mode (like the lock button on props). Transparent (35% opacity, 18px) when not hovered; fully opaque and bigger (24px) when hovered with pointer cursor. Click to toggle character visibility. Removed the old visibility toolbar button. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
 
+### Multi-Project Cloud Storage
+- 03:00 — **Projects table migration**: Created Supabase migration for `projects` table with `id`, `user_id`, `title`, `data` (jsonb), `created_at`, `updated_at`. RLS policies restrict all CRUD to the owning user. Auto-updates `updated_at` via existing `handle_updated_at()` trigger. (`supabase/migrations/20260302000000_create_projects.sql`)
+- 03:05 — **Projects service layer**: Created CRUD service module with `listProjects()`, `loadProject()`, `createProject()`, `updateProject()`, `deleteProject()`. List returns metadata only (no data blob) for performance. (`frontend/src/lib/projects.ts`)
+- 03:10 — **Cloud save/load integration**: Added `currentProjectId` state, `saveToCloud()` (creates or updates), `loadProjectFromCloud()` (restores all state), `newProject()` (resets everything), and shared `buildProjectState()` helper. Cloud save also backs up to localStorage. (`StageBlockingApp.tsx`)
+- 03:15 — **File menu cloud items**: Added "Save to Cloud" (with cloud upload icon) and "My Projects" (with folder icon) at the top of the File menu, separated from local operations by a divider. Renamed "Save"/"Load" to "Save Local"/"Load Local". (`FileMenu.tsx`, `Toolbar.tsx`)
+- 03:20 — **Project list modal**: Created full modal for browsing all user projects with Open, New, and Delete actions. Shows project titles, last-updated timestamps, and highlights the current project. (`ProjectListModal.tsx`, `StageBlockingApp.tsx`)
+- 03:25 — **Sidebar recent projects**: Sidebar now shows the 7 most recent projects when expanded, with file icons, relative timestamps, hover-to-reveal delete buttons, and a "+" new project button. Collapsed sidebar shows a clock icon. (`Sidebar.tsx`, `StageBlockingApp.tsx`)
+
 ## 2026-03-01
 ### Wing Expansion, Head Tuning, Loading Screen & Stage Props
 - 01:00 — **Wing canvas expansion**: Wings now expand the overall canvas width instead of overlapping the stage area. Each wing adds up to 500px per side. `wingOffset` and `totalCanvasWidth` computed values drive layout; `ctx.translate(wingOffset, 0)` keeps all stage content in stage-local coordinates. All mouse handlers subtract `wingOffset` for correct hit-testing. Container divs use `totalCanvasWidth` for `maxWidth`. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`)
