@@ -27,6 +27,9 @@ Entries format:
 - 04:35 — **Add tooltip position**: Moved the Add Character hover tooltip from right side to left side of the button. (`Toolbar.tsx`)
 - 04:40 — **Custom rotate cursor**: Props rotation handle shows a circular arrow SVG cursor instead of the grab hand. (`StageBlockingApp.tsx`)
 - 04:45 — **Smaller props picker**: Reduced props shape picker button sizes (w-5 h-5), SVG icons (10px), and padding for a more compact overlay. (`StageBlockingApp.tsx`)
+- 04:50 — **Esc fix in props mode**: Fixed Escape key not working in props mode due to stale closure — added `propsMode` and `selectedPropId` to the keyboard handler useEffect dependency array. Also added early `return` after handling Esc in the propsMode branch. (`StageBlockingApp.tsx`)
+- 04:55 — **Button renamed to Character**: Renamed the "Add" toolbar button to "Character" with the A underlined for the shortcut. Tooltip updated accordingly. (`Toolbar.tsx`)
+- 05:00 — **Single-click char from props mode**: Clicking a character while in Edit Prop or Add Prop mode now directly selects the character, exits props mode, and initiates drag — all in one click instead of requiring two. Added character hit-testing inside the propsMode mouseDown block before the deselect/return path. (`StageBlockingApp.tsx`)
 
 ### Multi-Project Cloud Storage
 - 03:00 — **Projects table migration**: Created Supabase migration for `projects` table with `id`, `user_id`, `title`, `data` (jsonb), `created_at`, `updated_at`. RLS policies restrict all CRUD to the owning user. Auto-updates `updated_at` via existing `handle_updated_at()` trigger. (`supabase/migrations/20260302000000_create_projects.sql`)

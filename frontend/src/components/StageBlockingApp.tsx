@@ -541,6 +541,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         if (propsMode) {
           setPropsMode(false)
           setSelectedPropId(null)
+          return
         }
         if (keyframeMode) {
           // Inline cleanup to avoid stale closure
@@ -679,7 +680,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [historyIndex, history, keyframeMode, isPlaying, selectedCharId, characters])
+  }, [historyIndex, history, keyframeMode, isPlaying, selectedCharId, characters, propsMode, selectedPropId])
 
   // ── Utility functions ──
   function snapToRightAngles(a: number) {
@@ -1241,7 +1242,30 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         skipNextClickRef.current = true
         return
       }
-      // Clicked empty space — deselect prop, exit props mode
+      // Clicked empty space — check if clicking a character first
+      for (const char of characters) {
+        const d = Math.hypot(mx - char.x, my - char.y)
+        const headRx = personSize.headW / 2
+        const headRy = personSize.headH / 2
+        const shoulderRx = personSize.shoulderW / 2
+        const shoulderRy = personSize.shoulderH / 2
+        const shoulderDist = headRy * 0.45
+        const angle = char.angle ?? 0
+        const shoulderX = char.x - Math.cos(angle) * shoulderDist
+        const shoulderY = char.y - Math.sin(angle) * shoulderDist
+        const shoulderD = Math.hypot(mx - shoulderX, my - shoulderY)
+        if (d <= Math.max(headRx, headRy) || shoulderD <= Math.max(shoulderRx, shoulderRy)) {
+          // Clicked a character — exit props mode and select it
+          setSelectedCharId(char.id)
+          setPropsMode(false)
+          setSelectedPropId(null)
+          setAddMode(false)
+          dragRef.current = { type: 'char-move', charId: char.id, hasMoved: false }
+          skipNextClickRef.current = true
+          return
+        }
+      }
+      // Deselect prop, exit props mode
       if (selectedPropId) {
         setSelectedPropId(null)
         setPropsMode(false)

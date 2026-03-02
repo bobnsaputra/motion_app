@@ -357,11 +357,11 @@ export default function Toolbar(props: ToolbarProps) {
               <div className="relative">
                 <Button variant={addMode ? 'default' : 'outline'} size="sm" onClick={() => { if (props.propsMode && props.onTogglePropsMode) props.onTogglePropsMode(); if (props.onDeselectChar) props.onDeselectChar(); setAddMode(s => !s) }} title="Add character (A)" onMouseEnter={() => setShowAddTooltip(true)} onMouseLeave={() => setShowAddTooltip(false)}>
                   <UserPlus className="h-4 w-4" />
-                  {addMode ? 'Adding… (Esc)' : <span><u>A</u>dd</span>}
+                  {addMode ? 'Adding… (Esc)' : <span>Ch<u>a</u>racter</span>}
                 </Button>
                 {showAddTooltip && (
                   <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 w-max rounded-md border border-border bg-white px-2 py-1 text-xs shadow-sm">
-                    Add character (A)
+                    Character (A)
                   </div>
                 )}
               </div>
