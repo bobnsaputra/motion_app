@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { PanelLeft, FileText, Clock, Trash2, Plus } from 'lucide-react'
 import { listProjects, deleteProject, type ProjectSummary } from '../lib/projects'
+import { useTheme } from '../hooks/useTheme'
 
 interface SidebarProps {
     isOpen: boolean
@@ -14,6 +15,20 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
     const [projects, setProjects] = useState<ProjectSummary[]>([])
     const [loading, setLoading] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
+    const { isDark } = useTheme()
+    const sidebarRef = useRef<HTMLDivElement>(null)
+
+    // Close sidebar when clicking outside
+    useEffect(() => {
+        if (!isOpen) return
+        function handleClickOutside(e: MouseEvent) {
+            if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
+                onToggle()
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [isOpen, onToggle])
 
     // Fetch projects when sidebar opens
     useEffect(() => {
@@ -51,13 +66,16 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
 
     return (
         <div
-            className={`fixed left-0 top-0 h-screen z-50 flex flex-col border-r border-border/50 bg-gradient-to-b from-yellow-50 to-white shadow-xl transition-all duration-300 ease-in-out ${isOpen ? 'w-64' : 'w-12'
-                }`}
+            ref={sidebarRef}
+            className={`sidebar-root fixed left-0 top-0 h-screen z-50 flex flex-col border-r shadow-xl transition-all duration-300 ease-in-out ${
+                isDark ? 'border-white/5' : 'border-border/50 bg-gradient-to-b from-yellow-50 to-white'
+            } ${isOpen ? 'w-64' : 'w-12'}`}
+            style={isDark ? { background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' } : undefined}
         >
             <div className="p-2 flex items-center justify-center border-b border-border/20">
                 <button
                     onClick={onToggle}
-                    className="p-2 rounded-md hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700 transition-colors"
+                    className={`p-2 rounded-md transition-colors ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-indigo-300' : 'hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700'}`}
                     title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
                 >
                     <PanelLeft className="w-5 h-5" />
@@ -69,7 +87,7 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                 <div className="flex flex-col items-center gap-3 pt-3">
                     <button
                         onClick={onToggle}
-                        className="p-2 rounded-md hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700 transition-colors"
+                        className={`p-2 rounded-md transition-colors ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-indigo-300' : 'hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700'}`}
                         title="Recent Projects"
                     >
                         <Clock className="w-4 h-4" />
@@ -87,7 +105,7 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                         </p>
                         <button
                             onClick={onNewProject}
-                            className="p-1 rounded hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700 transition-colors"
+                            className={`p-1 rounded transition-colors ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-indigo-300' : 'hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700'}`}
                             title="New project"
                         >
                             <Plus className="w-3.5 h-3.5" />
@@ -110,12 +128,12 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                                     onClick={() => onSelectProject(p.id)}
                                     className={`group flex items-start gap-2 px-2.5 py-2 rounded-md cursor-pointer transition-colors ${
                                         p.id === currentProjectId
-                                            ? 'bg-yellow-100/80 text-yellow-900'
-                                            : 'hover:bg-yellow-50 text-foreground'
+                                            ? (isDark ? 'bg-indigo-500/15 text-indigo-200' : 'bg-yellow-100/80 text-yellow-900')
+                                            : (isDark ? 'hover:bg-white/5 text-foreground' : 'hover:bg-yellow-50 text-foreground')
                                     }`}
                                 >
                                     <FileText className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
-                                        p.id === currentProjectId ? 'text-yellow-600' : 'text-muted-foreground'
+                                        p.id === currentProjectId ? (isDark ? 'text-indigo-400' : 'text-yellow-600') : 'text-muted-foreground'
                                     }`} />
                                     <div className="flex-1 min-w-0">
                                         <div className="text-sm font-medium truncate">{p.title}</div>

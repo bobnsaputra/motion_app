@@ -3,10 +3,12 @@ import { supabase } from './lib/supabase'
 import { User } from './types'
 import Login from './components/Login'
 import StageBlockingApp from './components/StageBlockingApp'
+import { useTheme } from './hooks/useTheme'
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
+  const { isDark } = useTheme()
 
   useEffect(() => {
     // Check current session on mount
@@ -48,18 +50,20 @@ export default function App() {
         alignItems: 'center',
         justifyContent: 'center',
         gap: '20px',
-        background: 'rgba(0, 0, 0, 0.25)',
+        background: isDark
+          ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)'
+          : 'rgba(0, 0, 0, 0.25)',
         backdropFilter: 'blur(4px)',
       }}>
         <div style={{
           width: 40,
           height: 40,
-          border: '3px solid rgba(255, 255, 255, 0.15)',
-          borderTopColor: '#ffffff',
+          border: isDark ? '3px solid rgba(255,255,255,0.08)' : '3px solid rgba(255, 255, 255, 0.15)',
+          borderTopColor: isDark ? '#818cf8' : '#ffffff',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }} />
-        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Inter', sans-serif", letterSpacing: '0.05em' }}>Loading…</span>
+        <span style={{ color: isDark ? 'rgba(148,163,184,0.7)' : 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: "'Inter', sans-serif", letterSpacing: '0.05em' }}>Loading…</span>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )

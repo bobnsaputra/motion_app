@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTheme } from '../hooks/useTheme'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -17,6 +18,7 @@ interface ToastContainerProps {
 
 export default function ToastContainer({ toast }: ToastContainerProps) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  const { isDark } = useTheme()
 
   useEffect(() => {
     if (!toast) return
@@ -41,7 +43,12 @@ export default function ToastContainer({ toast }: ToastContainerProps) {
 
   if (toasts.length === 0) return null
 
-  const colors: Record<ToastType, { bg: string; border: string; text: string }> = {
+  const colors: Record<ToastType, { bg: string; border: string; text: string }> = isDark ? {
+    success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.2)', text: '#6ee7b7' },
+    error: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#fca5a5' },
+    info: { bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.2)', text: '#a5b4fc' },
+    warning: { bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)', text: '#fcd34d' }
+  } : {
     success: { bg: '#f0fdf4', border: '#86efac', text: '#166534' },
     error: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b' },
     info: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
@@ -72,7 +79,8 @@ export default function ToastContainer({ toast }: ToastContainerProps) {
               color: c.text,
               fontSize: 14,
               fontWeight: 500,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
+              backdropFilter: isDark ? 'blur(16px)' : undefined,
               opacity: t.fading ? 0 : 1,
               transform: t.fading ? 'translateX(20px)' : 'translateX(0)',
               transition: 'opacity 0.5s ease, transform 0.5s ease',

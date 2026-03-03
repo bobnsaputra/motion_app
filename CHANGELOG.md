@@ -6,6 +6,16 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-03-03
+### Dark/Light Theme Toggle
+- 22:00 — **Theme toggle system**: Added a light/dark theme toggle with light mode as the default. Uses `ThemeProvider` context with `useTheme()` hook, persisted to `localStorage`. The toggle is accessible from the Config menu (gear icon). (`useTheme.tsx`, `main.tsx`, `ConfigMenu.tsx`)
+- 22:05 — **CSS variable scoping for dark toolbar**: Dark mode overrides Tailwind semantic color variables (`--color-foreground`, `--color-muted-foreground`, `--color-border`, etc.) scoped to `.toolbar-root`, so all toolbar buttons/text/dividers automatically get dark theme colors without inline style changes. Floating panels (`.floating-panel`) reset variables back to light values. (`styles.css`)
+- 22:10 — **Dark sidebar**: Sidebar switches from yellow-50/white gradient to navy gradient (`#0f172a → #1e293b`), with indigo accent colors replacing yellow accents for active/hover states. (`Sidebar.tsx`, `styles.css`)
+- 22:15 — **Dark login page**: Login page switches from warm yellow/cream theme to dark navy with indigo/violet gradient orbs, translucent card, and indigo submit button. All via CSS `[data-theme="dark"]` selectors — no component changes needed. (`Login.css`)
+- 22:20 — **Dark toast notifications**: Toast colors switch from opaque pastels to translucent dark backgrounds with light text and backdrop blur. (`Toast.tsx`)
+- 22:25 — **Dark loading screen**: Auth-checking spinner uses dark navy background with indigo accent in dark mode. (`App.tsx`)
+- 22:30 — **Dark body & stage refinements**: Body gets subtle indigo radial gradients, stage gets refined shadows and border in dark mode. Project list modal gets glassmorphism backdrop with indigo "New Project" button. (`styles.css`, `ProjectListModal.tsx`)
+
 
 ## 2026-03-02
 ### Props & Visibility Improvements

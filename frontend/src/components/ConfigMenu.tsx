@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Lock, Unlock } from 'lucide-react'
+import { Lock, Unlock, Moon, Sun } from 'lucide-react'
 import { Character } from '../types'
+import { useTheme } from '../hooks/useTheme'
 
 const COLOR_PAIRS = [
   { head: '#FFD1DC', shoulder: '#B5EAD7' },  // pink + mint
@@ -76,6 +77,7 @@ export default function ConfigMenu({
   , preventOverlap, setPreventOverlap
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const { isDark, toggle: toggleTheme } = useTheme()
   const [localWidthStr, setLocalWidthStr] = useState<string>(String(canvasSize.width))
   const [localHeightStr, setLocalHeightStr] = useState<string>(String(canvasSize.height))
   const [widthError, setWidthError] = useState<string | null>(null)
@@ -198,11 +200,31 @@ export default function ConfigMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute right-0 top-full z-50 mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg"
+      className="absolute right-0 top-full z-50 mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg floating-panel"
       style={{ maxHeight: '700px', overflowY: 'auto' }}
     >
       
-      
+      {/* Dark Mode Toggle */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          {isDark ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+          {isDark ? 'Dark Mode' : 'Light Mode'}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleTheme() }}
+          className={`relative h-5 w-9 rounded-full transition-colors ${
+            isDark ? 'bg-indigo-500' : 'bg-border'
+          }`}
+        >
+          <span
+            className={`pointer-events-none absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              isDark ? 'translate-x-4' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="my-3 h-px bg-border" />
 
       {/* 1. Color presets + custom pickers */}
       <p className="text-xs text-muted-foreground">Color preset</p>

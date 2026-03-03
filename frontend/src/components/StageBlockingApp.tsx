@@ -3694,8 +3694,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         onNewProject={newProject}
       />
 
-      {/* Main Content Area (Full width, sidebar sits on top) */}
-      <div className="flex-1 flex flex-col min-w-0 relative pt-8 pl-12 justify-between items-center">
+      {/* Main Content Area (Full width, sidebar overlays on top) */}
+      <div className="flex-1 flex flex-col min-w-0 relative pt-8 justify-between items-center w-full">
         <div style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', margin: '0 auto' }}>
           <Toolbar
           addMode={addMode}

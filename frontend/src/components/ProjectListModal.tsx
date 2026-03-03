@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { listProjects, deleteProject, type ProjectSummary } from '../lib/projects'
+import { useTheme } from '../hooks/useTheme'
 
 interface ProjectListModalProps {
   isOpen: boolean
@@ -14,6 +15,7 @@ export default function ProjectListModal({ isOpen, onClose, onSelect, onNew, cur
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const { isDark } = useTheme()
 
   useEffect(() => {
     if (!isOpen) return
@@ -52,14 +54,28 @@ export default function ProjectListModal({ isOpen, onClose, onSelect, onNew, cur
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
+    <div style={{
+        position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: isDark ? 'rgba(15,23,42,0.5)' : 'rgba(0,0,0,0.4)',
+        backdropFilter: isDark ? 'blur(8px)' : 'blur(2px)'
+      }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: '#fff', borderRadius: 12, width: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{
+          background: isDark ? 'rgba(255,255,255,0.97)' : '#fff',
+          borderRadius: 12, width: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+          boxShadow: isDark ? '0 25px 60px rgba(0,0,0,0.35)' : '0 20px 60px rgba(0,0,0,0.2)',
+          backdropFilter: isDark ? 'blur(20px)' : undefined
+        }}>
         {/* Header */}
         <div style={{ padding: '20px 24px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#111' }}>My Projects</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onNew} style={{ padding: '6px 14px', fontSize: 13, fontWeight: 500, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+            <button onClick={onNew} style={{
+              padding: '6px 14px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, cursor: 'pointer',
+              ...(isDark
+                ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff' }
+                : { background: '#2563eb', color: '#fff' })
+            }}>
               + New Project
             </button>
             <button onClick={onClose} style={{ padding: '6px 10px', fontSize: 13, background: 'transparent', border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', color: '#6b7280' }}>

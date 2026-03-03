@@ -338,3 +338,97 @@
     padding: 28px 20px;
   }
 }
+
+/* ===================================================================
+   DARK THEME — Login Page
+   =================================================================== */
+html[data-theme="dark"] .login-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+}
+
+html[data-theme="dark"] .orb-1 {
+  background: radial-gradient(circle at 20% 20%, rgba(99,102,241,0.5) 0%, rgba(79,70,229,0.3) 30%, rgba(99,102,241,0.1) 100%);
+}
+html[data-theme="dark"] .orb-2 {
+  background: radial-gradient(circle at 80% 80%, rgba(139,92,246,0.4) 0%, rgba(124,58,237,0.25) 40%, rgba(139,92,246,0.08) 100%);
+}
+html[data-theme="dark"] .orb-3 {
+  background: radial-gradient(circle at 50% 50%, rgba(99,102,241,0.35) 0%, rgba(79,70,229,0.2) 40%, rgba(99,102,241,0.05) 100%);
+}
+
+html[data-theme="dark"] .login-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  backdrop-filter: blur(24px) saturate(120%);
+  -webkit-backdrop-filter: blur(24px) saturate(120%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 24px 48px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03) inset;
+}
+
+html[data-theme="dark"] .login-title {
+  background: linear-gradient(135deg, #e2e8f0 0%, #818cf8 60%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+html[data-theme="dark"] .login-subtitle {
+  color: rgba(226,232,240,0.6);
+}
+
+html[data-theme="dark"] .form-group label {
+  color: rgba(226,232,240,0.8);
+}
+
+html[data-theme="dark"] .form-group input {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .form-group input::placeholder {
+  color: rgba(148,163,184,0.5);
+}
+
+html[data-theme="dark"] .form-group input:focus {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(129,140,248,0.5);
+  box-shadow: 0 0 0 4px rgba(99,102,241,0.15);
+}
+
+html[data-theme="dark"] .password-toggle {
+  color: rgba(226,232,240,0.5);
+}
+html[data-theme="dark"] .password-toggle:hover {
+  color: rgba(226,232,240,0.85);
+  background: rgba(255,255,255,0.06);
+}
+
+html[data-theme="dark"] .error-message {
+  background: rgba(239,68,68,0.1);
+  border-color: rgba(239,68,68,0.2);
+  color: #fca5a5;
+}
+
+html[data-theme="dark"] .submit-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(99,102,241,0.25);
+}
+html[data-theme="dark"] .submit-btn::before {
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+}
+html[data-theme="dark"] .submit-btn:hover {
+  box-shadow: 0 12px 32px rgba(99,102,241,0.35);
+}
+
+html[data-theme="dark"] .loading-spinner {
+  border-color: rgba(255,255,255,0.2);
+  border-top-color: #ffffff;
+}
+
+html[data-theme="dark"] .toggle-mode-btn {
+  color: rgba(226,232,240,0.6);
+}
+html[data-theme="dark"] .toggle-mode-btn:hover {
+  color: rgba(226,232,240,0.9);
+  background: rgba(255,255,255,0.05);
+}

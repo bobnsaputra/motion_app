@@ -219,7 +219,7 @@ export default function Toolbar(props: ToolbarProps) {
                 <Info className="h-4 w-4" />
               </Button>
               {showShortcuts && (
-                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-64 rounded-lg border border-border bg-white p-3 text-xs shadow-sm">
+                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-64 rounded-lg border border-border bg-white p-3 text-xs shadow-sm floating-panel">
                   <strong className="block text-sm mb-2">Shortcuts</strong>
                   <div className="flex flex-col gap-1">
                     <div className="leading-tight">Space: Play Scene / Stop</div>
@@ -360,7 +360,7 @@ export default function Toolbar(props: ToolbarProps) {
                   {addMode ? 'Adding… (Esc)' : <span>Ch<u>a</u>racter</span>}
                 </Button>
                 {showAddTooltip && (
-                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 w-max rounded-md border border-border bg-white px-2 py-1 text-xs shadow-sm">
+                  <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 w-max rounded-md border border-border bg-white px-2 py-1 text-xs shadow-sm floating-panel">
                     Character (A)
                   </div>
                 )}
@@ -410,7 +410,7 @@ export default function Toolbar(props: ToolbarProps) {
                 <Info className="h-4 w-4" />
               </Button>
               {showShortcuts && (
-                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-56 rounded-md border border-border bg-white p-3 text-xs shadow-sm">
+                <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-56 rounded-md border border-border bg-white p-3 text-xs shadow-sm floating-panel">
                   <strong className="block text-sm mb-1">Shortcuts</strong>
                   <div className="leading-tight">K: Toggle Keyframe Mode</div>
                   <div className="leading-tight">A: Add character</div>
@@ -438,7 +438,7 @@ export default function Toolbar(props: ToolbarProps) {
                   onKeyDown={(e) => { if (e.key === 'Enter') { setTitleEditing(false); props.onProjectTitleChange && props.onProjectTitleChange(titleValue.trim() || 'Untitled') } if (e.key === 'Escape') { setTitleEditing(false); setTitleValue(props.projectTitle || 'Untitled') } }}
                 />
               ) : (
-                <button className="text-sm font-semibold truncate" onClick={() => setTitleEditing(true)}>{props.projectTitle || 'Untitled'}</button>
+                <button className="text-sm font-semibold truncate project-title" onClick={() => setTitleEditing(true)}>{props.projectTitle || 'Untitled'}</button>
               )}
             </div>
 
@@ -500,7 +500,7 @@ export default function Toolbar(props: ToolbarProps) {
               <div className="relative" ref={menuRef}>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMenuOpen(!menuOpen)} title="Menu"><Menu className="h-4 w-4" /></Button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg">
+                    <div className="absolute right-0 top-full z-50 mt-2 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg floating-panel">
                     <p className="text-sm text-muted-foreground">Welcome, <strong className="text-foreground">{user.username}</strong></p>
                     <div className="my-3 h-px bg-border" />
                     <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => { setMenuOpen(false); onLogout() }}><LogOut className="h-4 w-4" /> Logout</Button>

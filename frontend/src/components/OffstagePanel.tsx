@@ -18,7 +18,7 @@ export default function OffstagePanel({ isOpen, onClose, keyframe, onUnhide, onU
   const hidden = keyframe ? keyframe.characters.filter(c => c.visible === false) : []
 
   return (
-    <aside className="fixed right-4 top-20 z-50 w-64 max-h-[70vh] overflow-auto rounded-lg border border-border bg-white p-3 shadow-lg">
+    <aside className="fixed right-4 top-20 z-50 w-64 max-h-[70vh] overflow-auto rounded-lg border border-border bg-white p-3 shadow-lg floating-panel">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold">Offstage</h4>
         <div className="flex items-center gap-2">

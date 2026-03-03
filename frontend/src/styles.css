@@ -40,11 +40,12 @@ body {
 .app {
   box-sizing: border-box;
   padding: 0px;
+  padding-right: 7rem;    /* offset for the fixed 48px collapsed sidebar */
   margin: 0 auto;
+  width: 100%;
   display: flex;
-  flex-direction: row;
-  /* Sidebar | Stage */
-  align-items: stretch;
+  flex-direction: column;
+  align-items: center;
   gap: 0;
 }
 
@@ -137,3 +138,210 @@ body {
 
 /* Prevent scrollbar from occupying button height by inset negative margin */
 .kf-scrollbar { padding-bottom: 2px; }
+
+/* ===================================================================
+   DARK THEME OVERRIDES
+   Activated when <html data-theme="dark">
+   
+   Tailwind v4 inlines all color values (no CSS variables in utilities),
+   so we must override actual CSS properties on Tailwind class names.
+   =================================================================== */
+
+/* --- Body --- */
+html[data-theme="dark"] body {
+  background: #f0f2f5;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 50%, rgba(99,102,241,0.03) 0%, transparent 60%);
+}
+
+/* --- Toolbar --- */
+html[data-theme="dark"] .toolbar-root {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-color: rgba(255,255,255,0.06);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 0 rgba(255,255,255,0.03) inset;
+  color: #e2e8f0;
+}
+
+/* ---- Toolbar: Tailwind utility class overrides ---- */
+
+/* Default variant button (bg-primary + text-primary-foreground) */
+html[data-theme="dark"] .toolbar-root .bg-primary {
+  background-color: rgba(255,255,255,0.10) !important;
+}
+html[data-theme="dark"] .toolbar-root .text-primary-foreground {
+  color: #e2e8f0 !important;
+}
+html[data-theme="dark"] .toolbar-root .hover\:bg-primary\/90:hover {
+  background-color: rgba(255,255,255,0.18) !important;
+}
+html[data-theme="dark"] .toolbar-root .bg-primary\/10 {
+  background-color: rgba(99,102,241,0.25) !important;
+}
+
+/* Outline variant button (border-input + bg-background) */
+html[data-theme="dark"] .toolbar-root .bg-background {
+  background-color: rgba(255,255,255,0.06) !important;
+}
+html[data-theme="dark"] .toolbar-root .border-input {
+  border-color: rgba(255,255,255,0.15) !important;
+}
+
+/* Ghost / hover states */
+html[data-theme="dark"] .toolbar-root .hover\:bg-accent:hover {
+  background-color: rgba(255,255,255,0.08) !important;
+}
+html[data-theme="dark"] .toolbar-root .hover\:text-accent-foreground:hover {
+  color: #e2e8f0 !important;
+}
+html[data-theme="dark"] .toolbar-root .hover\:bg-accent\/10:hover {
+  background-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Secondary variant */
+html[data-theme="dark"] .toolbar-root .bg-secondary {
+  background-color: rgba(255,255,255,0.08) !important;
+}
+html[data-theme="dark"] .toolbar-root .text-secondary-foreground {
+  color: #e2e8f0 !important;
+}
+
+/* Destructive */
+html[data-theme="dark"] .toolbar-root .bg-destructive {
+  background-color: #ef4444 !important;
+}
+html[data-theme="dark"] .toolbar-root .text-destructive {
+  color: #f87171 !important;
+}
+html[data-theme="dark"] .toolbar-root .hover\:bg-destructive\/90:hover {
+  background-color: #dc2626 !important;
+}
+html[data-theme="dark"] .toolbar-root .hover\:bg-destructive\/10:hover {
+  background-color: rgba(239,68,68,0.15) !important;
+}
+
+/* Text colors */
+html[data-theme="dark"] .toolbar-root .text-muted-foreground {
+  color: #94a3b8 !important;
+}
+html[data-theme="dark"] .toolbar-root .text-foreground {
+  color: #e2e8f0 !important;
+}
+
+/* Borders / dividers */
+html[data-theme="dark"] .toolbar-root .bg-border {
+  background-color: rgba(255,255,255,0.1) !important;
+}
+html[data-theme="dark"] .toolbar-root .border-border {
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* Keyframe chips */
+html[data-theme="dark"] .toolbar-root .border-primary {
+  border-color: rgba(99,102,241,0.5) !important;
+}
+html[data-theme="dark"] .toolbar-root .text-primary {
+  color: #a5b4fc !important;
+}
+
+/* Inputs inside dark toolbar */
+html[data-theme="dark"] .toolbar-root input[type="text"],
+html[data-theme="dark"] .toolbar-root input:not([type]) {
+  background: rgba(255,255,255,0.08) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+
+/* Project title */
+html[data-theme="dark"] .toolbar-root .project-title {
+  color: #f1f5f9;
+}
+
+/* ---- Floating panels: reset overrides back to light ---- */
+html[data-theme="dark"] .floating-panel {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(0,0,0,0.06);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  color: #0f172a;
+}
+html[data-theme="dark"] .floating-panel .bg-primary {
+  background-color: #171717 !important;
+}
+html[data-theme="dark"] .floating-panel .text-primary-foreground {
+  color: #fafafa !important;
+}
+html[data-theme="dark"] .floating-panel .bg-background {
+  background-color: #fff !important;
+}
+html[data-theme="dark"] .floating-panel .border-input {
+  border-color: #e5e5e5 !important;
+}
+html[data-theme="dark"] .floating-panel .bg-secondary {
+  background-color: #f5f5f5 !important;
+}
+html[data-theme="dark"] .floating-panel .text-secondary-foreground {
+  color: #171717 !important;
+}
+html[data-theme="dark"] .floating-panel .text-muted-foreground {
+  color: #737373 !important;
+}
+html[data-theme="dark"] .floating-panel .hover\:bg-accent:hover {
+  background-color: #f5f5f5 !important;
+}
+html[data-theme="dark"] .floating-panel .hover\:text-accent-foreground:hover {
+  color: #171717 !important;
+}
+html[data-theme="dark"] .floating-panel .bg-border {
+  background-color: #e5e5e5 !important;
+}
+html[data-theme="dark"] .floating-panel .border-border {
+  border-color: #e5e5e5 !important;
+}
+html[data-theme="dark"] .floating-panel .text-foreground {
+  color: #171717 !important;
+}
+html[data-theme="dark"] .floating-panel .text-destructive {
+  color: #e40014 !important;
+}
+html[data-theme="dark"] .floating-panel .bg-destructive {
+  background-color: #e40014 !important;
+}
+html[data-theme="dark"] .floating-panel input[type="text"],
+html[data-theme="dark"] .floating-panel input[type="number"],
+html[data-theme="dark"] .floating-panel input:not([type]) {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* --- Stage --- */
+html[data-theme="dark"] .stage {
+  border-color: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+/* --- Sidebar (background applied via inline styles in component) --- */
+html[data-theme="dark"] .sidebar-root .border-border\/30 {
+  border-color: rgba(255,255,255,0.06) !important;
+}
+html[data-theme="dark"] .sidebar-root .border-border\/20 {
+  border-color: rgba(255,255,255,0.04) !important;
+}
+html[data-theme="dark"] .sidebar-root .border-border\/50 {
+  border-color: rgba(255,255,255,0.05) !important;
+}
+html[data-theme="dark"] .sidebar-root .text-muted-foreground {
+  color: #94a3b8 !important;
+}
+html[data-theme="dark"] .sidebar-root .text-foreground {
+  color: #e2e8f0 !important;
+}
+html[data-theme="dark"] .sidebar-root .text-sm {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .sidebar-root .text-\[10px\] {
+  color: #94a3b8;
+}
