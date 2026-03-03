@@ -43,7 +43,7 @@ export default function FileMenu({
   }
 
   return (
-    <div ref={menuRef} className="absolute right-0 top-full mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-3 shadow-lg text-sm z-50">
+    <div ref={menuRef} className="absolute right-0 top-full mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-3 shadow-lg text-sm z-50 floating-panel">
       <button onClick={() => handleClick(onCloudSave)} disabled={cloudSaving} className="w-full text-left px-3 py-2 hover:bg-accent/10 disabled:opacity-50 flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M9 15l3-3 3 3"/><path d="M12 12v9"/></svg>
         <span>{cloudSaving ? 'Saving…' : 'Save to Cloud'}</span>
