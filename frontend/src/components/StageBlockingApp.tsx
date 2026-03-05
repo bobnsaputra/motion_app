@@ -55,6 +55,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [lockWingSize, setLockWingSize] = useState(true)
   const wingOffset = showWings ? Math.min(wingSize.width, 500) : 0
   const totalCanvasWidth = canvasSize.width + 2 * wingOffset
+  const [stageOffset, setStageOffset] = useState({ top: 0, right: 7, bottom: 0, left: 0 })
+  const [lockStageOffset, setLockStageOffset] = useState(true)
   const [preventOverlap, setPreventOverlap] = useState(false)
   const preventOverlapRef = useRef(preventOverlap)
   useEffect(() => { preventOverlapRef.current = preventOverlap }, [preventOverlap])
@@ -2907,7 +2909,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       noteFontSize,
       showWings,
       wingSize,
-      stageProps: JSON.parse(JSON.stringify(stageProps))
+      stageProps: JSON.parse(JSON.stringify(stageProps)),
+      stageOffset
     }
     localStorage.setItem('stageLayout', JSON.stringify(state))
     showToast('Layout saved')
@@ -3014,6 +3017,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         if (state.wingSize && typeof state.wingSize.width === 'number') setWingSize(state.wingSize)
         if (typeof state.keyframeSpeed === 'number') setKeyframeSpeed(state.keyframeSpeed)
         if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
+        if (state.stageOffset && typeof state.stageOffset.top === 'number') setStageOffset(state.stageOffset)
 
         // Load stage props (top-level or migrate from keyframes)
         if (state.stageProps && Array.isArray(state.stageProps)) {
@@ -3098,7 +3102,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       noteFontSize,
       showWings,
       wingSize,
-      stageProps: JSON.parse(JSON.stringify(stageProps))
+      stageProps: JSON.parse(JSON.stringify(stageProps)),
+      stageOffset
     }
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -3218,6 +3223,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
             if (typeof state.showWings === 'boolean') setShowWings(state.showWings)
             if (state.wingSize && typeof state.wingSize.width === 'number') setWingSize(state.wingSize)
+            if (state.stageOffset && typeof state.stageOffset.top === 'number') setStageOffset(state.stageOffset)
 
             // Load stage props (top-level or migrate from keyframes)
             if (state.stageProps && Array.isArray(state.stageProps)) {
@@ -3303,7 +3309,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       noteFontSize,
       showWings,
       wingSize,
-      stageProps: JSON.parse(JSON.stringify(stageProps))
+      stageProps: JSON.parse(JSON.stringify(stageProps)),
+      stageOffset
     }
   }
 
@@ -3409,6 +3416,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if (typeof state.fadeSpeed === 'number') setFadeSpeed(state.fadeSpeed)
       if (typeof state.showWings === 'boolean') setShowWings(state.showWings)
       if (state.wingSize && typeof state.wingSize.width === 'number') setWingSize(state.wingSize)
+      if (state.stageOffset && typeof state.stageOffset.top === 'number') setStageOffset(state.stageOffset)
 
       if (state.stageProps && Array.isArray(state.stageProps)) {
         setStageProps(state.stageProps)
@@ -3684,7 +3692,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   }
 
   return (
-    <div className="app">
+    <div className="app" style={{ paddingTop: `${stageOffset.top}rem`, paddingRight: `${stageOffset.right}rem`, paddingBottom: `${stageOffset.bottom}rem`, paddingLeft: `${stageOffset.left}rem` }}>
       {/* Collapsible Sidebar Dock (Overlay) */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -3741,6 +3749,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           setLockWingSize={setLockWingSize}
           preventOverlap={preventOverlap}
           setPreventOverlap={setPreventOverlap}
+          stageOffset={stageOffset}
+          onStageOffsetChange={setStageOffset}
+          lockStageOffset={lockStageOffset}
+          setLockStageOffset={setLockStageOffset}
           fileMenuOpen={fileMenuOpen}
           setFileMenuOpen={setFileMenuOpen}
           onSave={() => fileOpsRef.current.saveToLocalStorage()}

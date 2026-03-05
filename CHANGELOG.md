@@ -6,6 +6,12 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-03-05
+### Stage Offset Configuration
+- 14:00 — **Configurable stage offset**: Replaced the hardcoded `padding-right: 7rem` CSS with a configurable stage offset (top, right, bottom, left) stored as React state. Applied as inline padding on the `.app` div, defaulting to `right: 7rem`. Included in save/load, export/import JSON, and cloud save/load with backward compatibility. (`StageBlockingApp.tsx`, `styles.css`)
+- 14:05 — **Offset d-pad controls in Config menu**: Added a compact d-pad layout in the Config menu — wide ◀/▶ buttons flanking stacked ▲/▼ buttons — to nudge the stage offset by 0.5rem per click. Arrows work intuitively: pressing ▶ pushes the stage rightward (adds left padding), etc. Current offset values displayed below as compact arrows (e.g. `→7`). (`ConfigMenu.tsx`)
+- 14:10 — **Stage offset lock & reset**: Added a lock toggle (defaults locked) and ⟳ reset button in the Stage Offset header. When locked, all d-pad buttons are disabled. Reset clears all offsets to zero. (`ConfigMenu.tsx`, `StageBlockingApp.tsx`, `Toolbar.tsx`)
+
 ## 2026-03-03
 ### Dark/Light Theme Toggle
 - 22:00 — **Theme toggle system**: Added a light/dark theme toggle with light mode as the default. Uses `ThemeProvider` context with `useTheme()` hook, persisted to `localStorage`. The toggle is accessible from the Config menu (gear icon). (`useTheme.tsx`, `main.tsx`, `ConfigMenu.tsx`)

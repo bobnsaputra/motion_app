@@ -54,6 +54,10 @@ interface ConfigMenuProps {
   setLockWingSize?: (v: boolean) => void
   preventOverlap?: boolean
   setPreventOverlap?: (v: boolean) => void
+  stageOffset?: { top: number; right: number; bottom: number; left: number }
+  onStageOffsetChange?: (offset: { top: number; right: number; bottom: number; left: number }) => void
+  lockStageOffset?: boolean
+  setLockStageOffset?: (v: boolean) => void
 }
 
 export default function ConfigMenu({
@@ -75,6 +79,8 @@ export default function ConfigMenu({
   , lockKeyframeTiming, setLockKeyframeTiming, labelFontSize, onLabelFontSizeChange, noteFontSize, onNoteFontSizeChange
   , showWings, setShowWings, wingSize, onWingSizeChange, lockWingSize, setLockWingSize
   , preventOverlap, setPreventOverlap
+  , stageOffset, onStageOffsetChange
+  , lockStageOffset, setLockStageOffset
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const { isDark, toggle: toggleTheme } = useTheme()
@@ -754,6 +760,61 @@ export default function ConfigMenu({
           <span className="text-xs tabular-nums w-6 text-center">{noteFontSize ?? 14}</span>
         </div>
       </label>
+
+      <div className="my-3 h-px bg-border" />
+
+      {/* 9. Stage Offset */}
+      {(() => {
+        const off = stageOffset ?? { top: 0, right: 7, bottom: 0, left: 0 }
+        const step = 0.5
+        const locked = !!lockStageOffset
+        const hasOffset = off.top > 0 || off.right > 0 || off.bottom > 0 || off.left > 0
+        const nudge = (dir: 'top' | 'right' | 'bottom' | 'left', delta: number) => {
+          if (locked) return
+          const v = Math.max(0, Math.min(20, (off[dir] ?? 0) + delta))
+          onStageOffsetChange && onStageOffsetChange({ ...off, [dir]: v })
+        }
+        const lr = `inline-flex items-center justify-center h-8 w-10 rounded border border-input bg-transparent text-xs hover:bg-accent/10 active:bg-accent/20 transition-colors ${locked ? 'opacity-50 cursor-not-allowed' : ''}`
+        const ud = `inline-flex items-center justify-center h-4 w-14 rounded border border-input bg-transparent text-[9px] leading-none hover:bg-accent/10 active:bg-accent/20 transition-colors ${locked ? 'opacity-50 cursor-not-allowed' : ''}`
+        return (
+          <>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stage Offset</h3>
+              <span className="flex items-center gap-0.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (!locked) { onStageOffsetChange && onStageOffsetChange({ top: 0, right: 0, bottom: 0, left: 0 }) } }}
+                  className={`p-1 rounded text-sm hover:bg-accent/10 ${(!hasOffset || locked) ? 'opacity-30 cursor-not-allowed' : ''}`}
+                  title="Reset offset"
+                  disabled={!hasOffset || locked}
+                >⟳</button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setLockStageOffset && setLockStageOffset(!lockStageOffset) }}
+                  className="p-1 rounded hover:bg-accent/10"
+                  title={lockStageOffset ? 'Unlock stage offset' : 'Lock stage offset'}
+                >
+                  {lockStageOffset ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                </button>
+              </span>
+            </div>
+            <div className="mt-1.5 flex items-center justify-center gap-1">
+              <button onClick={(e) => { e.stopPropagation(); nudge('left', -step) }} className={lr} title="Push left" disabled={locked}>◀</button>
+              <div className="flex flex-col gap-0.5">
+                <button onClick={(e) => { e.stopPropagation(); nudge('top', -step) }} className={ud} title="Push up" disabled={locked}>▲</button>
+                <button onClick={(e) => { e.stopPropagation(); nudge('top', step) }} className={ud} title="Push down" disabled={locked}>▼</button>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); nudge('left', step) }} className={lr} title="Push right" disabled={locked}>▶</button>
+            </div>
+            <div className="text-[10px] text-muted-foreground tabular-nums mt-1 text-center">
+              {hasOffset ? [
+                off.top > 0 ? `↑${off.top}` : '',
+                off.right > 0 ? `→${off.right}` : '',
+                off.bottom > 0 ? `↓${off.bottom}` : '',
+                off.left > 0 ? `←${off.left}` : '',
+              ].filter(Boolean).join(' ') : 'centered'}
+            </div>
+          </>
+        )
+      })()}
 
       <div className="my-3 h-px bg-border" />
     </div>

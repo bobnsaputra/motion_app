@@ -40,7 +40,6 @@ body {
 .app {
   box-sizing: border-box;
   padding: 0px;
-  padding-right: 7rem;    /* offset for the fixed 48px collapsed sidebar */
   margin: 0 auto;
   width: 100%;
   display: flex;

@@ -69,6 +69,10 @@ interface ToolbarProps {
   setLockWingSize?: (v: boolean) => void
   preventOverlap?: boolean
   setPreventOverlap?: (v: boolean) => void
+  stageOffset?: { top: number; right: number; bottom: number; left: number }
+  onStageOffsetChange?: (offset: { top: number; right: number; bottom: number; left: number }) => void
+  lockStageOffset?: boolean
+  setLockStageOffset?: (v: boolean) => void
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
   onSave: () => void
@@ -481,6 +485,10 @@ export default function Toolbar(props: ToolbarProps) {
                       setLockWingSize={props.setLockWingSize}
                       preventOverlap={props.preventOverlap}
                       setPreventOverlap={props.setPreventOverlap}
+                      stageOffset={props.stageOffset}
+                      onStageOffsetChange={props.onStageOffsetChange}
+                      lockStageOffset={props.lockStageOffset}
+                      setLockStageOffset={props.setLockStageOffset}
                       keyframeSpeed={keyframeSpeed}
                       onKeyframeSpeedChange={onKeyframeSpeedChange}
                       fadeSpeed={fadeSpeed}
