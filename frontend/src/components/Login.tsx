@@ -117,11 +117,47 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <div className="gradient-orb orb-3"></div>
             </div>
 
+            {/* Stage elements */}
+            <div className="stage-scene">
+                {/* Curtains */}
+                <div className="curtain curtain-left"></div>
+                <div className="curtain curtain-right"></div>
+                <div className="curtain-valance"></div>
+
+                {/* Spotlights */}
+                <div className="spotlight spotlight-1"></div>
+                <div className="spotlight spotlight-2"></div>
+                <div className="spotlight spotlight-3"></div>
+
+                {/* Stage figures */}
+                <div className="stage-floor">
+                    <div className="stage-figure figure-1">
+                        <div className="figure-head"></div>
+                        <div className="figure-body"></div>
+                    </div>
+                    <div className="stage-figure figure-2">
+                        <div className="figure-head"></div>
+                        <div className="figure-body"></div>
+                    </div>
+                    <div className="stage-figure figure-3">
+                        <div className="figure-head"></div>
+                        <div className="figure-body"></div>
+                    </div>
+                </div>
+            </div>
+
             <div className="login-card">
                 <div className="login-header">
+                    <div className="login-icon">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
                     <h1 className="login-title">Stage Motion</h1>
                     <p className="login-subtitle">
-                        {isLogin ? 'Welcome back!' : 'Create your account'}
+                        {isLogin ? 'Welcome back, director' : 'Join the stage'}
                     </p>
                 </div>
 
