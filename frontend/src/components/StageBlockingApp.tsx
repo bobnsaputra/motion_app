@@ -7,6 +7,7 @@ import ToastContainer, { ToastType } from './Toast'
 import ProjectListModal from './ProjectListModal'
 import ShareProjectModal from './ShareProjectModal'
 import { createProject, updateProject, loadProject } from '../lib/projects'
+import { getMyPermission } from '../lib/sharing'
 
 interface StageBlockingAppProps {
   user: User
@@ -166,6 +167,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   // ── Cloud project state ──
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
   const [isProjectOwner, setIsProjectOwner] = useState(true)
+  const [sharePermission, setSharePermission] = useState<'view' | 'edit' | null>(null)
+  const canEdit = isProjectOwner || sharePermission === 'edit'
   const [projectListOpen, setProjectListOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [cloudSaving, setCloudSaving] = useState(false)
@@ -573,8 +576,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
       // View-only: only allow navigation shortcuts (arrows, space, K, Escape)
-      const isViewOnly = !isProjectOwner && !!currentProjectId
-      const allowedInViewOnly = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'k', 'K']
+      const isViewOnly = !canEdit && !!currentProjectId
+      const allowedInViewOnly = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'k', 'K', 'q', 'Q', 'w', 'W', 'e', 'E', 'Escape']
       if (isViewOnly && !allowedInViewOnly.includes(e.key)) return
 
       // Toggle note mode with 'n'
@@ -669,6 +672,18 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         e.preventDefault()
         if (isPlaying) { stopPlayback() } else { startPlayback() }
       }
+      if ((e.key === 'q' || e.key === 'Q') && keyframeMode) {
+        e.preventDefault()
+        if (isPlaying) { stopPlayback() } else { startPlaybackSingle() }
+      }
+      if ((e.key === 'w' || e.key === 'W') && keyframeMode) {
+        e.preventDefault()
+        if (isPlaying) { stopPlayback() } else { startPlayback() }
+      }
+      if ((e.key === 'e' || e.key === 'E') && keyframeMode) {
+        e.preventDefault()
+        if (isPlaying) { stopPlayback() } else { startPlaybackAll() }
+      }
       if ((e.key === 'ArrowDown') && keyframeMode) {
         e.preventDefault()
         nextScene()
@@ -690,7 +705,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [historyIndex, history, keyframeMode, isPlaying, selectedCharId, characters, propsMode, selectedPropId, isProjectOwner, currentProjectId])
+  }, [historyIndex, history, keyframeMode, isPlaying, selectedCharId, characters, propsMode, selectedPropId, canEdit, currentProjectId])
 
   // ── Utility functions ──
   function snapToRightAngles(a: number) {
@@ -1178,7 +1193,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     setConfigMenuOpen(false)
 
     // Block editing for non-owners
-    if (!isProjectOwner && currentProjectId) {
+    if (!canEdit && currentProjectId) {
       showToast('You are viewing a shared project — editing is not allowed', 'info')
       return
     }
@@ -2459,8 +2474,83 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
   }
 
+  /** Play only the transition into the active keyframe (from previous → current) */
+  function startPlaybackSingle() {
+    if (keyframes.length < 2) return
+    // Need at least a previous keyframe to animate from
+    if (activeKeyframeIndex <= 0) return
+    const sceneStart = sceneBoundaries[sceneIndex] ?? 0
+    const localKf = activeKeyframeIndex - sceneStart + 1
+    showToast(`Playing keyframe ${localKf}`, 'info')
+    setIsPlaying(true)
+    setSelectedCharId(null)
+    setAwaitingDirectionFor(null)
+
+    const allKfs: Keyframe[] = JSON.parse(JSON.stringify(keyframes.map((kf, i) =>
+      i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
+    )))
+
+    const fromKf = allKfs[activeKeyframeIndex - 1]
+    const toKf = allKfs[activeKeyframeIndex]
+    const msMove = keyframeSpeed
+    const msFade = fadeSpeed
+    let startTime: number | null = null
+    kfsRef.current = [fromKf, toKf]
+    animPairRef.current = 0
+
+    // Start from the previous keyframe's positions
+    setCharacters(JSON.parse(JSON.stringify(fromKf.characters)))
+
+    function animate(timestamp: number) {
+      if (startTime === null) startTime = timestamp
+      const elapsed = timestamp - startTime
+      const pairProgress = elapsed / msMove
+
+      if (pairProgress >= 1) {
+        setCharacters(JSON.parse(JSON.stringify(toKf.characters)))
+        setAnimationProgress(null)
+        setFadeProgress(null)
+        setIsPlaying(false)
+        animFrameRef.current = null
+        return
+      }
+
+      const t = Math.max(0, Math.min(pairProgress, 1))
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+      const fadeT = Math.max(0, Math.min(elapsed / msFade, 1))
+
+      const interpolated = fromKf.characters.map((fc: Character) => {
+        const tc = toKf.characters.find((c: Character) => c.id === fc.id)
+        if (!tc) return fc
+        const fromVis = fc.visible !== false
+        const toVis = tc.visible !== false
+        if (!fromVis && toVis) return { ...tc }
+        if (fromVis && !toVis) return { ...fc }
+        return {
+          ...fc,
+          x: fc.x + (tc.x - fc.x) * eased,
+          y: fc.y + (tc.y - fc.y) * eased,
+          angle: fc.angle !== undefined && tc.angle !== undefined
+            ? fc.angle + (tc.angle - fc.angle) * eased
+            : tc.angle,
+          eyeOffset: fc.eyeOffset !== undefined && tc.eyeOffset !== undefined
+            ? fc.eyeOffset + (tc.eyeOffset - fc.eyeOffset) * eased
+            : tc.eyeOffset
+        }
+      })
+
+      setCharacters(interpolated)
+      setAnimationProgress(eased)
+      setFadeProgress(fadeT)
+      animFrameRef.current = requestAnimationFrame(animate)
+    }
+
+    animFrameRef.current = requestAnimationFrame(animate)
+  }
+
   function startPlayback() {
     if (keyframes.length < 2) return
+    showToast(`Playing scene: ${sceneNames[sceneIndex] || `Scene ${sceneIndex + 1}`}`, 'info')
     setIsPlaying(true)
     setSelectedCharId(null)
     setAwaitingDirectionFor(null)
@@ -2585,6 +2675,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   function startPlaybackAll() {
     if (keyframes.length < 2) return
+    showToast('Playing all scenes', 'info')
     setIsPlaying(true)
     setSelectedCharId(null)
     setAwaitingDirectionFor(null)
@@ -3331,7 +3422,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   /** Save current project to Supabase */
   async function saveToCloud() {
     if (cloudSaving) return
-    if (!isProjectOwner) {
+    if (!canEdit) {
       showToast('You cannot save changes to a project you don\'t own', 'info')
       return
     }
@@ -3345,6 +3436,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         const row = await createProject(projectTitle, state as Record<string, unknown>)
         setCurrentProjectId(row.id)
         setIsProjectOwner(true)
+        setSharePermission(null)
         showToast('Saved to cloud (new project)')
       }
       // Also save to localStorage as backup
@@ -3362,7 +3454,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const row = await loadProject(projectId)
       const state = row.data as any
       setCurrentProjectId(row.id)
-      setIsProjectOwner(row.user_id === user.id)
+      const isOwner = row.user_id === user.id
+      setIsProjectOwner(isOwner)
+      if (!isOwner) {
+        const perm = await getMyPermission(row.id)
+        setSharePermission(perm)
+      } else {
+        setSharePermission(null)
+      }
 
       // Restore all state (same logic as loadFromLocalStorage / importFromJSON)
       setGuides(state.guides || [])
@@ -3460,6 +3559,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   function newProject() {
     setCurrentProjectId(null)
     setIsProjectOwner(true)
+    setSharePermission(null)
     setCharacters([])
     setKeyframes([])
     setKeyframeMode(false)
@@ -3795,7 +3895,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             setShareModalOpen(true)
           }}
           canShare={!!currentProjectId && isProjectOwner}
-          readOnly={!isProjectOwner && !!currentProjectId}
+          readOnly={!canEdit && !!currentProjectId}
           cloudSaving={cloudSaving}
           keyframeMode={keyframeMode}
           onToggleKeyframeMode={toggleKeyframeMode}
@@ -3817,6 +3917,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onDeleteKeyframe={deleteKeyframe}
           onRenameKeyframe={renameKeyframe}
           onPlay={startPlayback}
+          onPlaySingle={startPlaybackSingle}
           onPlayAll={startPlaybackAll}
           onStop={stopPlayback}
           onPrev={goToPrevKeyframe}
@@ -3971,7 +4072,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             </div>
           )}
           {/* Offstage Props panel (left side) */}
-          {isProjectOwner && stageProps.length > 0 && (
+          {canEdit && stageProps.length > 0 && (
             <div className="absolute right-full mr-2 z-40" style={{ top: 40, minWidth: 100 }}>
               <div className="text-xs text-muted-foreground">Props</div>
               <div className="mt-2 flex flex-col gap-1.5">
@@ -4044,7 +4145,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
               </div>
             </div>
           )}
-          {isProjectOwner && <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
+          {canEdit && <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
             <div className="text-xs text-muted-foreground">Offstage</div>
             <div className="mt-2 flex flex-col gap-2 max-w-xs">
               {(keyframes[activeKeyframeIndex]?.characters ?? []).filter(c => c.visible === false).map((c) => (
@@ -4080,7 +4181,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           </div>}
         </div>
         {/* Stage Notes — 3-column text areas below stage */}
-        {isProjectOwner && keyframeMode && keyframes.length > 0 && (() => {
+        {canEdit && keyframeMode && keyframes.length > 0 && (() => {
           const kf = keyframes[activeKeyframeIndex]
           if (!kf) return null
           const notes = kf.stageNotes ?? { left: '', center: '', right: '' }

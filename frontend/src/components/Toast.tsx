@@ -25,20 +25,15 @@ export default function ToastContainer({ toast }: ToastContainerProps) {
     const id = ++nextId
     setToasts((prev) => [...prev, { id, message: toast.message, type: toast.type, fading: false }])
 
-    // Start fade out
-    const fadeTimer = setTimeout(() => {
+    // Start fade out — timers are independent per toast id, no cleanup needed
+    setTimeout(() => {
       setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, fading: true } : t)))
     }, 2200)
 
     // Remove
-    const removeTimer = setTimeout(() => {
+    setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, 2700)
-
-    return () => {
-      clearTimeout(fadeTimer)
-      clearTimeout(removeTimer)
-    }
   }, [toast])
 
   if (toasts.length === 0) return null

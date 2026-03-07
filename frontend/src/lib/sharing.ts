@@ -140,3 +140,19 @@ export async function revokeShare(shareId: string): Promise<void> {
 
   if (error) throw error
 }
+
+/** Get the current user's permission for a specific project (null if not shared with them) */
+export async function getMyPermission(projectId: string): Promise<'view' | 'edit' | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return null
+
+  const { data, error } = await supabase
+    .from('project_shares')
+    .select('permission')
+    .eq('project_id', projectId)
+    .eq('shared_with_email', user.email)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return data.permission as 'view' | 'edit'
+}

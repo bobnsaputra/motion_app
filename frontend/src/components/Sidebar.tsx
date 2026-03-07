@@ -163,16 +163,18 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                     )}
 
                     {/* Shared with me */}
-                    {!loading && (
-                        <>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mt-2 mb-2">
-                                <Users className="w-3.5 h-3.5" />
-                                Shared with me
-                            </p>
-                            {sharedProjects.length === 0 && (
-                                <p className="text-xs text-muted-foreground py-2 text-center">No shared projects</p>
-                            )}
-                            {sharedProjects.length > 0 && (
+                    <>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mt-2 mb-2">
+                            <Users className="w-3.5 h-3.5" />
+                            Shared with me
+                        </p>
+                        {loading && (
+                            <p className="text-xs text-muted-foreground py-2 text-center">Loading…</p>
+                        )}
+                        {!loading && sharedProjects.length === 0 && (
+                            <p className="text-xs text-muted-foreground py-2 text-center">No shared projects</p>
+                        )}
+                        {!loading && sharedProjects.length > 0 && (
                             <div className="flex flex-col gap-0.5">
                                 {sharedProjects.slice(0, 5).map(p => (
                                     <div
@@ -198,7 +200,6 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                             </div>
                             )}
                         </>
-                    )}
                 </div>
             </div>
         </div>

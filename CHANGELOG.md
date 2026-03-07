@@ -6,6 +6,20 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-03-08
+### Sharing Permissions & View-Only Refinements
+- 10:00 — **View-only mode for shared projects**: Non-owner viewers see a stripped toolbar — no Character, Props, Delete, Duplicate, Rename, Shortcuts, Undo/Redo, Settings, or File menu. Canvas clicks and editing keyboard shortcuts are blocked. Offstage props/characters panels and stage notes are hidden. A "View only" label is shown. (`Toolbar.tsx`, `StageBlockingApp.tsx`)
+- 10:05 — **Non-owners cannot share**: Share button greyed out for non-owners. Handler shows toast "Only the project owner can manage sharing". ShareProjectModal only renders for owners. (`StageBlockingApp.tsx`, `FileMenu.tsx`)
+- 10:10 — **Sidebar shared tab always visible**: "Shared with me" section now renders immediately when sidebar opens with a loading indicator, instead of appearing after fetch completes. Added Users icon in collapsed sidebar. (`Sidebar.tsx`)
+- 10:15 — **Edit permission support**: Users shared with "edit" permission can now fully edit and save projects. Added `sharePermission` state and `canEdit` computed value (`isProjectOwner || sharePermission === 'edit'`). All view-only guards updated. Added `getMyPermission()` helper to fetch permission on project load. (`StageBlockingApp.tsx`, `sharing.ts`)
+- 10:20 — **Single-keyframe playback**: New "Play This Keyframe" button (StepForward icon) animates the transition from previous keyframe to the active keyframe only. Three play buttons: Play This Keyframe (Q) | Play Scene (W/Space) | Play All Scenes (E). (`StageBlockingApp.tsx`, `Toolbar.tsx`)
+- 10:25 — **Q/W/E keyboard shortcuts**: Q plays single keyframe, W plays scene, E plays all scenes — all toggle stop when playing. Added to `allowedInViewOnly` so viewers can use playback. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
+- 10:30 — **Playback toast notifications**: Shows toast when starting playback — "Playing keyframe N" (scene-local number), "Playing scene: Name", or "Playing all scenes". (`StageBlockingApp.tsx`)
+- 10:35 — **Toast disappearing fix**: Fixed toasts not disappearing when multiple fired in sequence. Removed `useEffect` cleanup that was cancelling previous toast timers. (`Toast.tsx`)
+- 10:40 — **Hidden shortcut info for viewers**: Shortcuts panel hidden when in view-only mode. (`Toolbar.tsx`)
+- 10:45 — **Removed app logo from login page**: Removed the Stage Motion logo image from the login page header. (`Login.tsx`)
+- 10:50 — **Debug console.logs removed**: Cleaned up leftover console.log statements from sharing service. (`sharing.ts`)
+
 ## 2026-03-07
 ### Project Sharing
 - 10:00 — **Project sharing by email**: Added ability to share projects with other users by email address. Owners can grant View or Edit permissions, update permissions, or revoke access. Supports "pending invites" for emails not yet registered — a backfill trigger automatically links shares when the user signs up. (`supabase/migrations/20260307000000_create_project_shares.sql`, `sharing.ts`, `ShareProjectModal.tsx`)

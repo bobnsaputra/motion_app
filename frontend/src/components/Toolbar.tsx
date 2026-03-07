@@ -6,7 +6,7 @@ import {
   Settings, Save, LogOut, Menu, Film,
   Eye, EyeOff,
   Info, StickyNote, Box,
-  Plus, Play, Square, ChevronLeft, ChevronRight, Pencil, PlayCircle
+  Plus, Play, Square, ChevronLeft, ChevronRight, Pencil, PlayCircle, StepForward
 } from 'lucide-react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import ConfigMenu from './ConfigMenu'
@@ -96,6 +96,7 @@ interface ToolbarProps {
   onDeleteKeyframe: (index: number) => void
   onRenameKeyframe: (index: number, name: string) => void
   onPlay: () => void
+  onPlaySingle: () => void
   onPlayAll: () => void
   onStop: () => void
   onPrev: () => void
@@ -205,10 +206,13 @@ export default function Toolbar(props: ToolbarProps) {
               </Button>
             ) : (
               <>
-                <Button variant="default" size="icon" className="h-8 w-8" onClick={onPlay} disabled={keyframes.length < 2} title="Play Scene (Space)">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={props.onPlaySingle} disabled={keyframes.length < 2 || activeKeyframeIndex <= 0} title="Play This Keyframe (Q)">
+                  <StepForward className="h-4 w-4" />
+                </Button>
+                <Button variant="default" size="icon" className="h-8 w-8" onClick={onPlay} disabled={keyframes.length < 2} title="Play Scene (W / Space)">
                   <Play className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={onPlayAll} disabled={keyframes.length < 2} title="Play All Scenes">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={onPlayAll} disabled={keyframes.length < 2} title="Play All Scenes (E)">
                   <PlayCircle className="h-4 w-4" />
                 </Button>
               </>
@@ -229,7 +233,9 @@ export default function Toolbar(props: ToolbarProps) {
                 <div className="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-50 w-64 rounded-lg border border-border bg-white p-3 text-xs shadow-sm floating-panel">
                   <strong className="block text-sm mb-2">Shortcuts</strong>
                   <div className="flex flex-col gap-1">
-                    <div className="leading-tight">Space: Play Scene / Stop</div>
+                    <div className="leading-tight">Q: Play This Keyframe / Stop</div>
+                    <div className="leading-tight">W / Space: Play Scene / Stop</div>
+                    <div className="leading-tight">E: Play All Scenes / Stop</div>
                     <div className="leading-tight">K: Toggle Keyframe Mode</div>
                     <div className="leading-tight">A: Add character</div>
                     <div className="leading-tight">D: Delete selected</div>
