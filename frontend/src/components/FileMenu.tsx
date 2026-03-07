@@ -10,7 +10,9 @@ interface FileMenuProps {
   onClose: () => void
   onCloudSave: () => void
   onOpenProjects: () => void
+  onShareProject?: () => void
   cloudSaving?: boolean
+  canShare?: boolean
 }
 
 export default function FileMenu({
@@ -23,19 +25,22 @@ export default function FileMenu({
   onClose,
   onCloudSave,
   onOpenProjects,
-  cloudSaving
+  onShareProject,
+  cloudSaving,
+  canShare
 }: FileMenuProps) {
-  if (!isOpen) return null
-
   const menuRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
+    if (!isOpen) return
     function handler(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose()
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [onClose])
+  }, [isOpen, onClose])
+
+  if (!isOpen) return null
 
   const handleClick = (action: () => void) => {
     action()
@@ -51,6 +56,13 @@ export default function FileMenu({
       <button onClick={() => handleClick(onOpenProjects)} className="w-full text-left px-3 py-2 hover:bg-accent/10 flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
         <span>My Projects</span>
+      </button>
+      <button
+        onClick={() => { if (onShareProject) handleClick(onShareProject) }}
+        className={`w-full text-left px-3 py-2 flex items-center gap-2 ${canShare ? 'hover:bg-accent/10' : 'opacity-40 cursor-not-allowed'}`}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        <span>Share Project</span>
       </button>
       <div className="border-t border-gray-200 my-1.5" />
       <button onClick={() => handleClick(onSave)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>S</u>ave Local</span></button>

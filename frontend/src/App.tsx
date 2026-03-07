@@ -75,6 +75,7 @@ export default function App() {
 
   return <StageBlockingApp user={user} onLogout={async () => {
     await supabase.auth.signOut()
+    try { localStorage.removeItem('stageProjectTitle') } catch (e) {}
     setUser(null)
   }} />
 }

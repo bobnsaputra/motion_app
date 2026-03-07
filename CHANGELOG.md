@@ -6,6 +6,12 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-03-07
+### Project Sharing
+- 10:00 — **Project sharing by email**: Added ability to share projects with other users by email address. Owners can grant View or Edit permissions, update permissions, or revoke access. Supports "pending invites" for emails not yet registered — a backfill trigger automatically links shares when the user signs up. (`supabase/migrations/20260307000000_create_project_shares.sql`, `sharing.ts`, `ShareProjectModal.tsx`)
+- 10:05 — **Share Project modal**: New modal accessible from File menu → "Share Project" (only visible when a cloud project is loaded). Enter an email + View/Edit permission to share; see current shares list with permission changer and revoke button. Shows "Registered user" vs "Pending invite" status. (`ShareProjectModal.tsx`, `FileMenu.tsx`)
+- 10:10 — **Shared projects in Sidebar & Project List**: Sidebar shows a "Shared with me" section below Recent Projects with owner email and permission level. Project List modal now has "My Projects" / "Shared with me" tabs. Shared projects can be opened and loaded like owned projects. (`Sidebar.tsx`, `ProjectListModal.tsx`)
+
 ## 2026-03-05
 ### Stage Offset Configuration
 - 14:00 — **Configurable stage offset**: Replaced the hardcoded `padding-right: 7rem` CSS with a configurable stage offset (top, right, bottom, left) stored as React state. Applied as inline padding on the `.app` div, defaulting to `right: 7rem`. Included in save/load, export/import JSON, and cloud save/load with backward compatibility. (`StageBlockingApp.tsx`, `styles.css`)

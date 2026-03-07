@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { PanelLeft, FileText, Clock, Trash2, Plus } from 'lucide-react'
+import { PanelLeft, FileText, Clock, Trash2, Plus, Users } from 'lucide-react'
 import { listProjects, deleteProject, type ProjectSummary } from '../lib/projects'
+import { listSharedProjects, type SharedProjectSummary } from '../lib/sharing'
 import { useTheme } from '../hooks/useTheme'
 
 interface SidebarProps {
@@ -13,6 +14,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectProject, onNewProject }: SidebarProps) {
     const [projects, setProjects] = useState<ProjectSummary[]>([])
+    const [sharedProjects, setSharedProjects] = useState<SharedProjectSummary[]>([])
     const [loading, setLoading] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const { isDark } = useTheme()
@@ -34,10 +36,10 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
     useEffect(() => {
         if (!isOpen) return
         setLoading(true)
-        listProjects()
-            .then(setProjects)
-            .catch(() => {})
-            .finally(() => setLoading(false))
+        Promise.all([
+            listProjects().then(setProjects).catch(() => {}),
+            listSharedProjects().then(setSharedProjects).catch(e => console.warn('shared projects:', e.message))
+        ]).finally(() => setLoading(false))
     }, [isOpen])
 
     function formatRelative(iso: string) {
@@ -82,7 +84,7 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                 </button>
             </div>
 
-            {/* Collapsed icon */}
+            {/* Collapsed icons */}
             {!isOpen && (
                 <div className="flex flex-col items-center gap-3 pt-3">
                     <button
@@ -92,11 +94,18 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                     >
                         <Clock className="w-4 h-4" />
                     </button>
+                    <button
+                        onClick={onToggle}
+                        className={`p-2 rounded-md transition-colors ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-indigo-300' : 'hover:bg-yellow-100 text-muted-foreground hover:text-yellow-700'}`}
+                        title="Shared with me"
+                    >
+                        <Users className="w-4 h-4" />
+                    </button>
                 </div>
             )}
 
             {/* Sidebar Content (Hidden when collapsed) */}
-            <div className={`flex-1 overflow-hidden transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0 invisible'}`}>
+            <div className={`flex-1 overflow-y-auto transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0 invisible'}`}>
                 <div className="p-4">
                     <div className="flex items-center justify-between mb-3">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -151,6 +160,44 @@ export default function Sidebar({ isOpen, onToggle, currentProjectId, onSelectPr
                             ))}
                             <div className="border-t border-border/30 my-2" />
                         </div>
+                    )}
+
+                    {/* Shared with me */}
+                    {!loading && (
+                        <>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mt-2 mb-2">
+                                <Users className="w-3.5 h-3.5" />
+                                Shared with me
+                            </p>
+                            {sharedProjects.length === 0 && (
+                                <p className="text-xs text-muted-foreground py-2 text-center">No shared projects</p>
+                            )}
+                            {sharedProjects.length > 0 && (
+                            <div className="flex flex-col gap-0.5">
+                                {sharedProjects.slice(0, 5).map(p => (
+                                    <div
+                                        key={p.id}
+                                        onClick={() => onSelectProject(p.id)}
+                                        className={`group flex items-start gap-2 px-2.5 py-2 rounded-md cursor-pointer transition-colors ${
+                                            p.id === currentProjectId
+                                                ? (isDark ? 'bg-indigo-500/15 text-indigo-200' : 'bg-yellow-100/80 text-yellow-900')
+                                                : (isDark ? 'hover:bg-white/5 text-foreground' : 'hover:bg-yellow-50 text-foreground')
+                                        }`}
+                                    >
+                                        <Users className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
+                                            p.id === currentProjectId ? (isDark ? 'text-indigo-400' : 'text-yellow-600') : 'text-muted-foreground'
+                                        }`} />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium truncate">{p.title}</div>
+                                            <div className="text-[10px] text-muted-foreground">
+                                                {p.owner_email} · {p.permission}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

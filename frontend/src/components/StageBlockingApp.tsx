@@ -5,6 +5,7 @@ import Sidebar from './Sidebar'
 import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
 import ProjectListModal from './ProjectListModal'
+import ShareProjectModal from './ShareProjectModal'
 import { createProject, updateProject, loadProject } from '../lib/projects'
 
 interface StageBlockingAppProps {
@@ -164,7 +165,9 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   // ── Cloud project state ──
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
+  const [isProjectOwner, setIsProjectOwner] = useState(true)
   const [projectListOpen, setProjectListOpen] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const [cloudSaving, setCloudSaving] = useState(false)
 
   // Refs to always get latest versions of file operations (avoids stale closures in keyboard handler)
@@ -569,6 +572,11 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
+      // View-only: only allow navigation shortcuts (arrows, space, K, Escape)
+      const isViewOnly = !isProjectOwner && !!currentProjectId
+      const allowedInViewOnly = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'k', 'K']
+      if (isViewOnly && !allowedInViewOnly.includes(e.key)) return
+
       // Toggle note mode with 'n'
       if ((e.key === 'n' || e.key === 'N') && keyframeMode) {
         if (noteMode) {
@@ -682,7 +690,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [historyIndex, history, keyframeMode, isPlaying, selectedCharId, characters, propsMode, selectedPropId])
+  }, [historyIndex, history, keyframeMode, isPlaying, selectedCharId, characters, propsMode, selectedPropId, isProjectOwner, currentProjectId])
 
   // ── Utility functions ──
   function snapToRightAngles(a: number) {
@@ -1168,6 +1176,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
     setFileMenuOpen(false)
     setConfigMenuOpen(false)
+
+    // Block editing for non-owners
+    if (!isProjectOwner && currentProjectId) {
+      showToast('You are viewing a shared project — editing is not allowed', 'info')
+      return
+    }
 
     // ── Props mode: start drag (not in keyframe mode) ──
     if (propsMode && !keyframeMode) {
@@ -3317,6 +3331,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   /** Save current project to Supabase */
   async function saveToCloud() {
     if (cloudSaving) return
+    if (!isProjectOwner) {
+      showToast('You cannot save changes to a project you don\'t own', 'info')
+      return
+    }
     setCloudSaving(true)
     try {
       const state = buildProjectState()
@@ -3326,6 +3344,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       } else {
         const row = await createProject(projectTitle, state as Record<string, unknown>)
         setCurrentProjectId(row.id)
+        setIsProjectOwner(true)
         showToast('Saved to cloud (new project)')
       }
       // Also save to localStorage as backup
@@ -3343,6 +3362,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       const row = await loadProject(projectId)
       const state = row.data as any
       setCurrentProjectId(row.id)
+      setIsProjectOwner(row.user_id === user.id)
 
       // Restore all state (same logic as loadFromLocalStorage / importFromJSON)
       setGuides(state.guides || [])
@@ -3439,6 +3459,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   /** Start a new blank project (clears everything, unsets cloud project id) */
   function newProject() {
     setCurrentProjectId(null)
+    setIsProjectOwner(true)
     setCharacters([])
     setKeyframes([])
     setKeyframeMode(false)
@@ -3762,6 +3783,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onExportPNG={exportAsImage}
           onCloudSave={saveToCloud}
           onOpenProjects={() => setProjectListOpen(true)}
+          onShareProject={() => {
+            if (!currentProjectId) {
+              showToast('Save the project to cloud first before sharing', 'info')
+              return
+            }
+            if (!isProjectOwner) {
+              showToast('Only the project owner can manage sharing', 'info')
+              return
+            }
+            setShareModalOpen(true)
+          }}
+          canShare={!!currentProjectId && isProjectOwner}
+          readOnly={!isProjectOwner && !!currentProjectId}
           cloudSaving={cloudSaving}
           keyframeMode={keyframeMode}
           onToggleKeyframeMode={toggleKeyframeMode}
@@ -3937,7 +3971,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
             </div>
           )}
           {/* Offstage Props panel (left side) */}
-          {stageProps.length > 0 && (
+          {isProjectOwner && stageProps.length > 0 && (
             <div className="absolute right-full mr-2 z-40" style={{ top: 40, minWidth: 100 }}>
               <div className="text-xs text-muted-foreground">Props</div>
               <div className="mt-2 flex flex-col gap-1.5">
@@ -4010,7 +4044,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
               </div>
             </div>
           )}
-          <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
+          {isProjectOwner && <div className="absolute left-full ml-2 z-40" style={{ top: 40 }}>
             <div className="text-xs text-muted-foreground">Offstage</div>
             <div className="mt-2 flex flex-col gap-2 max-w-xs">
               {(keyframes[activeKeyframeIndex]?.characters ?? []).filter(c => c.visible === false).map((c) => (
@@ -4043,10 +4077,10 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
                 </div>
               ))}
             </div>
-          </div>
+          </div>}
         </div>
         {/* Stage Notes — 3-column text areas below stage */}
-        {keyframeMode && keyframes.length > 0 && (() => {
+        {isProjectOwner && keyframeMode && keyframes.length > 0 && (() => {
           const kf = keyframes[activeKeyframeIndex]
           if (!kf) return null
           const notes = kf.stageNotes ?? { left: '', center: '', right: '' }
@@ -4096,6 +4130,14 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         onNew={newProject}
         currentProjectId={currentProjectId}
       />
+      {currentProjectId && isProjectOwner && (
+        <ShareProjectModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          projectId={currentProjectId}
+          projectTitle={projectTitle}
+        />
+      )}
     </div>
   )
 }

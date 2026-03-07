@@ -82,7 +82,10 @@ interface ToolbarProps {
   onExportPNG: () => void
   onCloudSave: () => void
   onOpenProjects: () => void
+  onShareProject?: () => void
+  canShare?: boolean
   cloudSaving?: boolean
+  readOnly?: boolean
   keyframeMode: boolean
   onToggleKeyframeMode: () => void
   keyframes: Keyframe[]
@@ -262,13 +265,16 @@ export default function Toolbar(props: ToolbarProps) {
 
             {/* Scene name (inline editable) - condensed */}
             <div className="flex items-center gap-0.5">
-              <SceneNameEditor sceneIndex={props.sceneIndex ?? 0} sceneName={props.sceneName} onRename={(name: string) => props.onRenameScene && props.onRenameScene(name)} disabled={isPlaying} />
+              <SceneNameEditor sceneIndex={props.sceneIndex ?? 0} sceneName={props.sceneName} onRename={(name: string) => props.onRenameScene && props.onRenameScene(name)} disabled={isPlaying || props.readOnly} />
               {props.sceneNotes && typeof props.sceneIndex === 'number' && props.sceneNotes[props.sceneIndex] && (
                 <span className="ml-1 inline-block w-2 h-2 bg-amber-500 rounded-full" title="Scene note" />
               )}
+              {!props.readOnly && (
               <button title="Create new scene" onClick={() => props.onCreateScene && props.onCreateScene()} disabled={isPlaying} className="p-0.5 rounded hover:bg-accent/10 ml-1">
                 <Plus className="h-3 w-3 text-muted-foreground" />
               </button>
+              )}
+              {!props.readOnly && (
               <button
                 className="rounded p-1 hover:bg-destructive/10 text-destructive disabled:opacity-50"
                 onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
@@ -277,6 +283,7 @@ export default function Toolbar(props: ToolbarProps) {
               >
                 <Trash2 className="h-3 w-3" />
               </button>
+              )}
             </div>
 
             {/* Compact Horizontal Scroll Area for Keyframes (only show current scene/page) */}
@@ -323,9 +330,12 @@ export default function Toolbar(props: ToolbarProps) {
               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => props.onNextScene && props.onNextScene()} disabled={typeof props.sceneIndex === 'undefined' || isPlaying} title="Next Scene">
                 <ChevronDown className="h-3 w-3" />
               </Button>
+              {!props.readOnly && (
               <button className="rounded p-1 hover:bg-accent/10" onClick={onAddKeyframe} disabled={isPlaying} title="Add keyframe (+)" aria-label="Add keyframe">
                 <Plus className="h-3.5 w-3.5" />
               </button>
+              )}
+              {!props.readOnly && (
               <button
                 className={`rounded p-1 hover:bg-accent/10 ${props.noteMode ? 'bg-amber-100 text-amber-700' : ''}`}
                 onClick={() => props.onToggleNoteMode && props.onToggleNoteMode()}
@@ -334,6 +344,8 @@ export default function Toolbar(props: ToolbarProps) {
               >
                 <StickyNote className="h-3.5 w-3.5" />
               </button>
+              )}
+              {!props.readOnly && (
               <button
                 className="rounded p-1 hover:bg-destructive/10 text-destructive"
                 onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
@@ -342,6 +354,7 @@ export default function Toolbar(props: ToolbarProps) {
               >
                 <Trash2 className="h-3 w-3" />
               </button>
+              )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {(() => {
@@ -351,12 +364,17 @@ export default function Toolbar(props: ToolbarProps) {
                 const totalInScene = Math.max(1, Math.min(length, keyframes.length - start))
                 return <span className="text-[10px] text-muted-foreground tabular-nums">{activeInScene}/{totalInScene}</span>
               })()}
+              {!props.readOnly && (
+              <>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canRedo} onClick={onRedo} title="Redo (O)"><Redo2 className="h-4 w-4" /></Button>
+              </>
+              )}
             </div>
           </>
         ) : (
           <>
+            {!props.readOnly && (
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <div className="relative">
                 <Button variant={addMode ? 'default' : 'outline'} size="sm" onClick={() => { if (props.propsMode && props.onTogglePropsMode) props.onTogglePropsMode(); if (props.onDeselectChar) props.onDeselectChar(); setAddMode(s => !s) }} title="Add character (A)" onMouseEnter={() => setShowAddTooltip(true)} onMouseLeave={() => setShowAddTooltip(false)}>
@@ -401,7 +419,9 @@ export default function Toolbar(props: ToolbarProps) {
                 </div>
               )}
             </div>
+            )}
 
+            {!props.readOnly && (
             <div className="relative">
               <Button
                 variant="ghost"
@@ -430,9 +450,14 @@ export default function Toolbar(props: ToolbarProps) {
                 </div>
               )}
             </div>
+            )}
+
+            {props.readOnly && (
+              <span className="text-xs text-muted-foreground italic px-2">View only</span>
+            )}
 
             <div className="mx-2 flex-1 flex items-center justify-center min-w-0">
-              {titleEditing ? (
+              {titleEditing && !props.readOnly ? (
                 <input
                   autoFocus
                   className="w-64 text-sm font-semibold rounded border px-2 py-1 text-center"
@@ -442,18 +467,24 @@ export default function Toolbar(props: ToolbarProps) {
                   onKeyDown={(e) => { if (e.key === 'Enter') { setTitleEditing(false); props.onProjectTitleChange && props.onProjectTitleChange(titleValue.trim() || 'Untitled') } if (e.key === 'Escape') { setTitleEditing(false); setTitleValue(props.projectTitle || 'Untitled') } }}
                 />
               ) : (
-                <button className="text-sm font-semibold truncate project-title" onClick={() => setTitleEditing(true)}>{props.projectTitle || 'Untitled'}</button>
+                <span className="text-sm font-semibold truncate project-title">{props.projectTitle || 'Untitled'}</span>
               )}
             </div>
 
             <div className="ml-auto flex items-center gap-2 flex-shrink-0 ">
+              {!props.readOnly && (
+              <>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canUndo} onClick={onUndo} title="Undo (U)"><Undo2 className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!canRedo} onClick={onRedo} title="Redo (O)"><Redo2 className="h-4 w-4" /></Button>
 
               <div className="mx-1 h-6 w-px bg-border" />
+              </>
+              )}
 
               <Button variant="outline" size="sm" onClick={onToggleKeyframeMode} title="Keyframe Animation Mode"><Film className="h-4 w-4" /><span><u>K</u>eyframes</span></Button>
 
+              {!props.readOnly && (
+              <>
               <div className="mx-1 h-6 w-px bg-border" />
 
                   <div className="relative">
@@ -502,8 +533,10 @@ export default function Toolbar(props: ToolbarProps) {
 
               <div className="relative">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setFileMenuOpen(!fileMenuOpen); setConfigMenuOpen(false); }} title="File operations"><Save className="h-4 w-4" /></Button>
-                <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onCloudSave={onCloudSave} onOpenProjects={onOpenProjects} cloudSaving={props.cloudSaving} onClose={() => setFileMenuOpen(false)} />
+                <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onCloudSave={onCloudSave} onOpenProjects={onOpenProjects} onShareProject={props.onShareProject} canShare={props.canShare} cloudSaving={props.cloudSaving} onClose={() => setFileMenuOpen(false)} />
               </div>
+              </>
+              )}
 
               <div className="relative" ref={menuRef}>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMenuOpen(!menuOpen)} title="Menu"><Menu className="h-4 w-4" /></Button>
