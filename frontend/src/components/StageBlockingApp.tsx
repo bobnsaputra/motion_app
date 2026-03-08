@@ -2474,14 +2474,19 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
   }
 
-  /** Play only the transition into the active keyframe (from previous → current) */
+  /** Play from the active keyframe forward through the rest of the scene */
   function startPlaybackSingle() {
     if (keyframes.length < 2) return
-    // Need at least a previous keyframe to animate from
-    if (activeKeyframeIndex <= 0) return
+    const sceneStartIdx = sceneBoundaries[sceneIndex] ?? 0
+    if (activeKeyframeIndex <= sceneStartIdx) {
+      // On keyframe 1 of the scene — behave like Play Scene
+      startPlayback()
+      return
+    }
     const sceneStart = sceneBoundaries[sceneIndex] ?? 0
+    const sceneEnd = sceneBoundaries[sceneIndex + 1] ?? keyframes.length
     const localKf = activeKeyframeIndex - sceneStart + 1
-    showToast(`Playing keyframe ${localKf}`, 'info')
+    showToast(`Playing from keyframe ${localKf}`, 'info')
     setIsPlaying(true)
     setSelectedCharId(null)
     setAwaitingDirectionFor(null)
@@ -2490,24 +2495,33 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       i === activeKeyframeIndex ? { ...kf, characters: JSON.parse(JSON.stringify(characters)) } : kf
     )))
 
-    const fromKf = allKfs[activeKeyframeIndex - 1]
-    const toKf = allKfs[activeKeyframeIndex]
+    // Slice from the keyframe before the active one to the end of the scene
+    const playStart = activeKeyframeIndex - 1
+    const sceneKfs = allKfs.slice(playStart, sceneEnd)
+    if (sceneKfs.length < 2) {
+      setIsPlaying(false)
+      return
+    }
+
+    let currentKfPair = 0
+    const totalPairs = sceneKfs.length - 1
     const msMove = keyframeSpeed
     const msFade = fadeSpeed
     let startTime: number | null = null
-    kfsRef.current = [fromKf, toKf]
+    kfsRef.current = sceneKfs
     animPairRef.current = 0
 
-    // Start from the previous keyframe's positions
-    setCharacters(JSON.parse(JSON.stringify(fromKf.characters)))
+    setActiveKeyframeIndex(playStart + 1)
+    setCharacters(JSON.parse(JSON.stringify(sceneKfs[0].characters)))
 
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
       const elapsed = timestamp - startTime
-      const pairProgress = elapsed / msMove
+      let pairProgress = elapsed / msMove
 
-      if (pairProgress >= 1) {
-        setCharacters(JSON.parse(JSON.stringify(toKf.characters)))
+      if (currentKfPair >= totalPairs) {
+        setCharacters(JSON.parse(JSON.stringify(sceneKfs[sceneKfs.length - 1].characters)))
+        setActiveKeyframeIndex(playStart + sceneKfs.length - 1)
         setAnimationProgress(null)
         setFadeProgress(null)
         setIsPlaying(false)
@@ -2515,12 +2529,32 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         return
       }
 
+      while (pairProgress >= 1 && currentKfPair < totalPairs) {
+        currentKfPair++
+        startTime = startTime! + msMove
+        pairProgress = (timestamp - startTime) / msMove
+
+        if (currentKfPair >= totalPairs) {
+          setCharacters(JSON.parse(JSON.stringify(sceneKfs[sceneKfs.length - 1].characters)))
+          setActiveKeyframeIndex(playStart + sceneKfs.length - 1)
+          setAnimationProgress(null)
+          setFadeProgress(null)
+          setIsPlaying(false)
+          animFrameRef.current = null
+          return
+        }
+      }
+
       const t = Math.max(0, Math.min(pairProgress, 1))
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
-      const fadeT = Math.max(0, Math.min(elapsed / msFade, 1))
+      const fadeElapsed = timestamp - startTime
+      const fadeT = Math.max(0, Math.min(fadeElapsed / msFade, 1))
 
-      const interpolated = fromKf.characters.map((fc: Character) => {
-        const tc = toKf.characters.find((c: Character) => c.id === fc.id)
+      const fromChars = sceneKfs[currentKfPair].characters
+      const toChars = sceneKfs[currentKfPair + 1].characters
+
+      const interpolated = fromChars.map((fc: Character) => {
+        const tc = toChars.find((c: Character) => c.id === fc.id)
         if (!tc) return fc
         const fromVis = fc.visible !== false
         const toVis = tc.visible !== false
@@ -2540,6 +2574,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       })
 
       setCharacters(interpolated)
+      setActiveKeyframeIndex(playStart + Math.min(currentKfPair + 1, sceneKfs.length - 1))
+      animPairRef.current = currentKfPair
       setAnimationProgress(eased)
       setFadeProgress(fadeT)
       animFrameRef.current = requestAnimationFrame(animate)

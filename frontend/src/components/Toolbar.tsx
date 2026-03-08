@@ -206,7 +206,7 @@ export default function Toolbar(props: ToolbarProps) {
               </Button>
             ) : (
               <>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={props.onPlaySingle} disabled={keyframes.length < 2 || activeKeyframeIndex <= 0} title="Play This Keyframe (Q)">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={props.onPlaySingle} disabled={keyframes.length < 2} title="Play This Keyframe (Q)">
                   <StepForward className="h-4 w-4" />
                 </Button>
                 <Button variant="default" size="icon" className="h-8 w-8" onClick={onPlay} disabled={keyframes.length < 2} title="Play Scene (W / Space)">
