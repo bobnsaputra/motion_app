@@ -3947,6 +3947,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           onRenameScene={(name) => renameScene(sceneIndex, name)}
           onCreateScene={createNewScene}
           onDeleteScene={() => deleteScene()}
+          sceneCount={sceneBoundaries.length}
           isPlaying={isPlaying}
           onSelectKeyframe={selectKeyframe}
           onAddKeyframe={addKeyframe}

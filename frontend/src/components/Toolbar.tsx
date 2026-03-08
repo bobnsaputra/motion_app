@@ -112,6 +112,7 @@ interface ToolbarProps {
   onRenameScene?: (name: string) => void
   onCreateScene?: () => void
   onDeleteScene?: () => void
+  sceneCount?: number
   keyframeSpeed: number
   onKeyframeSpeedChange: (speed: number) => void
   fadeSpeed?: number
@@ -283,9 +284,9 @@ export default function Toolbar(props: ToolbarProps) {
               {!props.readOnly && (
               <button
                 className="rounded p-1 hover:bg-destructive/10 text-destructive disabled:opacity-50"
-                onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
-                disabled={keyframes.length <= 1}
-                title="Delete selected keyframe"
+                onClick={() => props.onDeleteScene && props.onDeleteScene()}
+                disabled={isPlaying || (props.sceneCount ?? 1) <= 1 || (props.sceneIndex ?? 0) === 0}
+                title="Delete scene"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -316,6 +317,15 @@ export default function Toolbar(props: ToolbarProps) {
                             )}
                             {props.keyframeNotes && props.keyframeNotes[String(kf.id)] && (
                               <span className="ml-1 inline-block w-2 h-2 bg-amber-500 rounded-full" title="Keyframe note" />
+                            )}
+                            {!props.readOnly && keyframes.length > 1 && (
+                              <button
+                                className="absolute -top-2.5 -right-2.5 hidden group-hover:flex items-center justify-center w-4 h-4 rounded-full bg-destructive text-white hover:bg-destructive/80 transition-opacity"
+                                onClick={(e) => { e.stopPropagation(); onDeleteKeyframe(globalIdx) }}
+                                title="Delete keyframe"
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                              </button>
                             )}
                           </>
                         )}
@@ -349,16 +359,6 @@ export default function Toolbar(props: ToolbarProps) {
                 title="Note Mode (N) — click canvas to place text"
               >
                 <StickyNote className="h-3.5 w-3.5" />
-              </button>
-              )}
-              {!props.readOnly && (
-              <button
-                className="rounded p-1 hover:bg-destructive/10 text-destructive"
-                onClick={() => { if (keyframes.length > 1) onDeleteKeyframe(activeKeyframeIndex) }}
-                disabled={keyframes.length <= 1}
-                title="Delete selected keyframe"
-              >
-                <Trash2 className="h-3 w-3" />
               </button>
               )}
             </div>
