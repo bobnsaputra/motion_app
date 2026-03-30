@@ -6,8 +6,10 @@ import StageCanvas from './StageCanvas'
 import ToastContainer, { ToastType } from './Toast'
 import ProjectListModal from './ProjectListModal'
 import ShareProjectModal from './ShareProjectModal'
+import UpgradeModal from './UpgradeModal'
 import { createProject, updateProject, loadProject } from '../lib/projects'
 import { getMyPermission } from '../lib/sharing'
+import { getSubscriptionInfo, type SubscriptionInfo } from '../lib/subscription'
 
 interface StageBlockingAppProps {
   user: User
@@ -172,6 +174,26 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const [projectListOpen, setProjectListOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [cloudSaving, setCloudSaving] = useState(false)
+
+  // ── Subscription state ──
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [upgradeReason, setUpgradeReason] = useState<'limit' | 'trial_expired' | 'general'>('general')
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+
+  /** Fetch/refresh subscription info from server */
+  const refreshSubscription = useCallback(async () => {
+    try {
+      const info = await getSubscriptionInfo()
+      setSubscriptionInfo(info)
+      return info
+    } catch (e) {
+      console.warn('Failed to fetch subscription info:', e)
+      return null
+    }
+  }, [])
+
+  // Fetch subscription info on mount
+  useEffect(() => { refreshSubscription() }, [refreshSubscription])
 
   // Refs to always get latest versions of file operations (avoids stale closures in keyboard handler)
   const fileOpsRef = useRef({ saveToLocalStorage: () => {}, loadFromLocalStorage: () => {}, exportAsJSON: () => {}, importFromJSON: () => {} })
@@ -3474,11 +3496,21 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
         setIsProjectOwner(true)
         setSharePermission(null)
         showToast('Saved to cloud (new project)')
+        refreshSubscription() // refresh project count after creation
       }
       // Also save to localStorage as backup
       localStorage.setItem('stageLayout', JSON.stringify(state))
     } catch (err: any) {
-      showToast(err.message || 'Failed to save to cloud', 'error')
+      const msg = err.message || ''
+      if (msg === 'PROJECT_LIMIT_REACHED') {
+        setUpgradeReason('limit')
+        setUpgradeModalOpen(true)
+      } else if (msg === 'TRIAL_EXPIRED') {
+        setUpgradeReason('trial_expired')
+        setUpgradeModalOpen(true)
+      } else {
+        showToast(msg || 'Failed to save to cloud', 'error')
+      }
     } finally {
       setCloudSaving(false)
     }
@@ -3592,7 +3624,20 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   }
 
   /** Start a new blank project (clears everything, unsets cloud project id) */
-  function newProject() {
+  async function newProject() {
+    // Check subscription before allowing a new project
+    try {
+      const info = await refreshSubscription()
+      if (info && !info.can_create_project) {
+        setUpgradeReason('limit')
+        setUpgradeModalOpen(true)
+        setProjectListOpen(false)
+        return
+      }
+    } catch (e) {
+      // If we can't check, let them proceed — server will enforce on save
+    }
+
     setCurrentProjectId(null)
     setIsProjectOwner(true)
     setSharePermission(null)
@@ -4276,6 +4321,13 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           projectTitle={projectTitle}
         />
       )}
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        subscriptionInfo={subscriptionInfo}
+        onSubscriptionChange={refreshSubscription}
+        reason={upgradeReason}
+      />
     </div>
   )
 }

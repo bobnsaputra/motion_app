@@ -6,6 +6,15 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-03-31
+### Subscription System Security & LemonSqueezy Migration
+- 00:30 — **Server-side project limits**: Migrated project creation logic from the frontend to a secure Supabase RPC (`create_project_if_allowed`). Enforces maximum 1 project for free users and unlimited for "pro" users directly on the database level, preventing client-side tampering. Added strict Row Level Security (RLS) policies to `profiles` and `projects`. (`supabase/migrations/..._subscription_security.sql`, `projects.ts`, `StageBlockingApp.tsx`)
+- 00:35 — **LemonSqueezy Webhooks**: Switched payment provider to LemonSqueezy. Implemented a `lemonsqueezy-webhook` Edge Function to handle `subscription_created`, `subscription_updated`, and `subscription_payment_success` events. Verifies webhook signatures via `crypto.subtle` HMAC and updates the user's `subscription_status` securely. (`lemonsqueezy-webhook/index.ts`)
+- 00:40 — **Checkout Edge Function**: Implemented `create-checkout` Edge Function to securely generate hosted LemonSqueezy checkout URLs. Deployed with `--no-verify-jwt` to correctly handle browser CORS preflight OPTIONS requests without raising 401 Unauthorized errors, validating the user's JWT internally. (`create-checkout/index.ts`)
+- 00:45 — **Upgrade Modal Cleanup**: Removed the 7-day trial flow and simplified the upgrade modal UX completely to just Pro vs Free tier. (`UpgradeModal.tsx`)
+- 00:50 — **Project Rename UX**: Added a subtle Pencil icon and transparent hover highlight next to the project title in the top toolbar to clarify that the title is directly editable. (`Toolbar.tsx`)
+
+
 ## 2026-03-08
 ### Sharing Permissions & View-Only Refinements
 - 10:00 — **View-only mode for shared projects**: Non-owner viewers see a stripped toolbar — no Character, Props, Delete, Duplicate, Rename, Shortcuts, Undo/Redo, Settings, or File menu. Canvas clicks and editing keyboard shortcuts are blocked. Offstage props/characters panels and stage notes are hidden. A "View only" label is shown. (`Toolbar.tsx`, `StageBlockingApp.tsx`)

@@ -462,7 +462,7 @@ export default function Toolbar(props: ToolbarProps) {
               <span className="text-xs text-muted-foreground italic px-2">View only</span>
             )}
 
-            <div className="mx-2 flex-1 flex items-center justify-center min-w-0">
+            <div className="mx-2 flex-1 flex items-center justify-center min-w-0 group">
               {titleEditing && !props.readOnly ? (
                 <input
                   autoFocus
@@ -473,7 +473,16 @@ export default function Toolbar(props: ToolbarProps) {
                   onKeyDown={(e) => { if (e.key === 'Enter') { setTitleEditing(false); props.onProjectTitleChange && props.onProjectTitleChange(titleValue.trim() || 'Untitled') } if (e.key === 'Escape') { setTitleEditing(false); setTitleValue(props.projectTitle || 'Untitled') } }}
                 />
               ) : (
-                <span className="text-sm font-semibold truncate project-title">{props.projectTitle || 'Untitled'}</span>
+                <div 
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${!props.readOnly ? 'cursor-pointer hover:bg-accent/50' : ''}`}
+                  onClick={() => !props.readOnly && setTitleEditing(true)}
+                  title={!props.readOnly ? "Rename Project" : undefined}
+                >
+                  <span className="text-sm font-semibold truncate project-title">{props.projectTitle || 'Untitled'}</span>
+                  {!props.readOnly && (
+                    <Pencil className="h-3 w-3 text-muted-foreground opacity-30 group-hover:opacity-100 transition-opacity" />
+                  )}
+                </div>
               )}
             </div>
 

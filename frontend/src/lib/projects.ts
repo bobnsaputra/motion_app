@@ -35,19 +35,25 @@ export async function loadProject(projectId: string): Promise<ProjectRow> {
   return data
 }
 
-/** Create a new project. Returns the created row. */
+/** Create a new project via server-side RPC (enforces subscription limits). */
 export async function createProject(title: string, projectData: Record<string, unknown>): Promise<ProjectRow> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase.rpc('create_project_if_allowed', {
+    p_title: title,
+    p_data: projectData,
+  })
 
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({ user_id: user.id, title, data: projectData })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
+  if (error) {
+    // Extract user-friendly message from the DB exception
+    const msg = error.message || ''
+    if (msg.includes('PROJECT_LIMIT_REACHED')) {
+      throw new Error('PROJECT_LIMIT_REACHED')
+    }
+    if (msg.includes('TRIAL_EXPIRED')) {
+      throw new Error('TRIAL_EXPIRED')
+    }
+    throw error
+  }
+  return data as ProjectRow
 }
 
 /** Update an existing project's data and/or title */
