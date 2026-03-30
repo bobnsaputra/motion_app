@@ -192,8 +192,17 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
     }
   }, [])
 
-  // Fetch subscription info on mount
-  useEffect(() => { refreshSubscription() }, [refreshSubscription])
+  // Fetch subscription info on mount and handle checkout success redirect
+  useEffect(() => { 
+    refreshSubscription() 
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success') {
+      window.history.replaceState({}, '', window.location.pathname)
+      setTimeout(() => {
+        showToast('🎉 Payment Successful! You are now a Pro member.', 'success')
+      }, 500)
+    }
+  }, [refreshSubscription, showToast])
 
   // Refs to always get latest versions of file operations (avoids stale closures in keyboard handler)
   const fileOpsRef = useRef({ saveToLocalStorage: () => {}, loadFromLocalStorage: () => {}, exportAsJSON: () => {}, importFromJSON: () => {} })
@@ -3978,6 +3987,7 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           canShare={!!currentProjectId && isProjectOwner}
           readOnly={!canEdit && !!currentProjectId}
           cloudSaving={cloudSaving}
+          subscriptionInfo={subscriptionInfo}
           keyframeMode={keyframeMode}
           onToggleKeyframeMode={toggleKeyframeMode}
           keyframes={keyframes}

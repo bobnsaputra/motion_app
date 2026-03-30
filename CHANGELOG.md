@@ -13,6 +13,8 @@ Entries format:
 - 00:40 — **Checkout Edge Function**: Implemented `create-checkout` Edge Function to securely generate hosted LemonSqueezy checkout URLs. Deployed with `--no-verify-jwt` to correctly handle browser CORS preflight OPTIONS requests without raising 401 Unauthorized errors, validating the user's JWT internally. (`create-checkout/index.ts`)
 - 00:45 — **Upgrade Modal Cleanup**: Removed the 7-day trial flow and simplified the upgrade modal UX completely to just Pro vs Free tier. (`UpgradeModal.tsx`)
 - 00:50 — **Project Rename UX**: Added a subtle Pencil icon and transparent hover highlight next to the project title in the top toolbar to clarify that the title is directly editable. (`Toolbar.tsx`)
+- 00:55 — **Payment Success UX**: Added initialization logic to intercept `?checkout=success` URL parameters when returning from LemonSqueezy's hosted checkout. Automatically strips the query parameter to clean the URL and displays a celebratory "Payment Successful!" toast. (`StageBlockingApp.tsx`)
+- 00:58 — **Pro Status Badge**: Designed and implemented a visually distinct, pulsing green `PRO` badge in the right side of the main toolbar, appearing exclusively when the user is on the paid tier. (`Toolbar.tsx`, `StageBlockingApp.tsx`)
 
 
 ## 2026-03-08

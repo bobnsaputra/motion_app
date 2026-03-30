@@ -131,6 +131,7 @@ interface ToolbarProps {
   selectedPropId?: string | null
   onTogglePropsMode?: () => void
   onDeselectChar?: () => void
+  subscriptionInfo?: { status: string }
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -551,6 +552,13 @@ export default function Toolbar(props: ToolbarProps) {
                 <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onCloudSave={onCloudSave} onOpenProjects={onOpenProjects} onShareProject={props.onShareProject} canShare={props.canShare} cloudSaving={props.cloudSaving} onClose={() => setFileMenuOpen(false)} />
               </div>
               </>
+              )}
+
+              {/* Pro Badge */}
+              {props.subscriptionInfo?.status === 'pro' && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 ml-1 mr-1 text-[10px] font-bold uppercase tracking-widest text-[#34d399] bg-[#34d399]/10 border border-[#34d399]/20 rounded-full cursor-default" title="Pro Account">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]"></span>PRO
+                </div>
               )}
 
               <div className="relative" ref={menuRef}>
