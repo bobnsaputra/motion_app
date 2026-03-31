@@ -8,7 +8,7 @@ interface UpgradeModalProps {
   onClose: () => void
   subscriptionInfo: SubscriptionInfo | null
   onSubscriptionChange: () => void  // callback to refresh subscription info
-  reason?: 'limit' | 'trial_expired' | 'general'
+  reason?: 'limit' | 'trial_expired' | 'general' | 'feature' | 'usage_expired'
 }
 
 export default function UpgradeModal({ isOpen, onClose, subscriptionInfo, onSubscriptionChange, reason = 'general' }: UpgradeModalProps) {
@@ -22,15 +22,25 @@ export default function UpgradeModal({ isOpen, onClose, subscriptionInfo, onSubs
 
   if (!isOpen) return null
 
+  const isHardLock = reason === 'usage_expired'
+
   const info = subscriptionInfo
   const statusLabel = info?.status === 'pro' ? 'Pro' : 'Free'
 
   const headingText = reason === 'limit'
     ? 'Project Limit Reached'
+    : reason === 'feature'
+    ? 'Pro Feature'
+    : reason === 'usage_expired'
+    ? 'Free Usage Expired'
     : 'Upgrade to Pro'
 
   const descriptionText = reason === 'limit'
     ? 'Free accounts are limited to 1 project. Upgrade to Pro for unlimited projects, or enter a voucher code.'
+    : reason === 'feature'
+    ? 'please subscribe to use our full feature'
+    : reason === 'usage_expired'
+    ? 'Your free usage time has ended. Subscribe to Pro to continue using StageSim.'
     : 'Unlock unlimited projects, PDF export, and priority support.'
 
   async function handleRedeemVoucher() {
@@ -97,7 +107,7 @@ export default function UpgradeModal({ isOpen, onClose, subscriptionInfo, onSubs
   const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db'
 
   return (
-    <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget && !isHardLock) onClose() }}>
       <div style={modalStyle}>
         {/* Header gradient */}
         <div style={{
@@ -113,6 +123,7 @@ export default function UpgradeModal({ isOpen, onClose, subscriptionInfo, onSubs
                 {descriptionText}
               </p>
             </div>
+            {!isHardLock && (
             <button onClick={onClose} style={{
               background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8,
               color: '#fff', width: 32, height: 32, cursor: 'pointer', fontSize: 16,
@@ -122,6 +133,7 @@ export default function UpgradeModal({ isOpen, onClose, subscriptionInfo, onSubs
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
             >✕</button>
+            )}
           </div>
 
           {/* Current status badge */}

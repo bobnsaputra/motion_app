@@ -9,7 +9,7 @@ import ShareProjectModal from './ShareProjectModal'
 import UpgradeModal from './UpgradeModal'
 import { createProject, updateProject, loadProject } from '../lib/projects'
 import { getMyPermission } from '../lib/sharing'
-import { getSubscriptionInfo, type SubscriptionInfo } from '../lib/subscription'
+import { getSubscriptionInfo, recordUsage, type SubscriptionInfo } from '../lib/subscription'
 
 interface StageBlockingAppProps {
   user: User
@@ -177,14 +177,24 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
 
   // ── Subscription state ──
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
-  const [upgradeReason, setUpgradeReason] = useState<'limit' | 'trial_expired' | 'general'>('general')
+  const [upgradeReason, setUpgradeReason] = useState<'limit' | 'trial_expired' | 'general' | 'feature' | 'usage_expired'>('general')
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+  const [usageSecondsRemaining, setUsageSecondsRemaining] = useState<number>(86400)
+  const [usageExpired, setUsageExpired] = useState(false)
 
   /** Fetch/refresh subscription info from server */
   const refreshSubscription = useCallback(async () => {
     try {
       const info = await getSubscriptionInfo()
       setSubscriptionInfo(info)
+      if (info.usage_limit && info.usage_seconds_used !== undefined) {
+        setUsageSecondsRemaining(Math.max(0, info.usage_limit - info.usage_seconds_used))
+      }
+      if (info.usage_expired && info.status !== 'pro' && !info.has_voucher) {
+        setUsageExpired(true)
+        setUpgradeReason('usage_expired')
+        setTimeout(() => setUpgradeModalOpen(true), 100)
+      }
       return info
     } catch (e) {
       console.warn('Failed to fetch subscription info:', e)
@@ -203,6 +213,51 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
       }, 500)
     }
   }, [refreshSubscription, showToast])
+
+  // ── Usage heartbeat ──
+  // Sends a heartbeat every 60s ONLY when the browser tab is visible and user is free
+  useEffect(() => {
+    // Pro users and voucher holders are exempt
+    if (subscriptionInfo?.status === 'pro' || subscriptionInfo?.has_voucher) return
+    if (usageExpired) return
+
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
+    const tick = async () => {
+      // Only tick when the tab is visible
+      if (document.visibilityState !== 'visible') return
+      try {
+        const result = await recordUsage(60)
+        const remaining = Math.max(0, result.usage_limit - result.usage_seconds_used)
+        setUsageSecondsRemaining(remaining)
+        if (result.usage_expired) {
+          setUsageExpired(true)
+          setUpgradeReason('usage_expired')
+          setUpgradeModalOpen(true)
+        }
+      } catch (e) {
+        // silently ignore heartbeat errors
+      }
+    }
+
+    // Also decrement the local counter every second for smooth UI updates
+    const localTickId = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      setUsageSecondsRemaining(prev => Math.max(0, prev - 1))
+    }, 1000)
+
+    // Server heartbeat every 60 seconds
+    intervalId = setInterval(tick, 60000)
+
+    // Send an initial heartbeat after 5s to get accurate server state
+    const initialTimeout = setTimeout(tick, 5000)
+
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+      clearInterval(localTickId)
+      clearTimeout(initialTimeout)
+    }
+  }, [subscriptionInfo?.status, subscriptionInfo?.has_voucher, usageExpired])
 
   // Refs to always get latest versions of file operations (avoids stale closures in keyboard handler)
   const fileOpsRef = useRef({ saveToLocalStorage: () => {}, loadFromLocalStorage: () => {}, exportAsJSON: () => {}, importFromJSON: () => {} })
@@ -3968,12 +4023,23 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           setFileMenuOpen={setFileMenuOpen}
           onSave={() => fileOpsRef.current.saveToLocalStorage()}
           onLoad={() => fileOpsRef.current.loadFromLocalStorage()}
-          onExportJSON={() => fileOpsRef.current.exportAsJSON()}
+          onExportJSON={() => {
+            if (subscriptionInfo?.status === 'pro') fileOpsRef.current.exportAsJSON()
+            else { setUpgradeReason('feature'); setUpgradeModalOpen(true); }
+          }}
           onImportJSON={() => fileOpsRef.current.importFromJSON()}
-          onExportPNG={exportAsImage}
+          onExportPNG={() => {
+            if (subscriptionInfo?.status === 'pro') exportAsImage()
+            else { setUpgradeReason('feature'); setUpgradeModalOpen(true); }
+          }}
           onCloudSave={saveToCloud}
           onOpenProjects={() => setProjectListOpen(true)}
           onShareProject={() => {
+            if (subscriptionInfo?.status !== 'pro') {
+              setUpgradeReason('feature')
+              setUpgradeModalOpen(true)
+              return
+            }
             if (!currentProjectId) {
               showToast('Save the project to cloud first before sharing', 'info')
               return
@@ -3987,7 +4053,8 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
           canShare={!!currentProjectId && isProjectOwner}
           readOnly={!canEdit && !!currentProjectId}
           cloudSaving={cloudSaving}
-          subscriptionInfo={subscriptionInfo}
+          subscriptionInfo={subscriptionInfo || undefined}
+          usageSecondsRemaining={usageSecondsRemaining}
           keyframeMode={keyframeMode}
           onToggleKeyframeMode={toggleKeyframeMode}
           keyframes={keyframes}

@@ -8,9 +8,15 @@ import { useTheme } from './hooks/useTheme'
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
+  const [recoveryMode, setRecoveryMode] = useState(false)
   const { isDark } = useTheme()
 
   useEffect(() => {
+    // Check if URL has recovery hash on initial load
+    if (window.location.hash.includes('type=recovery')) {
+      setRecoveryMode(true)
+    }
+
     // Check current session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -24,7 +30,11 @@ export default function App() {
     })
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true)
+      }
+      
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -69,8 +79,18 @@ export default function App() {
     )
   }
 
-  if (!user) {
-    return <Login onLoginSuccess={setUser} />
+  if (!user || recoveryMode) {
+    return (
+      <Login 
+        onLoginSuccess={(u) => { 
+          setRecoveryMode(false)
+          // Clean the URL hash
+          window.history.replaceState({}, '', window.location.pathname)
+          setUser(u) 
+        }} 
+        initialMode={recoveryMode ? 'update_password' : 'login'} 
+      />
+    )
   }
 
   return <StageBlockingApp user={user} onLogout={async () => {

@@ -132,6 +132,7 @@ interface ToolbarProps {
   onTogglePropsMode?: () => void
   onDeselectChar?: () => void
   subscriptionInfo?: { status: string }
+  usageSecondsRemaining?: number
 }
 
 export default function Toolbar(props: ToolbarProps) {
@@ -559,6 +560,28 @@ export default function Toolbar(props: ToolbarProps) {
                 <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 ml-1 mr-1 text-[10px] font-bold uppercase tracking-widest text-[#34d399] bg-[#34d399]/10 border border-[#34d399]/20 rounded-full cursor-default" title="Pro Account">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]"></span>PRO
                 </div>
+              )}
+
+              {/* Cryptic usage timer — no label, just HH:MM */}
+              {props.subscriptionInfo?.status !== 'pro' && props.usageSecondsRemaining !== undefined && (
+                (() => {
+                  const s = props.usageSecondsRemaining
+                  const h = Math.floor(s / 3600)
+                  const m = Math.floor((s % 3600) / 60)
+                  const isLow = s < 3600 // less than 1 hour
+                  const isCritical = s < 600 // less than 10 minutes
+                  return (
+                    <div
+                      className={`hidden sm:flex items-center tabular-nums font-mono text-[10px] px-1.5 py-0.5 rounded cursor-default transition-colors ${
+                        isCritical ? 'text-red-500 bg-red-500/10 animate-pulse' :
+                        isLow ? 'text-amber-500 bg-amber-500/8' :
+                        'text-muted-foreground/50'
+                      }`}
+                    >
+                      {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+                    </div>
+                  )
+                })()
               )}
 
               <div className="relative" ref={menuRef}>

@@ -12,6 +12,9 @@ export type SubscriptionInfo = {
   voucher_code: string | null
   trial_ends_at: string | null
   can_create_project: boolean
+  usage_seconds_used: number
+  usage_limit: number
+  usage_expired: boolean
 }
 
 export type VoucherResult = {
@@ -46,6 +49,13 @@ export async function startTrial(): Promise<TrialResult> {
   const { data, error } = await supabase.rpc('start_trial')
   if (error) throw error
   return data as TrialResult
+}
+
+/** Record usage heartbeat (called every 60s while tab is visible) */
+export async function recordUsage(seconds: number = 60): Promise<{ usage_seconds_used: number; usage_limit: number; usage_expired: boolean }> {
+  const { data, error } = await supabase.rpc('record_usage', { p_seconds: seconds })
+  if (error) throw error
+  return data as { usage_seconds_used: number; usage_limit: number; usage_expired: boolean }
 }
 
 /** Helper: format trial end date relative to now */
