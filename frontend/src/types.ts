@@ -60,4 +60,5 @@ export type Keyframe = {
   stageProps?: StageProp[] // stage props/decorations for this keyframe
   linkedTo?: number // optional index of another keyframe this one is linked to (follows that keyframe until edited)
   stageNotes?: { left: string; center: string; right: string } // director notes for left/center/right stage areas
+  audio?: { url: string; name: string; path: string } // an optional sound effect to play
 }

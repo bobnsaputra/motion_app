@@ -6,6 +6,19 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-04-02
+### Sound Effects & Playback Fixes
+- 00:00 — **Keyframe sound effects during playback**: Sounds attached to keyframes now fire automatically during playback (Q/W/E/Space). Audio is triggered when each keyframe is reached, including the starting keyframe. Uses fire-and-forget `Audio` elements tracked via ref. (`StageBlockingApp.tsx`)
+- 00:05 — **Uninterruptible playback with proper stop**: Sounds play to completion during animation, but are immediately paused and cleared when playback is stopped manually or ends naturally via a `useEffect` on `isPlaying`. (`StageBlockingApp.tsx`)
+- 00:10 — **MP3-only uploads**: Restricted audio uploads to `.mp3` files only. Added server-side extension check and updated help text in the upload modal. (`AudioModal.tsx`)
+- 00:15 — **AudioModal wired up**: Connected the existing AudioModal component to StageBlockingApp — added import, `audioModalOpen` state, and passed `onOpenAudioModal` callback to Toolbar. The 🎵 button now opens the upload/manage modal. (`StageBlockingApp.tsx`)
+- 00:20 — **Cloud save guard for audio**: Clicking the sound button without saving to cloud first shows a toast: "Save to cloud first before attaching sound". (`StageBlockingApp.tsx`)
+- 00:25 — **Audio indicator & change flow**: Music icon in the toolbar highlights when the current keyframe has audio. Hover tooltip shows the file name. AudioModal now shows a "Change Sound" button alongside "Remove" when audio exists. (`Toolbar.tsx`, `AudioModal.tsx`)
+- 00:30 — **Auto-save after audio changes**: Attaching or removing a sound auto-saves the project to cloud using a ref-based flag that triggers `saveToCloud()` after the keyframes state flushes. (`StageBlockingApp.tsx`)
+- 00:35 — **Playback key deduplication**: Consolidated Q/W/E/Space handlers into a single mutually exclusive block with `return` to prevent double-fire. Any key stops playback if already playing. (`StageBlockingApp.tsx`)
+- 00:40 — **Space bar play/stop**: Space now toggles play scene / stop (same as W) in keyframe mode. (`StageBlockingApp.tsx`)
+- 00:45 — **Usage timer moved below stage**: Relocated the cryptic HH:MM usage countdown from the toolbar to below the stage canvas, centered and width-constrained. (`StageBlockingApp.tsx`, `Toolbar.tsx`)
+
 ## 2026-03-31
 ### Subscription System Security & LemonSqueezy Migration
 - 00:30 — **Server-side project limits**: Migrated project creation logic from the frontend to a secure Supabase RPC (`create_project_if_allowed`). Enforces maximum 1 project for free users and unlimited for "pro" users directly on the database level, preventing client-side tampering. Added strict Row Level Security (RLS) policies to `profiles` and `projects`. (`supabase/migrations/..._subscription_security.sql`, `projects.ts`, `StageBlockingApp.tsx`)

@@ -7,6 +7,7 @@ import ToastContainer, { ToastType } from './Toast'
 import ProjectListModal from './ProjectListModal'
 import ShareProjectModal from './ShareProjectModal'
 import UpgradeModal from './UpgradeModal'
+import AudioModal from './AudioModal'
 import { createProject, updateProject, loadProject } from '../lib/projects'
 import { getMyPermission } from '../lib/sharing'
 import { getSubscriptionInfo, recordUsage, type SubscriptionInfo } from '../lib/subscription'
@@ -116,6 +117,9 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
   const [offstageOpen, setOffstageOpen] = useState(false)
   const kfsRef = useRef<Keyframe[] | null>(null)
   const animPairRef = useRef(0)
+  const activeAudiosRef = useRef<Set<HTMLAudioElement>>(new Set())
+  const animateFnRef = useRef<((timestamp: number) => void) | null>(null)
+  const [isPaused, setIsPaused] = useState(false)
 
   // ── Note / annotation mode ──
   const [noteMode, setNoteMode] = useState(false)
@@ -180,6 +184,8 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
   const canEdit = isProjectOwner || sharePermission === 'edit'
   const [projectListOpen, setProjectListOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [audioModalOpen, setAudioModalOpen] = useState(false)
+  const pendingAudioSaveRef = useRef(false)
   const [cloudSaving, setCloudSaving] = useState(false)
 
   // ── Subscription state ──
@@ -761,21 +767,19 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
         e.preventDefault()
         addKeyframe()
       }
-      if (e.key === ' ' && keyframeMode) {
+      // Playback keys — mutually exclusive, any key stops if already playing
+      if (keyframeMode && (e.key === 'q' || e.key === 'Q' || e.key === 'w' || e.key === 'W' || e.key === ' ' || e.key === 'e' || e.key === 'E')) {
         e.preventDefault()
-        if (isPlaying) { stopPlayback() } else { startPlayback() }
-      }
-      if ((e.key === 'q' || e.key === 'Q') && keyframeMode) {
-        e.preventDefault()
-        if (isPlaying) { stopPlayback() } else { startPlaybackSingle() }
-      }
-      if ((e.key === 'w' || e.key === 'W') && keyframeMode) {
-        e.preventDefault()
-        if (isPlaying) { stopPlayback() } else { startPlayback() }
-      }
-      if ((e.key === 'e' || e.key === 'E') && keyframeMode) {
-        e.preventDefault()
-        if (isPlaying) { stopPlayback() } else { startPlaybackAll() }
+        if (isPlaying) {
+          stopPlayback()
+        } else if (e.key === 'q' || e.key === 'Q') {
+          startPlaybackSingle()
+        } else if (e.key === 'w' || e.key === 'W' || e.key === ' ') {
+          startPlayback()
+        } else if (e.key === 'e' || e.key === 'E') {
+          startPlaybackAll()
+        }
+        return
       }
       if ((e.key === 'ArrowDown') && keyframeMode) {
         e.preventDefault()
@@ -2568,6 +2572,16 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
   }
 
   /** Play from the active keyframe forward through the rest of the scene */
+  /** Fire-and-forget: play a keyframe's sound effect to completion (uninterruptible). */
+  function triggerKeyframeAudio(kf: Keyframe) {
+    if (!kf.audio?.url) return
+    const audio = new Audio(kf.audio.url)
+    activeAudiosRef.current.add(audio)
+    audio.addEventListener('ended', () => { activeAudiosRef.current.delete(audio) })
+    audio.addEventListener('error', () => { activeAudiosRef.current.delete(audio) })
+    audio.play().catch(() => { activeAudiosRef.current.delete(audio) })
+  }
+
   function startPlaybackSingle() {
     if (keyframes.length < 2) return
     const sceneStartIdx = sceneBoundaries[sceneIndex] ?? 0
@@ -2607,6 +2621,10 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
     setActiveKeyframeIndex(playStart + 1)
     setCharacters(JSON.parse(JSON.stringify(sceneKfs[0].characters)))
 
+    // Fire audio for the starting keyframe and first target keyframe
+    triggerKeyframeAudio(sceneKfs[0])
+    triggerKeyframeAudio(sceneKfs[1])
+
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
       const elapsed = timestamp - startTime
@@ -2626,6 +2644,11 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
         currentKfPair++
         startTime = startTime! + msMove
         pairProgress = (timestamp - startTime) / msMove
+
+        // Fire audio for the new target keyframe (uninterruptible)
+        if (currentKfPair < totalPairs) {
+          triggerKeyframeAudio(sceneKfs[currentKfPair + 1])
+        }
 
         if (currentKfPair >= totalPairs) {
           setCharacters(JSON.parse(JSON.stringify(sceneKfs[sceneKfs.length - 1].characters)))
@@ -2713,6 +2736,10 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
     setActiveKeyframeIndex(Math.min(sceneStart + startIndex + 1, sceneStart + sceneKfs.length - 1))
     setCharacters(JSON.parse(JSON.stringify(sceneKfs[startIndex].characters)))
 
+    // Fire audio for the starting keyframe and first target keyframe
+    triggerKeyframeAudio(sceneKfs[startIndex])
+    triggerKeyframeAudio(sceneKfs[startIndex + 1])
+
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
       const elapsed = timestamp - startTime
@@ -2734,6 +2761,11 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
         currentKfPair++
         startTime = startTime! + msMove
         pairProgress = (timestamp - startTime) / msMove
+
+        // Fire audio for the new target keyframe (uninterruptible)
+        if (currentKfPair < totalPairs) {
+          triggerKeyframeAudio(sceneKfs[currentKfPair + 1])
+        }
 
         if (currentKfPair >= totalPairs) {
           // Animation complete — snap to final frame within the scene
@@ -2833,6 +2865,10 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
     setActiveKeyframeIndex(1)
     setCharacters(JSON.parse(JSON.stringify(allKfs[0].characters)))
 
+    // Fire audio for the starting keyframe and first target keyframe
+    triggerKeyframeAudio(allKfs[0])
+    triggerKeyframeAudio(allKfs[1])
+
     function animate(timestamp: number) {
       if (startTime === null) startTime = timestamp
       const elapsed = timestamp - startTime
@@ -2856,6 +2892,11 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
         currentKfPair++
         startTime = startTime! + msMove
         pairProgress = (timestamp - startTime) / msMove
+
+        // Fire audio for the new target keyframe (uninterruptible)
+        if (currentKfPair < totalPairs) {
+          triggerKeyframeAudio(allKfs[currentKfPair + 1])
+        }
 
         if (currentKfPair >= totalPairs) {
           setCharacters(JSON.parse(JSON.stringify(allKfs[allKfs.length - 1].characters)))
@@ -2926,12 +2967,38 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
       cancelAnimationFrame(animFrameRef.current)
       animFrameRef.current = null
     }
+    // Stop all playing audio immediately
+    activeAudiosRef.current.forEach(audio => {
+      audio.pause()
+      audio.currentTime = 0
+    })
+    activeAudiosRef.current.clear()
     kfsRef.current = null
     animPairRef.current = 0
     if (keyframes.length > 0 && activeKeyframeIndex < keyframes.length) {
       setCharacters(JSON.parse(JSON.stringify(keyframes[activeKeyframeIndex].characters)))
     }
   }
+
+  // Stop all audio when playback ends (natural finish or manual stop)
+  useEffect(() => {
+    if (!isPlaying) {
+      activeAudiosRef.current.forEach(audio => {
+        audio.pause()
+        audio.currentTime = 0
+      })
+      activeAudiosRef.current.clear()
+    }
+  }, [isPlaying])
+
+  // Auto-save to cloud after audio attach/remove (runs after keyframes state has flushed)
+  useEffect(() => {
+    if (pendingAudioSaveRef.current && currentProjectId) {
+      pendingAudioSaveRef.current = false
+      saveToCloud()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyframes])
 
   // Auto-save characters to active keyframe when editing (non-playing)
   useEffect(() => {
@@ -4131,6 +4198,17 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
             setPropsMode(prev => !prev)
             setSelectedPropId(null)
           }}
+          onOpenAudioModal={() => {
+            if (!currentProjectId) {
+              showToast('Save to cloud first before attaching sound', 'info')
+              return
+            }
+            if (!keyframeMode) {
+              showToast('Enter keyframe mode first to attach sound', 'info')
+              return
+            }
+            setAudioModalOpen(true)
+          }}
           />
         </div>
         <div className="inline-block relative" style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
@@ -4346,6 +4424,26 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
             </div>
           </div>}
         </div>
+        {/* Usage timer — below stage */}
+        {subscriptionInfo?.status !== 'pro' && usageSecondsRemaining !== undefined && (() => {
+          const s = usageSecondsRemaining
+          const h = Math.floor(s / 3600)
+          const m = Math.floor((s % 3600) / 60)
+          const isLow = s < 3600
+          const isCritical = s < 600
+          return (
+            <div
+              className={`flex items-center justify-center tabular-nums font-mono text-[11px] px-2 py-1 rounded cursor-default transition-colors mb-2 ${
+                isCritical ? 'text-red-500 bg-red-500/10 animate-pulse' :
+                isLow ? 'text-amber-500 bg-amber-500/8' :
+                'text-muted-foreground/50'
+              }`}
+              style={{ maxWidth: totalCanvasWidth + 'px' }}
+            >
+              {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+            </div>
+          )
+        })()}
         {/* Stage Notes — 3-column text areas below stage */}
         {canEdit && keyframeMode && keyframes.length > 0 && (() => {
           const kf = keyframes[activeKeyframeIndex]
@@ -4412,6 +4510,20 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
         onSubscriptionChange={refreshSubscription}
         reason={upgradeReason}
       />
+      {audioModalOpen && currentProjectId && (
+        <AudioModal
+          onClose={() => setAudioModalOpen(false)}
+          currentAudio={keyframes[activeKeyframeIndex]?.audio}
+          onSave={(audio) => {
+            pendingAudioSaveRef.current = true
+            setKeyframes(prev => prev.map((kf, i) =>
+              i === activeKeyframeIndex ? { ...kf, audio } : kf
+            ))
+          }}
+          projectId={currentProjectId}
+          keyframeId={keyframes[activeKeyframeIndex]?.id ?? 0}
+        />
+      )}
     </div>
   )
 }
