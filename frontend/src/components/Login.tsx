@@ -136,7 +136,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, initialMode = 'login' }) 
                         data: {
                             username: formData.username,
                         },
-                        captchaToken: captchaToken || undefined
+                        captchaToken: captchaToken || undefined,
+                        emailRedirectTo: window.location.origin
                     },
                 });
 
