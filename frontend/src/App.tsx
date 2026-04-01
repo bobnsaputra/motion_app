@@ -93,9 +93,18 @@ export default function App() {
     )
   }
 
-  return <StageBlockingApp user={user} onLogout={async () => {
-    await supabase.auth.signOut()
-    try { localStorage.removeItem('stageProjectTitle') } catch (e) {}
-    setUser(null)
-  }} />
+  const isSignupVerification = window.location.hash.includes('type=signup');
+  if (isSignupVerification) {
+      window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  return <StageBlockingApp 
+      user={user} 
+      initialToast={isSignupVerification ? 'Your email has been successfully verified!' : undefined}
+      onLogout={async () => {
+        await supabase.auth.signOut()
+        try { localStorage.removeItem('stageProjectTitle') } catch (e) {}
+        setUser(null)
+      }} 
+  />
 }

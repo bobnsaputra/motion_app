@@ -14,6 +14,7 @@ import { getSubscriptionInfo, recordUsage, type SubscriptionInfo } from '../lib/
 interface StageBlockingAppProps {
   user: User
   onLogout: () => void
+  initialToast?: string
 }
 
 const PASTEL_PAIRS = [
@@ -32,7 +33,7 @@ const PASTEL_PAIRS = [
   { head: '#6E6E78', shoulder: '#8A8A8A' },  // charcoal + silver
 ]
 
-export default function StageBlockingApp({ user, onLogout }: StageBlockingAppProps) {
+export default function StageBlockingApp({ user, onLogout, initialToast }: StageBlockingAppProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [characters, setCharacters] = useState<Character[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -83,6 +84,12 @@ export default function StageBlockingApp({ user, onLogout }: StageBlockingAppPro
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
     setToast({ message, type, key: ++toastKey.current })
   }, [])
+
+  useEffect(() => {
+    if (initialToast) {
+      setTimeout(() => showToast(initialToast), 500)
+    }
+  }, [initialToast, showToast])
 
   // ── Keyframe state ──
   const [keyframeMode, setKeyframeMode] = useState(false)
