@@ -6,6 +6,12 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-04-07
+### Project Document Uploads
+- 22:00 — **Document upload modal**: Added a full document management modal accessible from File Menu → "Documents". Supports uploading PDF, Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx), TXT, CSV, and RTF files up to 25MB each. Features drag-and-drop upload, file listing with type-specific icons (📄📝📊📑), download, and delete. Files stored in Supabase Storage under `project-documents` bucket with user-scoped paths. (`DocumentsModal.tsx`, `StageBlockingApp.tsx`)
+- 22:05 — **Documents storage bucket**: Created Supabase migration for `project-documents` storage bucket with RLS policies matching the existing `project-audio` pattern — public read, owner-only write/update/delete. (`20260407000000_create_documents_storage.sql`)
+- 22:10 — **File Menu integration**: Added "Documents" button (paperclip icon) to the File Menu between "Share Project" and the local operations divider. Requires saving to cloud first — shows helpful toast if no cloud project exists. (`FileMenu.tsx`, `Toolbar.tsx`, `StageBlockingApp.tsx`)
+
 ## 2026-04-02
 ### Sound Effects & Playback Fixes
 - 00:00 — **Keyframe sound effects during playback**: Sounds attached to keyframes now fire automatically during playback (Q/W/E/Space). Audio is triggered when each keyframe is reached, including the starting keyframe. Uses fire-and-forget `Audio` elements tracked via ref. (`StageBlockingApp.tsx`)

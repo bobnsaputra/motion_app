@@ -8,6 +8,7 @@ import ProjectListModal from './ProjectListModal'
 import ShareProjectModal from './ShareProjectModal'
 import UpgradeModal from './UpgradeModal'
 import AudioModal from './AudioModal'
+import DocumentsModal from './DocumentsModal'
 import { createProject, updateProject, loadProject } from '../lib/projects'
 import { getMyPermission } from '../lib/sharing'
 import { getSubscriptionInfo, recordUsage, type SubscriptionInfo } from '../lib/subscription'
@@ -185,6 +186,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
   const [projectListOpen, setProjectListOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [audioModalOpen, setAudioModalOpen] = useState(false)
+  const [documentsModalOpen, setDocumentsModalOpen] = useState(false)
   const pendingAudioSaveRef = useRef(false)
   const [cloudSaving, setCloudSaving] = useState(false)
 
@@ -4209,6 +4211,13 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
             }
             setAudioModalOpen(true)
           }}
+          onOpenDocuments={() => {
+            if (!currentProjectId) {
+              showToast('Save the project to cloud first before uploading documents', 'info')
+              return
+            }
+            setDocumentsModalOpen(true)
+          }}
           />
         </div>
         <div className="inline-block relative" style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
@@ -4522,6 +4531,12 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
           }}
           projectId={currentProjectId}
           keyframeId={keyframes[activeKeyframeIndex]?.id ?? 0}
+        />
+      )}
+      {documentsModalOpen && currentProjectId && (
+        <DocumentsModal
+          onClose={() => setDocumentsModalOpen(false)}
+          projectId={currentProjectId}
         />
       )}
     </div>

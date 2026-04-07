@@ -11,6 +11,7 @@ interface FileMenuProps {
   onCloudSave: () => void
   onOpenProjects: () => void
   onShareProject?: () => void
+  onOpenDocuments?: () => void
   cloudSaving?: boolean
   canShare?: boolean
 }
@@ -26,6 +27,7 @@ export default function FileMenu({
   onCloudSave,
   onOpenProjects,
   onShareProject,
+  onOpenDocuments,
   cloudSaving,
   canShare
 }: FileMenuProps) {
@@ -64,6 +66,13 @@ export default function FileMenu({
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
         <span>Share Project</span>
       </button>
+      <button
+        onClick={() => { if (onOpenDocuments) handleClick(onOpenDocuments) }}
+        className="w-full text-left px-3 py-2 hover:bg-accent/10 flex items-center gap-2"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        <span>Documents</span>
+      </button>
       <div className="border-t border-gray-200 my-1.5" />
       <button onClick={() => handleClick(onSave)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>S</u>ave Local</span></button>
       <button onClick={() => handleClick(onLoad)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span><u>L</u>oad Local</span></button>
@@ -73,3 +82,4 @@ export default function FileMenu({
     </div>
   )
 }
+

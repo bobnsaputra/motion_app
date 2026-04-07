@@ -128,6 +128,7 @@ interface ToolbarProps {
   noteMode?: boolean
   onToggleNoteMode?: () => void
   onOpenAudioModal?: () => void
+  onOpenDocuments?: () => void
   propsMode?: boolean
   selectedPropId?: string | null
   onTogglePropsMode?: () => void
@@ -564,7 +565,7 @@ export default function Toolbar(props: ToolbarProps) {
 
               <div className="relative">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setFileMenuOpen(!fileMenuOpen); setConfigMenuOpen(false); }} title="File operations"><Save className="h-4 w-4" /></Button>
-                <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onCloudSave={onCloudSave} onOpenProjects={onOpenProjects} onShareProject={props.onShareProject} canShare={props.canShare} cloudSaving={props.cloudSaving} onClose={() => setFileMenuOpen(false)} />
+                <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onCloudSave={onCloudSave} onOpenProjects={onOpenProjects} onShareProject={props.onShareProject} onOpenDocuments={props.onOpenDocuments} canShare={props.canShare} cloudSaving={props.cloudSaving} onClose={() => setFileMenuOpen(false)} />
               </div>
               </>
               )}
