@@ -49,8 +49,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, initialMode = 'login' }) 
             }
         }
         
-        // ALL modes require Cloudflare Turnstile token now!
-        if (!captchaToken) {
+        // Captcha required for all modes except update_password (user is already authenticated via recovery link)
+        if (mode !== 'update_password' && !captchaToken) {
             setError('Please complete the security check');
             return false;
         }

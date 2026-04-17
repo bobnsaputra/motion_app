@@ -6,6 +6,11 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-04-17
+### Bug Fixes
+- 00:00 — **Password reset captcha fix**: Fixed "Please complete the security check" error on the Update Password page. The Turnstile widget was hidden for `update_password` mode but `validateForm()` still required a captcha token. Now skips the captcha check for password reset since the user is already authenticated via the recovery email link. (`Login.tsx`)
+- 00:05 — **Tablet/mobile stage responsiveness**: Fixed the stage canvas being cut off on Android tablets. Added responsive CSS scaling (`max-width: 90%; height: auto`) to the stage canvas, `overflow-x: hidden` on the app container, and constrained the toolbar to `min(max-width, 100%)`. (`styles.css`, `StageBlockingApp.tsx`)
+
 ## 2026-04-07
 ### Project Document Uploads
 - 22:00 — **Document upload modal**: Added a full document management modal accessible from File Menu → "Documents". Supports uploading PDF, Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx), TXT, CSV, and RTF files up to 25MB each. Features drag-and-drop upload, file listing with type-specific icons (📄📝📊📑), download, and delete. Files stored in Supabase Storage under `project-documents` bucket with user-scoped paths. (`DocumentsModal.tsx`, `StageBlockingApp.tsx`)

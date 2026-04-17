@@ -4046,7 +4046,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
 
       {/* Main Content Area (Full width, sidebar overlays on top) */}
       <div className="flex-1 flex flex-col min-w-0 relative pt-8 justify-between items-center w-full">
-        <div style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', margin: '0 auto' }}>
+        <div style={{ width: '100%', maxWidth: Math.min(totalCanvasWidth, window.innerWidth) + 'px', margin: '0 auto' }}>
           <Toolbar
           addMode={addMode}
           setAddMode={setAddMode}
@@ -4220,7 +4220,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
           }}
           />
         </div>
-        <div className="inline-block relative" style={{ width: '100%', maxWidth: totalCanvasWidth + 'px', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
+        <div className="inline-block relative" style={{ width: '100%', maxWidth: '100%', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
           <StageCanvas
             canvasRef={canvasRef}
             canvasSize={{ width: totalCanvasWidth, height: canvasSize.height }}
