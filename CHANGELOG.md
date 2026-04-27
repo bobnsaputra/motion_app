@@ -12,6 +12,11 @@ Entries format:
 - 21:05 — **Export PDF button in File Menu**: Added "Export PDF" button below "Export PNG" in the File Menu. Wired through Toolbar props (`onExportPDF`). Gated behind Pro subscription — free users see the Upgrade modal. Shows info toast if no keyframes exist yet. Uses dynamic `import()` for code-splitting so jsPDF is only loaded when needed. (`FileMenu.tsx`, `Toolbar.tsx`, `StageBlockingApp.tsx`)
 - 21:10 — **jsPDF dependency**: Added `jspdf@^4.2.1` to frontend dependencies. (`package.json`)
 
+### Stage Templates Configuration
+- 22:45 — **Stage Templates Config**: Added a new Stage Template selector (Proscenium, Thrust, Arena) to the configuration menu, rendering custom canvas scale and boundaries based on template memory mapping. Added aesthetic stage layout indicator buttons to `ConfigMenu.tsx`. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `exportPDF.ts`, `types.ts`)
+- 22:50 — **Template Storage Memory**: Config menu automatically caches scaling and wing preferences separately for all available templates during a session to easily toggle back and forth without data loss. (`ConfigMenu.tsx`)
+- 23:00 — **Dynamic Drawing Rules**: Implemented complex rendering overlays including off-screen audience area muting, custom thrust aprons, and dynamically-computed bounds for elliptical arena setups directly drawn onto target layers. Integrated pure white stage cutout for Arena configurations across all views. (`StageBlockingApp.tsx`, `exportPDF.ts`)
+
 ## 2026-04-17
 ### Bug Fixes
 - 00:00 — **Password reset captcha fix**: Fixed "Please complete the security check" error on the Update Password page. The Turnstile widget was hidden for `update_password` mode but `validateForm()` still required a captcha token. Now skips the captcha check for password reset since the user is already authenticated via the recovery email link. (`Login.tsx`)

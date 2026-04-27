@@ -17,12 +17,12 @@ Bring the real production to life by replacing colored circles with actor photos
 
 ## 🎭 Simulation Enhancements
 
-### 3. Stage Templates
+### ~~3. Stage Templates~~ (Completed)
 Quick-start presets for different theatre architectures.
 - **Proscenium**: Standard stage with wings.
 - **Thrust**: Audience on three sides.
 - **Arena / In the Round**: Audience on all four sides.
-- **Custom**: Free-form stage dimensions.
+- **Custom**: Free-form stage dimensions limitlessly resizable.
 
 ### 4. Multi-Select & Group Blocking
 Efficiently manage large casts.
