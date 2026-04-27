@@ -4046,7 +4046,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
 
       {/* Main Content Area (Full width, sidebar overlays on top) */}
       <div className="flex-1 flex flex-col min-w-0 relative pt-8 justify-between items-center w-full">
-        <div style={{ width: '100%', maxWidth: Math.min(totalCanvasWidth, window.innerWidth) + 'px', margin: '0 auto' }}>
+        <div style={{ width: '100%', maxWidth: Math.min(totalCanvasWidth, window.innerWidth) + 'px', margin: '0 auto', position: 'relative', overflow: 'visible' }}>
           <Toolbar
           addMode={addMode}
           setAddMode={setAddMode}
@@ -4107,6 +4107,26 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
           onExportPNG={() => {
             if (subscriptionInfo?.status === 'pro') exportAsImage()
             else { setUpgradeReason('feature'); setUpgradeModalOpen(true); }
+          }}
+          onExportPDF={() => {
+            if (subscriptionInfo?.status !== 'pro') { setUpgradeReason('feature'); setUpgradeModalOpen(true); return }
+            if (keyframes.length === 0) { showToast('Create keyframes first before exporting PDF', 'info'); return }
+            import('../utils/exportPDF').then(({ exportPDF }) => {
+              exportPDF({
+                projectTitle,
+                keyframes,
+                sceneBoundaries,
+                sceneNames,
+                stageProps,
+                canvasSize,
+                personSize,
+                showWings,
+                wingSize,
+                stageReversed,
+                labelFontSize,
+              })
+              showToast('PDF exported', 'success')
+            })
           }}
           onCloudSave={saveToCloud}
           onOpenProjects={() => setProjectListOpen(true)}
@@ -4220,7 +4240,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
           }}
           />
         </div>
-        <div className="inline-block relative" style={{ width: '100%', maxWidth: '100%', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined }} id="annotation-canvas-wrapper">
+        <div className="relative" style={{ width: '100%', maxWidth: '100%', marginBottom: 24, cursor: noteMode ? 'crosshair' : undefined, overflowX: 'hidden' }} id="annotation-canvas-wrapper">
           <StageCanvas
             canvasRef={canvasRef}
             canvasSize={{ width: totalCanvasWidth, height: canvasSize.height }}

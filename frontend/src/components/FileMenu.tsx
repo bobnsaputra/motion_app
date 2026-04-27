@@ -7,6 +7,7 @@ interface FileMenuProps {
   onExportJSON: () => void
   onImportJSON: () => void
   onExportPNG: () => void
+  onExportPDF: () => void
   onClose: () => void
   onCloudSave: () => void
   onOpenProjects: () => void
@@ -23,6 +24,7 @@ export default function FileMenu({
   onExportJSON,
   onImportJSON,
   onExportPNG,
+  onExportPDF,
   onClose,
   onCloudSave,
   onOpenProjects,
@@ -32,9 +34,15 @@ export default function FileMenu({
   canShare
 }: FileMenuProps) {
   const menuRef = React.useRef<HTMLDivElement | null>(null)
+  const [menuPos, setMenuPos] = React.useState<{ top: number; right: number } | null>(null)
 
   React.useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) { setMenuPos(null); return }
+    const parent = menuRef.current?.parentElement
+    if (parent) {
+      const rect = parent.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    }
     function handler(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose()
     }
@@ -50,7 +58,7 @@ export default function FileMenu({
   }
 
   return (
-    <div ref={menuRef} className="absolute right-0 top-full mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-3 shadow-lg text-sm z-50 floating-panel">
+    <div ref={menuRef} className="fixed w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-3 shadow-lg text-sm z-50 floating-panel" style={{ top: menuPos?.top ?? 0, right: menuPos?.right ?? 0, visibility: menuPos ? 'visible' : 'hidden' }}>
       <button onClick={() => handleClick(onCloudSave)} disabled={cloudSaving} className="w-full text-left px-3 py-2 hover:bg-accent/10 disabled:opacity-50 flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M9 15l3-3 3 3"/><path d="M12 12v9"/></svg>
         <span>{cloudSaving ? 'Saving…' : 'Save to Cloud'}</span>
@@ -79,6 +87,7 @@ export default function FileMenu({
       <button onClick={() => handleClick(onExportJSON)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span>E<u>x</u>port JSON</span></button>
       <button onClick={() => handleClick(onImportJSON)} className="w-full text-left px-3 py-2 hover:bg-accent/10"><span>I<u>m</u>port JSON</span></button>
       <button onClick={() => handleClick(onExportPNG)} className="w-full text-left px-3 py-2 hover:bg-accent/10">Export PNG</button>
+      <button onClick={() => handleClick(onExportPDF)} className="w-full text-left px-3 py-2 hover:bg-accent/10">Export PDF</button>
     </div>
   )
 }

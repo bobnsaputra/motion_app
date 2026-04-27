@@ -19,7 +19,7 @@ export default function StageCanvas({
   , onDrop, onDragOver
 }: StageCanvasProps) {
   return (
-    <main style={{ marginTop: 24 }}>
+    <main style={{ marginTop: 24, overflowX: 'hidden' }}>
       <canvas
         ref={canvasRef as React.RefObject<HTMLCanvasElement>}
         width={canvasSize.width}
@@ -34,3 +34,4 @@ export default function StageCanvas({
     </main>
   )
 }
+

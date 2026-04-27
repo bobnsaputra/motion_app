@@ -197,6 +197,18 @@ export default function ConfigMenu({
     }
   }, [])
 
+  // Compute position relative to the viewport for fixed placement
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
+  useEffect(() => {
+    if (!isOpen) { setMenuPos(null); return }
+    // Find the settings button (parent of this menu)
+    const parent = menuRef.current?.parentElement
+    if (parent) {
+      const rect = parent.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const selectedChar = selectedCharId ? characters.find((c) => c.id === selectedCharId) : null
@@ -206,8 +218,8 @@ export default function ConfigMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute right-0 top-full z-50 mt-1 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg floating-panel"
-      style={{ maxHeight: '700px', overflowY: 'auto' }}
+      className="fixed z-50 w-56 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-white p-4 shadow-lg floating-panel"
+      style={{ maxHeight: '70vh', overflowY: 'auto', top: menuPos?.top ?? 0, right: menuPos?.right ?? 0, visibility: menuPos ? 'visible' : 'hidden' }}
     >
       
       {/* Dark Mode Toggle */}

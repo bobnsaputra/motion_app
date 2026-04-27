@@ -6,10 +6,17 @@ Entries format:
 - YYYY-MM-DD HH:MM — Short description (file references)
 
 
+## 2026-04-27
+### PDF Export (Pro Feature)
+- 21:00 — **Rehearsal packet PDF export**: Added full PDF export via File Menu → "Export PDF" (Pro-only). Generates a multi-page landscape A4 document using `jsPDF`. Page 1 is a title page with project name, date, scene directory, and cast list. Each subsequent page renders one keyframe with a full stage diagram (characters, props, annotations, wings, labels), stage notes (SL/CS/SR), and a character legend. Diagrams are drawn to an offscreen canvas that mirrors the main draw logic, then embedded as PNG images. (`exportPDF.ts`, `StageBlockingApp.tsx`)
+- 21:05 — **Export PDF button in File Menu**: Added "Export PDF" button below "Export PNG" in the File Menu. Wired through Toolbar props (`onExportPDF`). Gated behind Pro subscription — free users see the Upgrade modal. Shows info toast if no keyframes exist yet. Uses dynamic `import()` for code-splitting so jsPDF is only loaded when needed. (`FileMenu.tsx`, `Toolbar.tsx`, `StageBlockingApp.tsx`)
+- 21:10 — **jsPDF dependency**: Added `jspdf@^4.2.1` to frontend dependencies. (`package.json`)
+
 ## 2026-04-17
 ### Bug Fixes
 - 00:00 — **Password reset captcha fix**: Fixed "Please complete the security check" error on the Update Password page. The Turnstile widget was hidden for `update_password` mode but `validateForm()` still required a captcha token. Now skips the captcha check for password reset since the user is already authenticated via the recovery email link. (`Login.tsx`)
 - 00:05 — **Tablet/mobile stage responsiveness**: Fixed the stage canvas being cut off on Android tablets. Added responsive CSS scaling (`max-width: 90%; height: auto`) to the stage canvas, `overflow-x: hidden` on the app container, and constrained the toolbar to `min(max-width, 100%)`. (`styles.css`, `StageBlockingApp.tsx`)
+
 
 ## 2026-04-07
 ### Project Document Uploads

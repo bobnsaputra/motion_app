@@ -80,6 +80,7 @@ interface ToolbarProps {
   onExportJSON: () => void
   onImportJSON: () => void
   onExportPNG: () => void
+  onExportPDF: () => void
   onCloudSave: () => void
   onOpenProjects: () => void
   onShareProject?: () => void
@@ -144,7 +145,7 @@ export default function Toolbar(props: ToolbarProps) {
     onNameChange, user, onLogout, configMenuOpen, setConfigMenuOpen,
     canvasSize, onCanvasSizeChange, defaultPersonSize, defaultPersonColor, defaultShoulderColor,
     onSizeChange, onColorChange, stageReversed, onToggleReverse,
-    fileMenuOpen, setFileMenuOpen, onSave, onLoad, onExportJSON, onImportJSON, onExportPNG, onCloudSave, onOpenProjects,
+    fileMenuOpen, setFileMenuOpen, onSave, onLoad, onExportJSON, onImportJSON, onExportPNG, onExportPDF, onCloudSave, onOpenProjects,
     keyframeMode, onToggleKeyframeMode, keyframes, activeKeyframeIndex, isPlaying,
     onSelectKeyframe, onAddKeyframe, onDeleteKeyframe, onRenameKeyframe, onPlay, onPlayAll, onStop, onPrev, onNext,
     onUpdateCharVisible, keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
@@ -565,7 +566,7 @@ export default function Toolbar(props: ToolbarProps) {
 
               <div className="relative">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setFileMenuOpen(!fileMenuOpen); setConfigMenuOpen(false); }} title="File operations"><Save className="h-4 w-4" /></Button>
-                <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onCloudSave={onCloudSave} onOpenProjects={onOpenProjects} onShareProject={props.onShareProject} onOpenDocuments={props.onOpenDocuments} canShare={props.canShare} cloudSaving={props.cloudSaving} onClose={() => setFileMenuOpen(false)} />
+                <FileMenu isOpen={fileMenuOpen} onSave={onSave} onLoad={onLoad} onExportJSON={onExportJSON} onImportJSON={onImportJSON} onExportPNG={onExportPNG} onExportPDF={onExportPDF} onCloudSave={onCloudSave} onOpenProjects={onOpenProjects} onShareProject={props.onShareProject} onOpenDocuments={props.onOpenDocuments} canShare={props.canShare} cloudSaving={props.cloudSaving} onClose={() => setFileMenuOpen(false)} />
               </div>
               </>
               )}
