@@ -62,3 +62,5 @@ export type Keyframe = {
   stageNotes?: { left: string; center: string; right: string } // director notes for left/center/right stage areas
   audio?: { url: string; name: string; path: string } // an optional sound effect to play
 }
+
+export type StageTemplate = 'proscenium' | 'thrust' | 'arena'

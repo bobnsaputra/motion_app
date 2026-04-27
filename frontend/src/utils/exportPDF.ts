@@ -13,6 +13,7 @@ interface ExportPDFOptions {
   wingSize: { width: number; height: number }
   stageReversed: boolean
   labelFontSize: number
+  stageTemplate: import('../types').StageTemplate
 }
 
 // ── Offscreen canvas rendering (mirrors the main draw logic) ──
@@ -21,7 +22,7 @@ function drawStageToCanvas(
   opts: ExportPDFOptions,
   keyframe: Keyframe,
 ): HTMLCanvasElement {
-  const { canvasSize, showWings, wingSize, personSize, stageReversed, labelFontSize } = opts
+  const { canvasSize, showWings, wingSize, personSize, stageReversed, labelFontSize, stageTemplate } = opts
   const wingOffset = showWings ? Math.min(wingSize.width, 500) : 0
   const totalWidth = canvasSize.width + 2 * wingOffset
   const totalHeight = canvasSize.height
@@ -34,11 +35,6 @@ function drawStageToCanvas(
   // White background for print
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, totalWidth, totalHeight)
-
-  // Stage border
-  ctx.strokeStyle = '#cbd5e1'
-  ctx.lineWidth = 2
-  ctx.strokeRect(wingOffset, 0, canvasSize.width, canvasSize.height)
 
   // Wing areas
   if (showWings && wingOffset > 0) {
@@ -60,15 +56,102 @@ function drawStageToCanvas(
   ctx.save()
   ctx.translate(wingOffset, 0)
 
-  // Stage / Audience labels
+  // ── Draw Template-specific borders/cutouts ──
+  ctx.save()
+  if (stageTemplate === 'proscenium' || !stageTemplate) {
+    // Stage border
+    ctx.strokeStyle = '#cbd5e1'
+    ctx.lineWidth = 2
+    ctx.strokeRect(0, 0, canvasSize.width, canvasSize.height)
+  } else if (stageTemplate === 'thrust') {
+    const apronDepth = canvasSize.height * 0.35
+    const apronWidth = canvasSize.width * 0.6
+    const sideSpace = (canvasSize.width - apronWidth) / 2
+    
+    // Cutouts
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.04)'
+    ctx.fillRect(0, apronDepth, sideSpace, canvasSize.height - apronDepth)
+    ctx.fillRect(canvasSize.width - sideSpace, apronDepth, sideSpace, canvasSize.height - apronDepth)
+    
+    // Stage edge lines
+    ctx.strokeStyle = '#d1d5db'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(0, apronDepth)
+    ctx.lineTo(sideSpace, apronDepth)
+    ctx.lineTo(sideSpace, canvasSize.height)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(canvasSize.width, apronDepth)
+    ctx.lineTo(canvasSize.width - sideSpace, apronDepth)
+    ctx.lineTo(canvasSize.width - sideSpace, canvasSize.height)
+    ctx.stroke()
+  } else if (stageTemplate === 'arena') {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.04)'
+    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height)
+    
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    const margin = Math.min(canvasSize.width, canvasSize.height) * 0.08
+    ctx.ellipse(canvasSize.width / 2, canvasSize.height / 2, canvasSize.width / 2 - margin, canvasSize.height / 2 - margin, 0, 0, Math.PI * 2)
+    ctx.fill()
+    
+    ctx.strokeStyle = '#d1d5db'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  // ── Draw Labels ──
+  ctx.save()
   ctx.font = `600 ${labelFontSize}px "Inter", sans-serif`
   ctx.letterSpacing = '12px'
   ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
   ctx.fillStyle = '#94a3b8'
-  const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
-  const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
-  ctx.fillText(topLabel, canvasSize.width / 2, 30 + labelFontSize)
-  ctx.fillText(bottomLabel, canvasSize.width / 2, canvasSize.height - 15)
+
+  if (stageTemplate === 'proscenium' || !stageTemplate) {
+    const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
+    const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
+    ctx.fillText(topLabel, canvasSize.width / 2, 30)
+    ctx.fillText(bottomLabel, canvasSize.width / 2, canvasSize.height - 20)
+  } else if (stageTemplate === 'thrust') {
+    const apronDepth = canvasSize.height * 0.35
+    const apronWidth = canvasSize.width * 0.6
+    const sideSpace = (canvasSize.width - apronWidth) / 2
+    ctx.fillText('S T A G E', canvasSize.width / 2, 30)
+    ctx.fillText('A U D I E N C E', canvasSize.width / 2, canvasSize.height - 20)
+    
+    ctx.save()
+    ctx.translate(sideSpace / 2, canvasSize.height - (canvasSize.height - apronDepth) / 2)
+    ctx.rotate(-Math.PI / 2)
+    ctx.fillText('A U D I E N C E', 0, 0)
+    ctx.restore()
+
+    ctx.save()
+    ctx.translate(canvasSize.width - sideSpace / 2, canvasSize.height - (canvasSize.height - apronDepth) / 2)
+    ctx.rotate(Math.PI / 2)
+    ctx.fillText('A U D I E N C E', 0, 0)
+    ctx.restore()
+  } else if (stageTemplate === 'arena') {
+    const txt = 'A U D I E N C E'
+    ctx.fillText(txt, canvasSize.width / 2, 20)
+    ctx.fillText(txt, canvasSize.width / 2, canvasSize.height - 20)
+    ctx.save()
+    ctx.translate(20, canvasSize.height / 2)
+    ctx.rotate(-Math.PI / 2)
+    ctx.fillText(txt, 0, 0)
+    ctx.restore()
+    ctx.save()
+    ctx.translate(canvasSize.width - 20, canvasSize.height / 2)
+    ctx.rotate(Math.PI / 2)
+    ctx.fillText(txt, 0, 0)
+    ctx.restore()
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.3)'
+    ctx.font = `600 ${labelFontSize * 1.5}px "Inter", sans-serif`
+    ctx.fillText('S T A G E', canvasSize.width / 2, canvasSize.height / 2)
+  }
+  ctx.restore()
 
   // Props
   const props = keyframe.stageProps ?? opts.stageProps

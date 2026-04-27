@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Lock, Unlock, Moon, Sun } from 'lucide-react'
+import { Lock, Unlock, Moon, Sun, Square, Box, Circle } from 'lucide-react'
 import { Character } from '../types'
 import { useTheme } from '../hooks/useTheme'
 
@@ -58,6 +58,8 @@ interface ConfigMenuProps {
   onStageOffsetChange?: (offset: { top: number; right: number; bottom: number; left: number }) => void
   lockStageOffset?: boolean
   setLockStageOffset?: (v: boolean) => void
+  stageTemplate?: import('../types').StageTemplate
+  setStageTemplate?: (v: import('../types').StageTemplate) => void
 }
 
 export default function ConfigMenu({
@@ -81,6 +83,7 @@ export default function ConfigMenu({
   , preventOverlap, setPreventOverlap
   , stageOffset, onStageOffsetChange
   , lockStageOffset, setLockStageOffset
+  , stageTemplate, setStageTemplate
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const { isDark, toggle: toggleTheme } = useTheme()
@@ -477,6 +480,68 @@ export default function ConfigMenu({
       <p className="text-[10px] text-muted-foreground mt-1">When on, overlapping characters show a red ring and are auto-placed beside others when you release the drag.</p>
 
       <div className="my-3 h-px bg-border" />
+
+      {/* Stage Template */}
+      {stageTemplate && setStageTemplate && (
+        <>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stage Template</h3>
+          </div>
+          <div className="flex flex-col gap-2 mb-4">
+            <button
+              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${stageTemplate === 'proscenium' ? 'border-indigo-500 bg-indigo-50/50 shadow-sm' : 'border-transparent bg-accent/20 hover:bg-accent/40'}`}
+              onClick={() => {
+                setStageTemplate('proscenium')
+                if (setLockStageSize) setLockStageSize(false)
+                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1600, height: 900 })
+              }}
+            >
+              <div className="p-1.5 rounded-md bg-white border shadow-sm shrink-0">
+                <Square className={`w-4 h-4 ${stageTemplate === 'proscenium' ? 'text-indigo-600' : 'text-muted-foreground'}`}/>
+              </div>
+              <div className="flex-1">
+                <div className="text-xs font-bold text-foreground">Proscenium</div>
+                <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">Standard wide rectangular stage</div>
+              </div>
+            </button>
+            <button
+              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${stageTemplate === 'thrust' ? 'border-primary bg-primary/5 shadow-sm' : 'border-transparent bg-accent/20 hover:bg-accent/40'}`}
+              onClick={() => {
+                setStageTemplate('thrust')
+                if (setLockStageSize) setLockStageSize(false)
+                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1200, height: 1400 })
+                if (setShowWings) setShowWings(false)
+              }}
+            >
+              <div className="p-1.5 rounded-md bg-white border shadow-sm shrink-0">
+                <Box className={`w-4 h-4 ${stageTemplate === 'thrust' ? 'text-primary' : 'text-muted-foreground'}`}/>
+              </div>
+              <div className="flex-1">
+                <div className="text-xs font-bold text-foreground">Thrust</div>
+                <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">Audience surrounds three sides</div>
+              </div>
+            </button>
+            <button
+              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${stageTemplate === 'arena' ? 'border-green-500 bg-green-50/50 shadow-sm' : 'border-transparent bg-accent/20 hover:bg-accent/40'}`}
+              onClick={() => {
+                setStageTemplate('arena')
+                if (setLockStageSize) setLockStageSize(false)
+                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1200, height: 1200 })
+                if (setShowWings) setShowWings(false)
+              }}
+            >
+              <div className="p-1.5 rounded-md bg-white border shadow-sm shrink-0">
+                <Circle className={`w-4 h-4 ${stageTemplate === 'arena' ? 'text-green-600' : 'text-muted-foreground'}`}/>
+              </div>
+              <div className="flex-1">
+                <div className="text-xs font-bold text-foreground">Arena</div>
+                <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">Theatre in the round</div>
+              </div>
+            </button>
+          </div>
+          <div className="my-3 h-px bg-border" />
+        </>
+      )}
 
       {/* 5. Reverse Stage */}
       <div className="flex items-center justify-between">

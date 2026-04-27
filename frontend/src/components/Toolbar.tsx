@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Character, User, Keyframe } from '../types'
+import { Character, User, Keyframe, StageTemplate } from '../types'
 import { Button } from '@/components/ui/button'
 import {
   UserPlus, Trash2, Copy, Undo2, Redo2,
@@ -73,6 +73,8 @@ interface ToolbarProps {
   onStageOffsetChange?: (offset: { top: number; right: number; bottom: number; left: number }) => void
   lockStageOffset?: boolean
   setLockStageOffset?: (v: boolean) => void
+  stageTemplate: StageTemplate
+  setStageTemplate: (v: StageTemplate) => void
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
   onSave: () => void
@@ -148,7 +150,8 @@ export default function Toolbar(props: ToolbarProps) {
     fileMenuOpen, setFileMenuOpen, onSave, onLoad, onExportJSON, onImportJSON, onExportPNG, onExportPDF, onCloudSave, onOpenProjects,
     keyframeMode, onToggleKeyframeMode, keyframes, activeKeyframeIndex, isPlaying,
     onSelectKeyframe, onAddKeyframe, onDeleteKeyframe, onRenameKeyframe, onPlay, onPlayAll, onStop, onPrev, onNext,
-    onUpdateCharVisible, keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange
+    onUpdateCharVisible, keyframeSpeed, onKeyframeSpeedChange, fadeSpeed, onFadeSpeedChange,
+    stageTemplate, setStageTemplate
   } = props
 
   const [titleEditing, setTitleEditing] = useState(false)
@@ -553,10 +556,12 @@ export default function Toolbar(props: ToolbarProps) {
                       onStageOffsetChange={props.onStageOffsetChange}
                       lockStageOffset={props.lockStageOffset}
                       setLockStageOffset={props.setLockStageOffset}
+                      stageTemplate={stageTemplate}
+                      setStageTemplate={setStageTemplate}
                       keyframeSpeed={keyframeSpeed}
                       onKeyframeSpeedChange={onKeyframeSpeedChange}
                       fadeSpeed={fadeSpeed}
-                      onFadeSpeedChange={onFadeSpeedChange}
+                      onFadeSpeedChange={props.onFadeSpeedChange}
                       lockStageSize={props.lockStageSize}
                       setLockStageSize={props.setLockStageSize}
                       lockKeyframeTiming={props.lockKeyframeTiming}

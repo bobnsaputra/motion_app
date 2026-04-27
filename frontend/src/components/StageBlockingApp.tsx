@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
-import { Character, Guide, User, Keyframe, TextAnnotation, StageProp } from '../types'
+import { Character, Guide, User, Keyframe, TextAnnotation, StageProp, StageTemplate } from '../types'
 import Toolbar from './Toolbar'
 import Sidebar from './Sidebar'
 import StageCanvas from './StageCanvas'
@@ -45,6 +45,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
   const [awaitingDirectionFor, setAwaitingDirectionFor] = useState<string | null>(null)
 
   const [canvasSize, setCanvasSize] = useState({ width: 1600, height: 900 })
+  const [stageTemplate, setStageTemplate] = useState<StageTemplate>('proscenium')
   const [guides, setGuides] = useState<Guide[]>([])
   const [defaultPersonSize, setDefaultPersonSize] = useState(2)
   const [personSize, setPersonSize] = useState({ headW: 40, headH: 34, shoulderW: 72, shoulderH: 40 })
@@ -1869,15 +1870,102 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
     ctx.save()
     ctx.translate(wingOffset, 0)
 
+    // ── Draw Template-specific borders/cutouts ──
+    ctx.save()
+    if (stageTemplate === 'thrust') {
+      const apronDepth = canvas.height * 0.35 // back wall area depth
+      const apronWidth = canvasSize.width * 0.6 // width of the thrust
+      const sideSpace = (canvasSize.width - apronWidth) / 2
+      
+      // Cutouts
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)'
+      ctx.fillRect(0, apronDepth, sideSpace, canvas.height - apronDepth)
+      ctx.fillRect(canvasSize.width - sideSpace, apronDepth, sideSpace, canvas.height - apronDepth)
+      
+      // Stage edge lines
+      ctx.strokeStyle = '#d1d5db'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(0, apronDepth)
+      ctx.lineTo(sideSpace, apronDepth)
+      ctx.lineTo(sideSpace, canvas.height)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(canvasSize.width, apronDepth)
+      ctx.lineTo(canvasSize.width - sideSpace, apronDepth)
+      ctx.lineTo(canvasSize.width - sideSpace, canvas.height)
+      ctx.stroke()
+    } else if (stageTemplate === 'arena') {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)'
+      ctx.fillRect(0, 0, canvasSize.width, canvas.height)
+      
+      // Draw center ellipse for stage (solid white)
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      const margin = Math.min(canvasSize.width, canvasSize.height) * 0.08
+      ctx.ellipse(canvasSize.width / 2, canvasSize.height / 2, canvasSize.width / 2 - margin, canvasSize.height / 2 - margin, 0, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // Draw border
+      ctx.strokeStyle = '#d1d5db'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+    }
+    ctx.restore()
+
+    // ── Draw Labels ──
     ctx.save()
     ctx.font = `600 ${labelFontSize}px "Inter", sans-serif`
     ctx.letterSpacing = '12px'
     ctx.textAlign = 'center'
-    ctx.fillStyle = '#94a3b8' // Zinc 400 for subtle contrast
-    const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
-    const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
-    ctx.fillText(topLabel, canvasSize.width / 2, 30 + labelFontSize)
-    ctx.fillText(bottomLabel, canvasSize.width / 2, canvas.height - 15)
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#94a3b8'
+
+    if (stageTemplate === 'proscenium') {
+      const topLabel = stageReversed ? 'A U D I E N C E' : 'S T A G E'
+      const bottomLabel = stageReversed ? 'S T A G E' : 'A U D I E N C E'
+      ctx.fillText(topLabel, canvasSize.width / 2, 30)
+      ctx.fillText(bottomLabel, canvasSize.width / 2, canvas.height - 20)
+    } else if (stageTemplate === 'thrust') {
+      const apronDepth = canvas.height * 0.35
+      const apronWidth = canvasSize.width * 0.6
+      const sideSpace = (canvasSize.width - apronWidth) / 2
+      ctx.fillText('S T A G E', canvasSize.width / 2, 30)
+      ctx.fillText('A U D I E N C E', canvasSize.width / 2, canvas.height - 20)
+      
+      ctx.save()
+      ctx.translate(sideSpace / 2, canvas.height - (canvas.height - apronDepth) / 2)
+      ctx.rotate(-Math.PI / 2)
+      ctx.fillText('A U D I E N C E', 0, 0)
+      ctx.restore()
+
+      ctx.save()
+      ctx.translate(canvasSize.width - sideSpace / 2, canvas.height - (canvas.height - apronDepth) / 2)
+      ctx.rotate(Math.PI / 2)
+      ctx.fillText('A U D I E N C E', 0, 0)
+      ctx.restore()
+    } else if (stageTemplate === 'arena') {
+      const txt = 'A U D I E N C E'
+      // Top & Bottom
+      ctx.fillText(txt, canvasSize.width / 2, 20)
+      ctx.fillText(txt, canvasSize.width / 2, canvas.height - 20)
+      // Left
+      ctx.save()
+      ctx.translate(20, canvasSize.height / 2)
+      ctx.rotate(-Math.PI / 2)
+      ctx.fillText(txt, 0, 0)
+      ctx.restore()
+      // Right
+      ctx.save()
+      ctx.translate(canvasSize.width - 20, canvasSize.height / 2)
+      ctx.rotate(Math.PI / 2)
+      ctx.fillText(txt, 0, 0)
+      ctx.restore()
+      // Subtle STAGE label in center
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.3)'
+      ctx.font = `600 ${labelFontSize * 1.5}px "Inter", sans-serif`
+      ctx.fillText('S T A G E', canvasSize.width / 2, canvasSize.height / 2)
+    }
     ctx.restore()
 
     drawGuides(ctx)
@@ -3196,6 +3284,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
       defaultPersonSize,
       defaultPersonColor,
       defaultShoulderColor,
+      stageTemplate,
       // keyframes kept flat for compatibility, but include scene metadata
       keyframes: committedKfs,
       sceneBoundaries: sceneBoundaries || [0],
@@ -3230,6 +3319,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
         setDefaultPersonSize(state.defaultPersonSize || 1)
         setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
         setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
+        setStageTemplate(state.stageTemplate || 'proscenium')
         // Load keyframes with backward compatibility for a few formats:
         // - legacy: state.keyframes (flat)
         // - nested scenes: state.scenes (array of arrays or objects with keyframes)
@@ -3391,6 +3481,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
       defaultPersonSize,
       defaultPersonColor,
       defaultShoulderColor,
+      stageTemplate,
       keyframes: committedKfs,
       sceneBoundaries: sceneBoundaries || [0],
       sceneNames: exportRawSceneNames,
@@ -3450,6 +3541,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
             setDefaultPersonSize(state.defaultPersonSize || 1)
             setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
             setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
+            setStageTemplate(state.stageTemplate || 'proscenium')
 
             // Reuse the same compatibility logic as loadFromLocalStorage
             let loadedKfs: Keyframe[] = []
@@ -3678,6 +3770,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
       setDefaultPersonSize(state.defaultPersonSize || 1)
       setDefaultPersonColor(state.defaultPersonColor || '#ffd93d')
       setDefaultShoulderColor(state.defaultShoulderColor || '#ff6b6b')
+      setStageTemplate(state.stageTemplate || 'proscenium')
 
       let loadedKfs: Keyframe[] = []
       if (state.scenes && Array.isArray(state.scenes)) {
@@ -4065,6 +4158,8 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
           onLogout={onLogout}
           configMenuOpen={configMenuOpen}
           setConfigMenuOpen={setConfigMenuOpen}
+          stageTemplate={stageTemplate}
+          setStageTemplate={setStageTemplate}
           canvasSize={canvasSize}
           onCanvasSizeChange={handleCanvasSizeChange}
           lockStageSize={lockStageSize}
@@ -4124,6 +4219,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
                 wingSize,
                 stageReversed,
                 labelFontSize,
+                stageTemplate,
               })
               showToast('PDF exported', 'success')
             })
