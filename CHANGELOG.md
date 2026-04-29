@@ -16,6 +16,9 @@ Entries format:
 - 22:45 — **Stage Templates Config**: Added a new Stage Template selector (Proscenium, Thrust, Arena) to the configuration menu, rendering custom canvas scale and boundaries based on template memory mapping. Added aesthetic stage layout indicator buttons to `ConfigMenu.tsx`. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `exportPDF.ts`, `types.ts`)
 - 22:50 — **Template Storage Memory**: Config menu automatically caches scaling and wing preferences separately for all available templates during a session to easily toggle back and forth without data loss. (`ConfigMenu.tsx`)
 - 23:00 — **Dynamic Drawing Rules**: Implemented complex rendering overlays including off-screen audience area muting, custom thrust aprons, and dynamically-computed bounds for elliptical arena setups directly drawn onto target layers. Integrated pure white stage cutout for Arena configurations across all views. (`StageBlockingApp.tsx`, `exportPDF.ts`)
+- 23:15 — **Stage Size Protection**: Stage Template selection and manual Stage/Wing size inputs are now locked and visually disabled when keyframes exist to prevent accidental misalignments of choreography. (`ConfigMenu.tsx`)
+- 23:30 — **Stage Template Resizing Fix**: Fixed a bug where changing the Stage Template would fail to update the canvas dimensions if the "Lock Stage Size" setting was manually toggled on. The template change now overrides the lock explicitly. (`StageBlockingApp.tsx`, `ConfigMenu.tsx`, `Toolbar.tsx`)
+- 23:45 — **Stage Template Confirmation**: Added a browser confirmation popup before switching Stage Templates, warning users that their canvas dimensions and wing settings will be reset. (`ConfigMenu.tsx`)
 
 ## 2026-04-17
 ### Bug Fixes

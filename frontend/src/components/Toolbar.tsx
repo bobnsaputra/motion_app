@@ -33,7 +33,7 @@ function SceneNameEditor({ sceneIndex, sceneName, onRename, disabled }: { sceneI
 interface ToolbarProps {
   addMode: boolean
   setAddMode: (fn: (s: boolean) => boolean) => void
-  selectedCharId: string | null
+  selectedCharIds: string[]
   characters: Character[]
   awaitingDirectionFor: string | null
   onDeleteSelected: () => void
@@ -48,7 +48,7 @@ interface ToolbarProps {
   configMenuOpen: boolean
   setConfigMenuOpen: (open: boolean) => void
   canvasSize: { width: number; height: number }
-  onCanvasSizeChange: (size: { width: number; height: number }) => void
+  onCanvasSizeChange: (size: { width: number; height: number }, overrideLock?: boolean) => void
   defaultPersonSize: number
   personSize?: { headW: number; headH: number; shoulderW: number; shoulderH: number }
   defaultPersonColor: string
@@ -75,6 +75,7 @@ interface ToolbarProps {
   setLockStageOffset?: (v: boolean) => void
   stageTemplate: StageTemplate
   setStageTemplate: (v: StageTemplate) => void
+  hasKeyframes?: boolean
   fileMenuOpen: boolean
   setFileMenuOpen: (open: boolean) => void
   onSave: () => void
@@ -142,7 +143,7 @@ interface ToolbarProps {
 
 export default function Toolbar(props: ToolbarProps) {
   const {
-    addMode, setAddMode, selectedCharId, characters, awaitingDirectionFor,
+    addMode, setAddMode, selectedCharIds, characters, awaitingDirectionFor,
     onDeleteSelected, onDuplicateSelected, canUndo, canRedo, onUndo, onRedo,
     onNameChange, user, onLogout, configMenuOpen, setConfigMenuOpen,
     canvasSize, onCanvasSizeChange, defaultPersonSize, defaultPersonColor, defaultShoulderColor,
@@ -158,7 +159,7 @@ export default function Toolbar(props: ToolbarProps) {
   const [titleValue, setTitleValue] = useState(props.projectTitle || 'Untitled')
   useEffect(() => { setTitleValue(props.projectTitle || 'Untitled') }, [props.projectTitle])
 
-  const selectedChar = selectedCharId ? characters.find(c => c.id === selectedCharId) : null
+  const selectedChar = (selectedCharIds.length === 1) ? characters.find(c => c.id === selectedCharIds[0]) : null
   const awaitingChar = awaitingDirectionFor ? characters.find(c => c.id === awaitingDirectionFor) : null
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -184,7 +185,7 @@ export default function Toolbar(props: ToolbarProps) {
   useEffect(() => {
     setRenameEditing(false)
     setRenameValue('')
-  }, [selectedCharId])
+  }, [selectedCharIds])
 
   // Auto-scroll the keyframe strip so the active keyframe is visible
   useEffect(() => {
@@ -418,14 +419,14 @@ export default function Toolbar(props: ToolbarProps) {
                 <Box className="h-4 w-4" />
                 {props.propsMode
                   ? (props.selectedPropId ? <span>Edit <u>P</u>rop… (Esc)</span> : <span>Add <u>P</u>rop… (Esc)</span>)
-                  : selectedCharId ? <span>Props</span> : <span><u>P</u>rops</span>}
+                  : (selectedCharIds.length > 0) ? <span>Props</span> : <span><u>P</u>rops</span>}
               </Button>
 
-              {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
+              {(selectedCharIds.length > 0) && !(keyframeMode && selectedChar?.visible === false) && (
                 <Button variant="destructive" size="sm" onClick={onDeleteSelected}><Trash2 className="h-4 w-4" /><span><u>D</u>elete</span></Button>
               )}
 
-              {selectedCharId && !(keyframeMode && selectedChar?.visible === false) && (
+              {(selectedCharIds.length > 0) && !(keyframeMode && selectedChar?.visible === false) && (
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={onDuplicateSelected}><Copy className="h-4 w-4" /><span>Du<u>p</u>licate</span></Button>
                   {renameEditing ? (
@@ -530,7 +531,7 @@ export default function Toolbar(props: ToolbarProps) {
                       canvasSize={canvasSize}
                       onCanvasSizeChange={onCanvasSizeChange}
                       onClose={() => setConfigMenuOpen(false)}
-                      selectedCharId={selectedCharId}
+                      selectedCharIds={selectedCharIds}
                       characters={characters}
                       defaultPersonSize={defaultPersonSize}
                       personSize={props.personSize}
@@ -558,6 +559,7 @@ export default function Toolbar(props: ToolbarProps) {
                       setLockStageOffset={props.setLockStageOffset}
                       stageTemplate={stageTemplate}
                       setStageTemplate={setStageTemplate}
+                      hasKeyframes={props.hasKeyframes}
                       keyframeSpeed={keyframeSpeed}
                       onKeyframeSpeedChange={onKeyframeSpeedChange}
                       fadeSpeed={fadeSpeed}

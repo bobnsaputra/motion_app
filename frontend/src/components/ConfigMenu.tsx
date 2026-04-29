@@ -22,9 +22,9 @@ const COLOR_PAIRS = [
 interface ConfigMenuProps {
   isOpen: boolean
   canvasSize: { width: number; height: number }
-  onCanvasSizeChange: (size: { width: number; height: number }) => void
+  onCanvasSizeChange: (size: { width: number; height: number }, overrideLock?: boolean) => void
   onClose?: () => void
-  selectedCharId: string | null
+  selectedCharIds: string[]
   characters: Character[]
   defaultPersonSize: number
   personSize?: { headW: number; headH: number; shoulderW: number; shoulderH: number }
@@ -60,6 +60,7 @@ interface ConfigMenuProps {
   setLockStageOffset?: (v: boolean) => void
   stageTemplate?: import('../types').StageTemplate
   setStageTemplate?: (v: import('../types').StageTemplate) => void
+  hasKeyframes?: boolean
 }
 
 export default function ConfigMenu({
@@ -67,7 +68,7 @@ export default function ConfigMenu({
   canvasSize,
   onCanvasSizeChange,
   onClose,
-  selectedCharId,
+  selectedCharIds,
   characters,
   defaultPersonSize,
   personSize,
@@ -84,6 +85,7 @@ export default function ConfigMenu({
   , stageOffset, onStageOffsetChange
   , lockStageOffset, setLockStageOffset
   , stageTemplate, setStageTemplate
+  , hasKeyframes
 }: ConfigMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const { isDark, toggle: toggleTheme } = useTheme()
@@ -214,7 +216,7 @@ export default function ConfigMenu({
 
   if (!isOpen) return null
 
-  const selectedChar = selectedCharId ? characters.find((c) => c.id === selectedCharId) : null
+  const selectedChar = (selectedCharIds && selectedCharIds.length === 1) ? characters.find((c) => selectedCharIds.includes(c.id)) : null
   const currentColor = selectedChar?.color ?? defaultPersonColor
   const currentShoulderColor = selectedChar?.shoulderColor ?? defaultShoulderColor
 
@@ -484,16 +486,39 @@ export default function ConfigMenu({
       {/* Stage Template */}
       {stageTemplate && setStageTemplate && (
         <>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stage Template</h3>
+            {hasKeyframes && (
+              <span className="flex items-center gap-1 text-[10px] text-amber-600 font-medium">
+                <Lock className="w-3 h-3" /> Locked
+              </span>
+            )}
           </div>
+          {hasKeyframes && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <Lock className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] text-amber-700 leading-tight">
+                Stage type is locked while keyframes exist. Clear all keyframes first to switch templates.
+              </p>
+            </div>
+          )}
           <div className="flex flex-col gap-2 mb-4">
             <button
-              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${stageTemplate === 'proscenium' ? 'border-indigo-500 bg-indigo-50/50 shadow-sm' : 'border-transparent bg-accent/20 hover:bg-accent/40'}`}
+              disabled={!!(hasKeyframes && stageTemplate !== 'proscenium')}
+              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${
+                stageTemplate === 'proscenium'
+                  ? 'border-indigo-500 bg-indigo-50/50 shadow-sm'
+                  : hasKeyframes
+                    ? 'border-transparent bg-accent/10 opacity-40 cursor-not-allowed'
+                    : 'border-transparent bg-accent/20 hover:bg-accent/40'
+              }`}
               onClick={() => {
+                if (hasKeyframes) return
+                if (stageTemplate === 'proscenium') return
+                if (!confirm('Changing the stage template will reset your canvas dimensions and wing settings. Do you want to proceed?')) return
                 setStageTemplate('proscenium')
                 if (setLockStageSize) setLockStageSize(false)
-                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1600, height: 900 })
+                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1600, height: 900 }, true)
               }}
             >
               <div className="p-1.5 rounded-md bg-white border shadow-sm shrink-0">
@@ -505,11 +530,21 @@ export default function ConfigMenu({
               </div>
             </button>
             <button
-              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${stageTemplate === 'thrust' ? 'border-primary bg-primary/5 shadow-sm' : 'border-transparent bg-accent/20 hover:bg-accent/40'}`}
+              disabled={!!(hasKeyframes && stageTemplate !== 'thrust')}
+              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${
+                stageTemplate === 'thrust'
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : hasKeyframes
+                    ? 'border-transparent bg-accent/10 opacity-40 cursor-not-allowed'
+                    : 'border-transparent bg-accent/20 hover:bg-accent/40'
+              }`}
               onClick={() => {
+                if (hasKeyframes) return
+                if (stageTemplate === 'thrust') return
+                if (!confirm('Changing the stage template will reset your canvas dimensions and wing settings. Do you want to proceed?')) return
                 setStageTemplate('thrust')
                 if (setLockStageSize) setLockStageSize(false)
-                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1200, height: 1400 })
+                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1200, height: 1400 }, true)
                 if (setShowWings) setShowWings(false)
               }}
             >
@@ -522,11 +557,21 @@ export default function ConfigMenu({
               </div>
             </button>
             <button
-              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${stageTemplate === 'arena' ? 'border-green-500 bg-green-50/50 shadow-sm' : 'border-transparent bg-accent/20 hover:bg-accent/40'}`}
+              disabled={!!(hasKeyframes && stageTemplate !== 'arena')}
+              className={`flex items-center gap-3 py-2 px-3 border rounded-lg text-left transition-all ${
+                stageTemplate === 'arena'
+                  ? 'border-green-500 bg-green-50/50 shadow-sm'
+                  : hasKeyframes
+                    ? 'border-transparent bg-accent/10 opacity-40 cursor-not-allowed'
+                    : 'border-transparent bg-accent/20 hover:bg-accent/40'
+              }`}
               onClick={() => {
+                if (hasKeyframes) return
+                if (stageTemplate === 'arena') return
+                if (!confirm('Changing the stage template will reset your canvas dimensions and wing settings. Do you want to proceed?')) return
                 setStageTemplate('arena')
                 if (setLockStageSize) setLockStageSize(false)
-                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1200, height: 1200 })
+                if (onCanvasSizeChange) onCanvasSizeChange({ width: 1200, height: 1200 }, true)
                 if (setShowWings) setShowWings(false)
               }}
             >
@@ -542,6 +587,7 @@ export default function ConfigMenu({
           <div className="my-3 h-px bg-border" />
         </>
       )}
+
 
       {/* 5. Reverse Stage */}
       <div className="flex items-center justify-between">
@@ -566,11 +612,12 @@ export default function ConfigMenu({
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stage Size</h3>
         <button
-          onClick={(e) => { e.stopPropagation(); setLockStageSize && setLockStageSize(!lockStageSize) }}
-          className="p-1 rounded hover:bg-accent/10"
-          title={lockStageSize ? 'Unlock stage size' : 'Lock stage size'}
+          onClick={(e) => { e.stopPropagation(); if (!hasKeyframes && setLockStageSize) setLockStageSize(!lockStageSize) }}
+          disabled={hasKeyframes}
+          className={`p-1 rounded hover:bg-accent/10 ${hasKeyframes ? 'opacity-50 cursor-not-allowed text-amber-600' : ''}`}
+          title={hasKeyframes ? 'Locked while keyframes exist' : lockStageSize ? 'Unlock stage size' : 'Lock stage size'}
         >
-          {lockStageSize ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+          {lockStageSize || hasKeyframes ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
         </button>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -580,16 +627,16 @@ export default function ConfigMenu({
             <span className="flex gap-1">
               <button
                 onClick={(e) => { e.stopPropagation(); applyWidthVal(Number(localWidthStr || canvasSize.width) - 100) }}
-                disabled={!!lockStageSize}
-                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!!lockStageSize || hasKeyframes}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockStageSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="-100"
               >
                 −
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); applyWidthVal(Number(localWidthStr || canvasSize.width) + 100) }}
-                disabled={!!lockStageSize}
-                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!!lockStageSize || hasKeyframes}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockStageSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="+100"
               >
                 +
@@ -622,8 +669,8 @@ export default function ConfigMenu({
                   autoApplyTimer.current = null
                 }, 2000)
               }}
-              disabled={!!lockStageSize}
-              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!!lockStageSize || hasKeyframes}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${(lockStageSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             {widthError && <div className="text-[11px] text-destructive mt-1">{widthError}</div>}
             {showMaxWidthToast && <div className="text-[11px] text-yellow-800 bg-yellow-100 rounded px-2 py-1 mt-1">Max width is 2000</div>}
@@ -635,16 +682,16 @@ export default function ConfigMenu({
             <span className="flex gap-1">
               <button
                 onClick={(e) => { e.stopPropagation(); applyHeightVal(Number(localHeightStr || canvasSize.height) - 100) }}
-                disabled={!!lockStageSize}
-                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!!lockStageSize || hasKeyframes}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockStageSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="-100"
               >
                 −
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); applyHeightVal(Number(localHeightStr || canvasSize.height) + 100) }}
-                disabled={!!lockStageSize}
-                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!!lockStageSize || hasKeyframes}
+                className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockStageSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="+100"
               >
                 +
@@ -677,8 +724,8 @@ export default function ConfigMenu({
                   autoApplyTimer.current = null
                 }, 2000)
               }}
-              disabled={!!lockStageSize}
-              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockStageSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!!lockStageSize || hasKeyframes}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${(lockStageSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             {heightError && <div className="text-[11px] text-destructive mt-1">{heightError}</div>}
             {showMaxHeightToast && <div className="text-[11px] text-yellow-800 bg-yellow-100 rounded px-2 py-1 mt-1">Max height is 900</div>}
@@ -701,11 +748,12 @@ export default function ConfigMenu({
         </label>
         {showWings && (
           <button
-            onClick={(e) => { e.stopPropagation(); setLockWingSize && setLockWingSize(!lockWingSize) }}
-            className="p-1 rounded hover:bg-accent/10"
-            title={lockWingSize ? 'Unlock wing size' : 'Lock wing size'}
+            onClick={(e) => { e.stopPropagation(); if (!hasKeyframes && setLockWingSize) setLockWingSize(!lockWingSize) }}
+            disabled={hasKeyframes}
+            className={`p-1 rounded hover:bg-accent/10 ${hasKeyframes ? 'opacity-50 cursor-not-allowed text-amber-600' : ''}`}
+            title={hasKeyframes ? 'Locked while keyframes exist' : lockWingSize ? 'Unlock wing size' : 'Lock wing size'}
           >
-            {lockWingSize ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+            {lockWingSize || hasKeyframes ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
           </button>
         )}
       </div>
@@ -717,16 +765,16 @@ export default function ConfigMenu({
               <span className="flex gap-1">
                 <button
                   onClick={(e) => { e.stopPropagation(); applyWingWidthVal(Number(localWingWidthStr || (wingSize?.width ?? Math.round(canvasSize.width / 8))) - 100) }}
-                  disabled={!!lockWingSize}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockWingSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!!lockWingSize || hasKeyframes}
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockWingSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title="-100"
                 >
                   −
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); applyWingWidthVal(Number(localWingWidthStr || (wingSize?.width ?? Math.round(canvasSize.width / 8))) + 100) }}
-                  disabled={!!lockWingSize}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockWingSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!!lockWingSize || hasKeyframes}
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockWingSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title="+100"
                 >
                   +
@@ -751,8 +799,8 @@ export default function ConfigMenu({
                   autoApplyTimer.current = null
                 }, 2000)
               }}
-              disabled={!!lockWingSize}
-              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockWingSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!!lockWingSize || hasKeyframes}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${(lockWingSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </label>
           <label className="text-xs text-muted-foreground">
@@ -761,16 +809,16 @@ export default function ConfigMenu({
               <span className="flex gap-1">
                 <button
                   onClick={(e) => { e.stopPropagation(); applyWingHeightVal(Number(localWingHeightStr || (wingSize?.height ?? canvasSize.height)) - 100) }}
-                  disabled={!!lockWingSize}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockWingSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!!lockWingSize || hasKeyframes}
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockWingSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title="-100"
                 >
                   −
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); applyWingHeightVal(Number(localWingHeightStr || (wingSize?.height ?? canvasSize.height)) + 100) }}
-                  disabled={!!lockWingSize}
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${lockWingSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!!lockWingSize || hasKeyframes}
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent text-sm ${(lockWingSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title="+100"
                 >
                   +
@@ -795,8 +843,8 @@ export default function ConfigMenu({
                   autoApplyTimer.current = null
                 }, 2000)
               }}
-              disabled={!!lockWingSize}
-              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${lockWingSize ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!!lockWingSize || hasKeyframes}
+              className={`mt-1 h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${(lockWingSize || hasKeyframes) ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </label>
         </div>

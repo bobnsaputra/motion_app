@@ -42,6 +42,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
   const [addMode, setAddMode] = useState(false)
   const [counter, setCounter] = useState(0)
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null)
+  const selectedCharIds = selectedCharId ? [selectedCharId] : []
   const [awaitingDirectionFor, setAwaitingDirectionFor] = useState<string | null>(null)
 
   const [canvasSize, setCanvasSize] = useState({ width: 1600, height: 900 })
@@ -4093,8 +4094,8 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
 
   // Offstage panel removed — a simple right-side label is rendered instead.
 
-  function handleCanvasSizeChange(size: { width: number; height: number }) {
-    if (lockStageSize) {
+  function handleCanvasSizeChange(size: { width: number; height: number }, overrideLock?: boolean) {
+    if (lockStageSize && !overrideLock) {
       showToast('Stage size is locked', 'info')
       return
     }
@@ -4143,7 +4144,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
           <Toolbar
           addMode={addMode}
           setAddMode={setAddMode}
-          selectedCharId={selectedCharId}
+          selectedCharIds={selectedCharIds}
           characters={characters}
           awaitingDirectionFor={awaitingDirectionFor}
           onDeleteSelected={handleDeleteSelected}
@@ -4160,6 +4161,7 @@ export default function StageBlockingApp({ user, onLogout, initialToast }: Stage
           setConfigMenuOpen={setConfigMenuOpen}
           stageTemplate={stageTemplate}
           setStageTemplate={setStageTemplate}
+          hasKeyframes={keyframes.length > 0}
           canvasSize={canvasSize}
           onCanvasSizeChange={handleCanvasSizeChange}
           lockStageSize={lockStageSize}
